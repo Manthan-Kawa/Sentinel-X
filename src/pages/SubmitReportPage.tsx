@@ -118,7 +118,7 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback(async (file: File) => {
-    if (!file.name.endsWith('.eml')) {
+    if (!file.name.toLowerCase().endsWith('.eml')) {
       setError('Please upload a .eml file.');
       return;
     }
@@ -242,7 +242,7 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".eml"
+          accept=".eml,.EML,message/rfc822"
           className="hidden"
           onChange={handleInputChange}
         />

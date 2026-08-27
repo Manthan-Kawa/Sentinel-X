@@ -138,6 +138,7 @@ export function EmailAnalyzerPage({ demoMode, onNavigate }: { demoMode?: boolean
   const { clearCampaigns } = useCampaigns();
 
   const [state, setState] = useState<AnalyzerState>('idle');
+  const [userRequestedIdle, setUserRequestedIdle] = useState(false);
   const [activeStage, setActiveStage] = useState<AnalysisStage>('Email');
   const [progressStep, setProgressStep] = useState(0);
   const [dragOver, setDragOver] = useState(false);
@@ -384,7 +385,7 @@ function IdleView({
           <input
             ref={fileInputRef}
             type="file"
-            accept=".eml,.msg,.txt"
+            accept=".eml,.msg,.txt,.EML,.MSG,.TXT,message/rfc822,text/plain"
             className="hidden"
             onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
           />
