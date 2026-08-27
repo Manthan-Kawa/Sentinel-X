@@ -152,8 +152,6 @@ export function EmailAnalyzerPage({ demoMode, onNavigate }: { demoMode?: boolean
   const [result, setResult] = useState<EmailAnalysisResult | null>(() => currentResult ?? null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const demoTriggeredRef = useRef(false);
-
   // Keep state synced with currentResult from AnalysisContext across navigation
   useEffect(() => {
     if (currentResult && !userRequestedIdle) {
@@ -166,14 +164,6 @@ export function EmailAnalyzerPage({ demoMode, onNavigate }: { demoMode?: boolean
       });
     }
   }, [currentResult, userRequestedIdle]);
-
-  // Handle demoMode trigger
-  useEffect(() => {
-    if (demoMode && !demoTriggeredRef.current && !currentResult) {
-      demoTriggeredRef.current = true;
-      handleDemo();
-    }
-  }, [demoMode, currentResult]);
 
 
   // ── Run analysis: drives the progress animation while API call happens ─────
