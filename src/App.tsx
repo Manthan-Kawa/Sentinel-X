@@ -36,7 +36,6 @@ function AppShell() {
 
   const [showWelcome, setShowWelcome] = useState(true);
   const [route, setRoute] = useState<string>(() => getInitialRoute(role));
-  const [demoMode, setDemoMode] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -50,7 +49,6 @@ function AppShell() {
       const hash = window.location.hash.replace('#/', '');
       if (NAV_ITEMS.some((n) => n.id === hash)) {
         setShowWelcome(false);
-        setDemoMode(false);
         setRoute(hash);
       }
     };
@@ -59,10 +57,9 @@ function AppShell() {
   }, []);
 
   /** Unified navigation handler */
-  function handleNavigate(id: string, opts?: { demoMode?: boolean; role?: UserRole }) {
+  function handleNavigate(id: string, opts?: { role?: UserRole }) {
     setShowWelcome(false);
     setRoute(id);
-    setDemoMode(opts?.demoMode ?? false);
 
     const effectiveRole = opts?.role || (localStorage.getItem(KEY_USER_ROLE) as UserRole) || (localStorage.getItem(KEY_USER)?.includes('user') ? 'user' : 'analyst');
     const email = localStorage.getItem(KEY_USER) || (effectiveRole === 'analyst' ? 'analyst@gmail.com' : 'demouser1@gmail.com');
@@ -83,7 +80,6 @@ function AppShell() {
       case 'email-analyzer':
         return (
           <EmailAnalyzerPage
-            demoMode={demoMode}
             onNavigate={handleNavigate}
           />
         );

@@ -8,7 +8,7 @@ import { TransparentLogo } from '@/components/TransparentLogo';
 import { buildUser, type UserRole } from '@/contexts/AuthContext';
 
 interface WelcomePageProps {
-  onNavigate: (route: string, opts?: { demoMode?: boolean; role?: UserRole }) => void;
+  onNavigate: (route: string, opts?: { role?: UserRole }) => void;
 }
 
 /* ─── User Registry ─── */
@@ -314,7 +314,7 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
     if (isLoggedIn) {
       const storedRole = (localStorage.getItem('sentinel_user_role') as UserRole) || (localStorage.getItem('sentinel_user')?.includes('user') ? 'user' : 'analyst');
       const targetRoute = storedRole === 'user' ? 'submit-report' : 'email-analyzer';
-      onNavigate(targetRoute, { role: storedRole, demoMode: false });
+      onNavigate(targetRoute, { role: storedRole });
     } else {
       setPendingDemo(true);
       setAuthModal('login');
@@ -334,10 +334,10 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
     if (pendingDemo) {
       setPendingDemo(false);
       const target = role === 'analyst' ? 'email-analyzer' : 'submit-report';
-      onNavigate(target, { role, demoMode: false });
+      onNavigate(target, { role });
     } else {
       const defaultRoute = role === 'analyst' ? 'dashboard' : 'submit-report';
-      onNavigate(defaultRoute, { role, demoMode: false });
+      onNavigate(defaultRoute, { role });
     }
   }
 
