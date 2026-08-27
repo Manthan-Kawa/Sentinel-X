@@ -314,7 +314,7 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
     if (isLoggedIn) {
       const storedRole = (localStorage.getItem('sentinel_user_role') as UserRole) || (localStorage.getItem('sentinel_user')?.includes('user') ? 'user' : 'analyst');
       const targetRoute = storedRole === 'user' ? 'submit-report' : 'email-analyzer';
-      onNavigate(targetRoute, { role: storedRole, demoMode: storedRole === 'analyst' });
+      onNavigate(targetRoute, { role: storedRole, demoMode: false });
     } else {
       setPendingDemo(true);
       setAuthModal('login');
@@ -334,10 +334,10 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
     if (pendingDemo) {
       setPendingDemo(false);
       const target = role === 'analyst' ? 'email-analyzer' : 'submit-report';
-      onNavigate(target, { role, demoMode: role === 'analyst' });
+      onNavigate(target, { role, demoMode: false });
     } else {
       const defaultRoute = role === 'analyst' ? 'dashboard' : 'submit-report';
-      onNavigate(defaultRoute, { role });
+      onNavigate(defaultRoute, { role, demoMode: false });
     }
   }
 
