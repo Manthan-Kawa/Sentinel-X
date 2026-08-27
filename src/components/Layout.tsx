@@ -221,7 +221,7 @@ export function Sidebar({ activeId, onNavigate, onSignOut, mobileOpen, onMobileC
         style={{ background: '#08090e', borderRight: '1px solid rgba(255,255,255,0.06)' }}
       >
         <div
-          className="relative h-16 flex items-center justify-start pl-[21px] pr-2 shrink-0"
+          className="relative h-16 flex items-center justify-start pl-4 pr-2 shrink-0"
           style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
         >
           <TransparentLogo
