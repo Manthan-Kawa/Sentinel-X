@@ -137,18 +137,43 @@ export function EmailAnalyzerPage({ demoMode, onNavigate }: { demoMode?: boolean
   const { clearVault } = useEvidence();
   const { clearCampaigns } = useCampaigns();
 
-  const [state, setState] = useState<AnalyzerState>('idle');
+  const [state, setState] = useState<AnalyzerState>(() => (currentResult ? 'results' : 'idle'));
   const [userRequestedIdle, setUserRequestedIdle] = useState(false);
   const [activeStage, setActiveStage] = useState<AnalysisStage>('Email');
   const [progressStep, setProgressStep] = useState(0);
   const [dragOver, setDragOver] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(() => {
+    if (!currentResult) return null;
+    const subj = currentResult.headers.find(h => h.key.toLowerCase() === 'subject')?.value;
+    return subj ? `${subj}.eml` : `${currentResult.case_id}.eml`;
+  });
   const [pastedEmail, setPastedEmail] = useState('');
   const [activeTab, setActiveTab] = useState<'facts' | 'inference' | 'headers' | 'raw'>('facts');
-  const [result, setResult] = useState<EmailAnalysisResult | null>(null);
+  const [result, setResult] = useState<EmailAnalysisResult | null>(() => currentResult ?? null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const demoTriggeredRef = useRef(false);
+
+  // Keep state synced with currentResult from AnalysisContext across navigation
+  useEffect(() => {
+    if (currentResult && !userRequestedIdle) {
+      setResult(currentResult);
+      setState('results');
+      setFileName((prev) => {
+        if (prev) return prev;
+        const subj = currentResult.headers.find(h => h.key.toLowerCase() === 'subject')?.value;
+        return subj ? `${subj}.eml` : `${currentResult.case_id}.eml`;
+      });
+    }
+  }, [currentResult, userRequestedIdle]);
+
+  // Handle demoMode trigger
+  useEffect(() => {
+    if (demoMode && !demoTriggeredRef.current && !currentResult) {
+      demoTriggeredRef.current = true;
+      handleDemo();
+    }
+  }, [demoMode, currentResult]);
 
 
   // ── Run analysis: drives the progress animation while API call happens ─────
