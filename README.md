@@ -142,6 +142,14 @@ npm run preview
 
 ---
 
+## 🔭 Future Scope
+
+- **Companion App** — extend Sentinel-X beyond the web dashboard into a dedicated app for on-the-go threat monitoring and alerts
+- **Direct Gmail Integration** — once user trust is established, allow Sentinel-X to connect directly to a user's Gmail inbox (via OAuth) for automatic, real-time email analysis — removing the need to manually upload/forward suspicious emails
+- **Continuous Learning** — feed verified investigation outcomes back into the detection model to improve accuracy over time
+
+---
+
 ## ⚠️ Disclaimer
 
 This is a **hackathon prototype** built for demonstration purposes as part of Smart India Hackathon (SIH). All emails, IPs, domains, threat indicators, geolocation data, and "blockchain" ledger entries are **synthetic/mock data** and do not represent real investigations, real infrastructure, or real attackers.
