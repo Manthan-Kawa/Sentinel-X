@@ -20,6 +20,7 @@ import {
 import { KEY_TICKETS } from '@/utils/storageKeys';
 import { EmailIngestionService } from '@/services/emailIngestionService';
 import { SupabaseDataService, type DbTicket, type DbTicketMessage } from '@/services/supabaseDataService';
+import { getSupabaseClient } from '@/config/supabaseClient';
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
@@ -157,8 +158,17 @@ const TicketContext = createContext<TicketContextType | null>(null);
 /* ── Helper ──────────────────────────────────────────────────────────────── */
 
 function generateCaseId(tickets: Ticket[]): string {
-  const n = (tickets.length + 1).toString().padStart(4, '0');
-  return `CASE-USER-${n}`;
+  const existingNums = tickets
+    .map((t) => {
+      const match = t.id.match(/CASE-USER-(\d+)/i);
+      return match ? parseInt(match[1], 10) : 0;
+    })
+    .filter((n) => !isNaN(n));
+  const maxNum = existingNums.length > 0 ? Math.max(...existingNums, 0) : tickets.length;
+  const numStr = (maxNum + 1).toString().padStart(4, '0');
+  // Unique random 3-digit suffix to prevent multi-device primary key collisions
+  const rand = Math.floor(100 + Math.random() * 900);
+  return `CASE-USER-${numStr}-${rand}`;
 }
 
 const KEY_TICKETS_PURGED = 'sentinel_tickets_purged_v2';
@@ -209,7 +219,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true;
     SupabaseDataService.fetchTickets().then((dbTickets) => {
-      if (isMounted) {
+      if (isMounted && dbTickets) {
         setTickets(dbTickets as unknown as Ticket[]);
         ticketsRef.current = dbTickets as unknown as Ticket[];
       }
@@ -234,21 +244,22 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  // Periodic background sync with Supabase (every 5s) to catch remote updates
+  // Background sync with Supabase (every 2.5s) and Supabase Realtime channel for instant cross-device updates
   useEffect(() => {
     let isMounted = true;
-    const interval = setInterval(async () => {
-      // Skip polling if a local mutation happened within the last 10 seconds
-      // to avoid overwriting freshly-upserted data with stale remote data
-      if (Date.now() - lastMutationRef.current < 10000) return;
+
+    const syncRemote = async () => {
+      // Suppress polling only briefly (2.5s) after a local action to avoid clobbering in-flight user actions
+      if (Date.now() - lastMutationRef.current < 2500) return;
 
       try {
         const remote = await SupabaseDataService.fetchTickets();
-        if (isMounted) {
+        if (isMounted && remote) {
           setTickets((prev) => {
-            const remoteTickets = (remote || []) as unknown as Ticket[];
-            const prevSig = prev.map((t) => `${t.id}:${t.status}:${t.respondedAt}:${t.threadMessages?.length || 0}`).join('|');
-            const remoteSig = remoteTickets.map((t) => `${t.id}:${t.status}:${t.respondedAt}:${t.threadMessages?.length || 0}`).join('|');
+            const remoteTickets = remote as unknown as Ticket[];
+            // Comprehensive change signature comparing ID, status, timestamps, and message count
+            const prevSig = prev.map((t) => `${t.id}:${t.status}:${t.userEmail}:${t.submittedAt}:${t.respondedAt}:${t.userAcknowledged}:${t.threadMessages?.length || 0}`).join('|');
+            const remoteSig = remoteTickets.map((t) => `${t.id}:${t.status}:${t.userEmail}:${t.submittedAt}:${t.respondedAt}:${t.userAcknowledged}:${t.threadMessages?.length || 0}`).join('|');
             if (prevSig !== remoteSig) {
               ticketsRef.current = remoteTickets;
               return remoteTickets;
@@ -257,11 +268,38 @@ export function TicketProvider({ children }: { children: ReactNode }) {
           });
         }
       } catch { /* ignore network errors */ }
-    }, 5000);
+    };
+
+    const interval = setInterval(syncRemote, 2500);
+
+    // Supabase Realtime subscription for sub-second synchronization when tickets are submitted/updated
+    let channel: any = null;
+    try {
+      const client = getSupabaseClient();
+      if (client) {
+        channel = client
+          .channel('public:user_tickets_realtime')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'user_tickets' }, () => {
+            SupabaseDataService.fetchTickets().then((dbTickets) => {
+              if (isMounted && dbTickets) {
+                setTickets(dbTickets as unknown as Ticket[]);
+                ticketsRef.current = dbTickets as unknown as Ticket[];
+              }
+            }).catch(() => {});
+          })
+          .subscribe();
+      }
+    } catch { /* ignore */ }
 
     return () => {
       isMounted = false;
       clearInterval(interval);
+      if (channel) {
+        try {
+          const client = getSupabaseClient();
+          if (client) client.removeChannel(channel);
+        } catch { /* ignore */ }
+      }
     };
   }, []);
 
@@ -279,19 +317,29 @@ export function TicketProvider({ children }: { children: ReactNode }) {
       threatCategory?: string;
       didInteract?: { clickedLink?: boolean; enteredCreds?: boolean; openedAttachment?: boolean };
     }): Promise<string> => {
-      const currentList = ticketsRef.current.length > 0 ? ticketsRef.current : loadTickets();
+      const cleanEmail = (data.userEmail || '').trim().toLowerCase();
+
+      // Ensure we have the latest remote tickets when computing case ID
+      let currentList = ticketsRef.current.length > 0 ? ticketsRef.current : loadTickets();
+      try {
+        const latestRemote = await SupabaseDataService.fetchTickets();
+        if (latestRemote && latestRemote.length > 0) {
+          currentList = latestRemote as unknown as Ticket[];
+        }
+      } catch { /* ignore */ }
+
       const id = generateCaseId(currentList);
       const initialMessages: TicketMessage[] = data.userComment ? [{
         id: `msg-${Date.now()}`,
         sender: 'user',
-        senderEmail: data.userEmail,
+        senderEmail: cleanEmail,
         message: data.userComment,
         timestamp: new Date().toISOString(),
       }] : [];
 
       const newTicket: Ticket = {
         id,
-        userEmail: data.userEmail,
+        userEmail: cleanEmail,
         submittedAt: new Date().toISOString(),
         status: 'pending',
         priority: data.priority || 'medium',
@@ -315,7 +363,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         threadMessages: initialMessages,
       };
 
-      const nextTickets = [newTicket, ...currentList];
+      const nextTickets = [newTicket, ...currentList.filter((t) => t.id !== id)];
       lastMutationRef.current = Date.now();
       ticketsRef.current = nextTickets;
       setTickets(nextTickets);

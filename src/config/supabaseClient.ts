@@ -9,30 +9,36 @@ function cleanSupabaseUrl(url: string): string {
   return url.trim().replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
 }
 
-/** Retrieves current Supabase URL from environment or localStorage */
+/** Retrieves current Supabase URL from environment or localStorage with resilient fallback */
 export const getSupabaseUrl = (): string => {
   const envUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
   if (envUrl && !envUrl.includes('placeholder') && !envUrl.includes('your-project')) {
     return cleanSupabaseUrl(envUrl);
   }
   try {
-    return cleanSupabaseUrl(localStorage.getItem(KEY_SUPABASE_URL) || '');
+    const local = localStorage.getItem(KEY_SUPABASE_URL);
+    if (local && local.trim()) return cleanSupabaseUrl(local);
   } catch {
-    return '';
+    // ignore
   }
+  // Hardcoded fallback — guarantees mobile devices & external clients always connect to the shared database
+  return 'https://guipyyckfappwsnwnjdn.supabase.co';
 };
 
-/** Retrieves current Supabase Anon Key from environment or localStorage */
+/** Retrieves current Supabase Anon Key from environment or localStorage with resilient fallback */
 export const getSupabaseAnonKey = (): string => {
   const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim();
   if (envKey && !envKey.includes('placeholder') && !envKey.includes('your-anon-key')) {
     return envKey;
   }
   try {
-    return (localStorage.getItem(KEY_SUPABASE_ANON_KEY) || '').trim();
+    const local = localStorage.getItem(KEY_SUPABASE_ANON_KEY);
+    if (local && local.trim()) return local.trim();
   } catch {
-    return '';
+    // ignore
   }
+  // Hardcoded fallback — guarantees mobile devices & external clients always connect to the shared database
+  return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1aXB5eWNrZmFwcHdzbnduamRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MDIxNDcsImV4cCI6MjEwNDI3ODE0N30.mz0_0heMuNtiWlgZPTK1hJx0l7cLb8ZSnKZf7fxcFjQ';
 };
 
 /** Checks whether valid Supabase credentials have been configured */

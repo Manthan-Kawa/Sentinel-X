@@ -147,14 +147,29 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
   };
 
   async function handleSubmit() {
-    if (!emlFile) { setError('Please attach a .eml file before submitting.'); return; }
+    if (!emlFile && !comment.trim()) {
+      setError('Please attach a .eml file or provide notes describing the suspicious email.');
+      return;
+    }
     if (!currentUser) { setError('You must be logged in.'); return; }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 800)); // Simulated async
+    await new Promise((r) => setTimeout(r, 600));
+
+    let finalEml = emlFile;
+    if (!finalEml) {
+      const synthetic = `From: ${currentUser.email}\nTo: sentinelx.analyst@gmail.com\nSubject: Mobile Reported Incident - ${new Date().toLocaleDateString()}\nDate: ${new Date().toUTCString()}\nContent-Type: text/plain; charset=utf-8\n\n${comment.trim()}`;
+      finalEml = {
+        name: `mobile_report_${Date.now().toString().slice(-4)}.eml`,
+        data: `data:message/rfc822;base64,${btoa(unescape(encodeURIComponent(synthetic)))}`,
+        type: 'message/rfc822',
+        size: synthetic.length,
+      };
+    }
+
     const caseId = await submitTicket({
       userEmail: currentUser.email,
-      userComment: comment.trim(),
-      emlFile,
+      userComment: comment.trim() || 'Suspicious email report submitted from mobile device.',
+      emlFile: finalEml,
       priority: isUrgent ? 'critical' : clickedLink ? 'high' : 'medium',
       didInteract: {
         clickedLink,
@@ -429,11 +444,11 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
       {/* Submit */}
       <button
         onClick={handleSubmit}
-        disabled={submitting || !emlFile}
+        disabled={submitting || (!emlFile && !comment.trim())}
         className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl text-white font-bold text-sm transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98]"
         style={{
           background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #7c3aed 100%)',
-          boxShadow: emlFile ? '0 6px 28px rgba(99,102,241,0.4)' : 'none',
+          boxShadow: (emlFile || comment.trim()) ? '0 6px 28px rgba(99,102,241,0.4)' : 'none',
         }}
       >
         {submitting ? (

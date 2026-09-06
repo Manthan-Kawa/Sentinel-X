@@ -397,10 +397,10 @@ export class SupabaseDataService {
           .select('*')
           .order('submitted_at', { ascending: false });
 
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
           const tickets: DbTicket[] = data.map((d: any) => ({
             id: d.id,
-            userEmail: d.user_email,
+            userEmail: (d.user_email || '').toLowerCase().trim(),
             submittedAt: d.submitted_at,
             status: d.status,
             priority: d.priority || 'medium',
