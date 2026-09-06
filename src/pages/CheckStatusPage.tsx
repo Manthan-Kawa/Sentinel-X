@@ -762,6 +762,8 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                   ? '1px solid rgba(34,197,94,0.25)'
                   : ticket.status === 'resolved'
                   ? '1px solid rgba(168,85,247,0.25)'
+                  : ticket.status === 'in_review'
+                  ? '1px solid rgba(6,182,212,0.25)'
                   : '1px solid rgba(255,255,255,0.07)',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
               }}
@@ -775,11 +777,15 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                         ? 'rgba(168,85,247,0.12)'
                         : ticket.status === 'analyzed'
                         ? 'rgba(34,197,94,0.12)'
+                        : ticket.status === 'in_review'
+                        ? 'rgba(6,182,212,0.12)'
                         : 'rgba(245,158,11,0.12)',
                       border: ticket.status === 'resolved'
                         ? '1px solid rgba(168,85,247,0.25)'
                         : ticket.status === 'analyzed'
                         ? '1px solid rgba(34,197,94,0.25)'
+                        : ticket.status === 'in_review'
+                        ? '1px solid rgba(6,182,212,0.3)'
                         : '1px solid rgba(245,158,11,0.25)',
                     }}
                   >
@@ -787,6 +793,8 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                       <ShieldCheck className="w-5 h-5 text-purple-400" />
                     ) : ticket.status === 'analyzed' ? (
                       <ShieldCheck className="w-5 h-5 text-green-400" />
+                    ) : ticket.status === 'in_review' ? (
+                      <Clock className="w-5 h-5 text-cyan-400 animate-spin" />
                     ) : (
                       <Clock className="w-5 h-5 text-amber-400 animate-pulse" />
                     )}

@@ -3,6 +3,7 @@ import {
   Inbox, Clock, CheckCircle2, Download, Upload, X, ChevronRight,
   MessageSquare, FileText, User, Calendar, Hash, Send, AlertTriangle,
   Filter, Search, Mail, ShieldCheck, Star, ArrowRight, ShieldAlert,
+  Lock,
 } from 'lucide-react';
 import { useTickets, type Ticket, type TicketAttachment, type TicketStatus } from '@/contexts/TicketContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -194,11 +195,14 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
 
     const finalComment = analystComment.trim() || (status === 'in_review' ? (ticket.analystComment || 'Case is actively being investigated by the SOC team.') : ticket.analystComment || '');
 
+    const isUserResolved = ticket.status === 'resolved' || ticket.userAcknowledged;
+    const effectiveStatus: TicketStatus = (status === 'resolved' && !isUserResolved) ? 'analyzed' : status;
+
     // Save in portal store & Supabase
     onRespond(ticket.id, {
       analystComment: finalComment,
       analystReport: reportFile,
-      status,
+      status: effectiveStatus,
     });
 
     if (sendEmail && status === 'analyzed') {
@@ -425,8 +429,8 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
             {/* Status progression buttons */}
             <div className="space-y-1.5">
               <p className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider">Set Ticket Status:</p>
-              <div className="flex gap-2 flex-wrap">
-                {(['in_review', 'analyzed', 'resolved'] as const).map((s) => (
+              <div className="flex gap-2 flex-wrap items-center">
+                {(['in_review', 'analyzed'] as const).map((s) => (
                   <button
                     key={s}
                     type="button"
@@ -439,15 +443,47 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
                       status === s
                         ? s === 'analyzed'
                           ? { background: 'rgba(34,197,94,0.2)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.4)' }
-                          : s === 'resolved'
-                            ? { background: 'rgba(168,85,247,0.25)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.45)' }
-                            : { background: 'rgba(6,182,212,0.2)', color: '#22d3ee', border: '1px solid rgba(6,182,212,0.4)' }
+                          : { background: 'rgba(6,182,212,0.2)', color: '#22d3ee', border: '1px solid rgba(6,182,212,0.4)' }
                         : { background: 'rgba(255,255,255,0.05)', color: '#6b7280', border: '1px solid rgba(255,255,255,0.08)' }
                     }
                   >
-                    {s === 'resolved' && (ticket.status === 'resolved' || ticket.userAcknowledged) ? '✓ Resolved' : s.replace('_', ' ')}
+                    {s === 'in_review' ? 'In Investigation' : 'Analyzed'}
                   </button>
                 ))}
+
+                {/* Resolved button — locked for analyst; only user can mark resolved */}
+                <div
+                  title={
+                    ticket.userAcknowledged || ticket.status === 'resolved'
+                      ? 'Case confirmed and marked resolved by user.'
+                      : 'Locked for analyst: Only the user can confirm resolution and close this case.'
+                  }
+                  className="inline-flex items-center"
+                >
+                  <button
+                    type="button"
+                    disabled
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all flex items-center gap-1.5 cursor-not-allowed select-none"
+                    style={
+                      ticket.userAcknowledged || ticket.status === 'resolved'
+                        ? { background: 'rgba(168,85,247,0.25)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.45)' }
+                        : { background: 'rgba(255,255,255,0.03)', color: '#64748b', border: '1px solid rgba(255,255,255,0.08)', opacity: 0.7 }
+                    }
+                  >
+                    {ticket.userAcknowledged || ticket.status === 'resolved' ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" />
+                        <span>✓ Resolved by User</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-3 h-3 text-gray-500" />
+                        <span>Resolved</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-gray-400 font-normal">User Only</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -796,6 +832,8 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
                   ? '1px solid rgba(34,197,94,0.25)'
                   : ticket.status === 'resolved'
                     ? '1px solid rgba(168,85,247,0.25)'
+                    : ticket.status === 'in_review'
+                    ? '1px solid rgba(6,182,212,0.25)'
                     : '1px solid rgba(255,255,255,0.07)',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
               }}
@@ -809,18 +847,24 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
                         ? 'rgba(168,85,247,0.12)'
                         : ticket.status === 'analyzed'
                           ? 'rgba(34,197,94,0.12)'
-                          : 'rgba(245,158,11,0.12)',
+                          : ticket.status === 'in_review'
+                            ? 'rgba(6,182,212,0.12)'
+                            : 'rgba(245,158,11,0.12)',
                       border: ticket.status === 'resolved'
                         ? '1px solid rgba(168,85,247,0.25)'
                         : ticket.status === 'analyzed'
                           ? '1px solid rgba(34,197,94,0.25)'
-                          : '1px solid rgba(245,158,11,0.25)',
+                          : ticket.status === 'in_review'
+                            ? '1px solid rgba(6,182,212,0.3)'
+                            : '1px solid rgba(245,158,11,0.25)',
                     }}
                   >
                     {ticket.status === 'resolved' ? (
                       <CheckCircle2 className="w-5 h-5 text-purple-400" />
                     ) : ticket.status === 'analyzed' ? (
                       <CheckCircle2 className="w-5 h-5 text-green-400" />
+                    ) : ticket.status === 'in_review' ? (
+                      <Clock className="w-5 h-5 text-cyan-400 animate-spin" />
                     ) : (
                       <Clock className="w-5 h-5 text-amber-400 animate-pulse" />
                     )}
