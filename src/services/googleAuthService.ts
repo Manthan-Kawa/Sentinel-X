@@ -88,18 +88,23 @@ export class GoogleAuthService {
   }
 
   /**
-   * Retrieves the configured Google Client ID from .env or localStorage.
+   * Retrieves the configured Google Client ID from .env, localStorage, or hardcoded fallback.
+   * Priority: env variable → localStorage → hardcoded fallback.
+   * The fallback ensures no user ever sees the setup modal.
    */
   static getClientId(): string | null {
+    // 1. Env variable (works on localhost and properly configured deployments)
     const envClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
     if (envClientId && envClientId.trim() !== '' && !envClientId.includes('your_google_client_id')) {
       return envClientId.trim();
     }
+    // 2. User-saved value in localStorage
     const localId = localStorage.getItem(KEY_GOOGLE_CLIENT_ID);
     if (localId && localId.trim() !== '') {
       return localId.trim();
     }
-    return null;
+    // 3. Hardcoded fallback — guarantees Google sign-in always works for every user
+    return '52682109136-m25arg455feji85a2dkahudh68v03359.apps.googleusercontent.com';
   }
 
   /**
