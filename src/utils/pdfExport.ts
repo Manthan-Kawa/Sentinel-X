@@ -19,6 +19,7 @@ export interface PdfExportOptions {
   reportType?: ReportType;
   reportData?: ReportData;
   deepReport?: DeepForensicsReport;
+  customGraphPositions?: Record<string, { x: number; y: number }>;
 }
 
 /**
@@ -668,7 +669,7 @@ export function generateFormattedPdfHtml(
     </div>
 
     <div class="map-container avoid-break" style="padding: 16px; background: #07080e; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 8px 32px rgba(0,0,0,0.6); overflow: hidden;">
-      ${renderAttackGraphToSvg(result, getCaseLayoutStyle(result?.case_id))}
+      ${renderAttackGraphToSvg(result, getCaseLayoutStyle(result?.case_id), options?.customGraphPositions)}
     </div>
 
     <!-- 6. Recommended Incident Response & Remediation Plan -->

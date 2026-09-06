@@ -4,7 +4,7 @@
  * Renders the full 11-node ReactFlow topology graph with minimap, legend,
  * node details panel and the same layout engine as the dedicated Attack Graph page.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -13,11 +13,42 @@ import ReactFlow, {
   Position,
   ReactFlowProvider,
   useReactFlow,
+  useNodesState,
+  useEdgesState,
   type Node,
   type Edge,
   type NodeProps,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+
+/* ── Graph Positions Persistence Helper ─────────────────────────────────── */
+export const KEY_GRAPH_POSITIONS_PREFIX = 'sentinel_attack_graph_pos_';
+
+/** Returns user-repositioned node coordinates for a given case ID if available */
+export function getStoredGraphPositions(caseId?: string): Record<string, { x: number; y: number }> | null {
+  if (!caseId) return null;
+  try {
+    const raw = localStorage.getItem(`${KEY_GRAPH_POSITIONS_PREFIX}${caseId}`);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return null;
+}
+
+/** Saves user-repositioned node coordinates for a case ID */
+export function saveStoredGraphPositions(caseId: string, positions: Record<string, { x: number; y: number }>): void {
+  if (!caseId) return;
+  try {
+    localStorage.setItem(`${KEY_GRAPH_POSITIONS_PREFIX}${caseId}`, JSON.stringify(positions));
+  } catch { /* ignore */ }
+}
+
+/** Clears customized node coordinates, reverting to default algorithmic layout */
+export function clearStoredGraphPositions(caseId?: string): void {
+  if (!caseId) return;
+  try {
+    localStorage.removeItem(`${KEY_GRAPH_POSITIONS_PREFIX}${caseId}`);
+  } catch { /* ignore */ }
+}
 import {
   Mail,
   User,
@@ -73,8 +104,9 @@ function AttackNode({ data, selected }: NodeProps) {
           ? `0 0 24px ${cfg.border}, 0 0 8px ${cfg.border}`
           : `0 0 16px ${cfg.glow}`,
         overflow: 'hidden',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease-in-out',
+        cursor: 'grab',
+        userSelect: 'none',
+        transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
       }}
     >
       <Handle type="target" position={Position.Left}   id="left"   style={{ background: cfg.border, width: 8, height: 8, left: -4 }} />
@@ -410,29 +442,57 @@ function AttackGraphCanvasInner({
   const layoutStyle = getCaseLayoutStyle(result?.case_id);
   const rfInstance = useReactFlow();
 
-  const { nodes: liveNodes, edges: liveEdges } = buildDynamicAttackGraph(result, layoutStyle);
+  const { nodes: liveNodes, edges: liveEdges } = useMemo(
+    () => buildDynamicAttackGraph(result, layoutStyle),
+    [result, layoutStyle]
+  );
 
-  const rfNodes: Node[] = liveNodes.map((n) => ({
-    id: n.id,
-    type: 'attackNode',
-    position: { x: n.x, y: n.y },
-    data: { nodeData: n },
-    selected: n.id === selectedId,
-  }));
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node[]>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
 
-  const rfEdges: Edge[] = liveEdges.map((e) => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    type: 'smoothstep',
-    animated: true,
-    label: e.label,
-    style: { stroke: e.color ?? '#6366f1', strokeWidth: 1.5, strokeDasharray: '4 4' },
-    labelStyle: { fill: '#a5b4fc', fontSize: 8, fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.08em' },
-    labelBgStyle: { fill: '#0a0c16', fillOpacity: 0.95 },
-    labelBgPadding: [4, 3] as [number, number],
-    labelBgBorderRadius: 4,
-  }));
+  // Initialize nodes & edges with stored positions or default computed layout
+  useEffect(() => {
+    const savedPositions = getStoredGraphPositions(result?.case_id);
+
+    const initialNodes: Node[] = liveNodes.map((n) => {
+      const customPos = savedPositions?.[n.id];
+      return {
+        id: n.id,
+        type: 'attackNode',
+        position: customPos ? { x: customPos.x, y: customPos.y } : { x: n.x, y: n.y },
+        data: { nodeData: n },
+        selected: n.id === selectedId,
+        draggable: true,
+      };
+    });
+
+    const initialEdges: Edge[] = liveEdges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      type: 'smoothstep',
+      animated: true,
+      label: e.label,
+      style: { stroke: e.color ?? '#6366f1', strokeWidth: 1.5, strokeDasharray: '4 4' },
+      labelStyle: { fill: '#a5b4fc', fontSize: 8, fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.08em' },
+      labelBgStyle: { fill: '#0a0c16', fillOpacity: 0.95 },
+      labelBgPadding: [4, 3] as [number, number],
+      labelBgBorderRadius: 4,
+    }));
+
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [result?.case_id, layoutStyle, liveNodes, liveEdges, setNodes, setEdges]);
+
+  // Synchronize node selection state without clobbering coordinates
+  useEffect(() => {
+    setNodes((currentNodes) =>
+      currentNodes.map((n) => ({
+        ...n,
+        selected: n.id === selectedId,
+      }))
+    );
+  }, [selectedId, setNodes]);
 
   useEffect(() => {
     if (!result) return;
@@ -440,8 +500,43 @@ function AttackGraphCanvasInner({
     return () => clearTimeout(t);
   }, [result?.case_id, layoutStyle, rfInstance]);
 
+  // Persist updated node coordinates whenever node movement ends
+  const onNodeDragStop = useCallback(
+    (_event: React.MouseEvent, _node: Node) => {
+      if (!result?.case_id) return;
+      setNodes((currentNodes) => {
+        const posMap: Record<string, { x: number; y: number }> = {};
+        currentNodes.forEach((nd) => {
+          posMap[nd.id] = { x: Math.round(nd.position.x), y: Math.round(nd.position.y) };
+        });
+        saveStoredGraphPositions(result.case_id, posMap);
+        return currentNodes;
+      });
+    },
+    [result?.case_id, setNodes]
+  );
+
   const fitView = () => rfInstance.fitView({ padding: 0.12, duration: 400 });
-  const reset = useCallback(() => { rfInstance.fitView({ padding: 0.12, duration: 400 }); setSelectedId(null); }, [rfInstance]);
+
+  // Revert node positions to default topology layout
+  const reset = useCallback(() => {
+    if (result?.case_id) {
+      clearStoredGraphPositions(result.case_id);
+    }
+    const defaultNodes: Node[] = liveNodes.map((n) => ({
+      id: n.id,
+      type: 'attackNode',
+      position: { x: n.x, y: n.y },
+      data: { nodeData: n },
+      selected: false,
+      draggable: true,
+    }));
+    setNodes(defaultNodes);
+    setSelectedId(null);
+    setTimeout(() => {
+      rfInstance.fitView({ padding: 0.12, duration: 400 });
+    }, 50);
+  }, [result?.case_id, liveNodes, setNodes, rfInstance]);
 
   const selectedNode = liveNodes.find((n) => n.id === selectedId) ?? null;
 
@@ -490,8 +585,12 @@ function AttackGraphCanvasInner({
           style={{ background: '#07080e', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 40px rgba(0,0,0,0.6)', height: '100%' }}
         >
           <ReactFlow
-            nodes={rfNodes}
-            edges={rfEdges}
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeDragStop={onNodeDragStop}
+            nodesDraggable={true}
             nodeTypes={attackNodeTypes}
             onNodeClick={(_e, node) => setSelectedId(node.id)}
             onPaneClick={() => setSelectedId(null)}
@@ -613,8 +712,20 @@ function AttackGraphCanvasInner({
 export function renderAttackGraphToSvg(
   result: EmailAnalysisResult | null,
   layoutStyle: LayoutStyle = 'horizontal',
+  customPositions?: Record<string, { x: number; y: number }> | null,
 ): string {
   const { nodes, edges } = buildDynamicAttackGraph(result, layoutStyle);
+
+  // Apply user-moved coordinates from parameter or persistent storage
+  const activePositions = customPositions || getStoredGraphPositions(result?.case_id);
+  if (activePositions) {
+    nodes.forEach((n) => {
+      if (activePositions[n.id]) {
+        n.x = activePositions[n.id].x;
+        n.y = activePositions[n.id].y;
+      }
+    });
+  }
 
   const NODE_W = 210;
   const NODE_H = 132;
