@@ -184,9 +184,11 @@ export class EmailForensicsService {
 
     if (!targetEmail) {
       const emails = await EmailIngestionService.getEmails(userEmail);
+      let decodedId = emailId;
+      try { decodedId = decodeURIComponent(emailId); } catch { /* ignore */ }
       targetEmail =
-        emails.find((e) => e.id === emailId || e.gmail_message_id === emailId || decodeURIComponent(e.id) === decodeURIComponent(emailId)) ||
-        DEFAULT_SEED_EMAILS.find((e) => e.id === emailId || e.gmail_message_id === emailId || decodeURIComponent(e.id) === decodeURIComponent(emailId));
+        emails.find((e) => e.id === emailId || e.id === decodedId || e.gmail_message_id === emailId) ||
+        DEFAULT_SEED_EMAILS.find((e) => e.id === emailId || e.id === decodedId || e.gmail_message_id === emailId);
     }
 
     if (!targetEmail) return null;
@@ -360,6 +362,9 @@ export class EmailForensicsService {
         : rawAlert === 'medium' || rawAnalysisResult.threat_score >= 35
         ? 'suspicious'
         : 'clean');
+    const isMalicious = threatLevel === 'malicious';
+    const isSuspicious = threatLevel === 'suspicious';
+    const isClean = threatLevel === 'clean';
     let rawScore = targetEmail.analysis?.threat_score ?? rawAnalysisResult.threat_score;
     if ((rawScore === 5 || rawScore === undefined) && threatLevel === 'clean') {
       rawScore = generateRealisticCleanScore(`${targetEmail.id}:${targetEmail.sender}:${targetEmail.subject}`);

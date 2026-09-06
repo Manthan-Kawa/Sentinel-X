@@ -68,9 +68,13 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'synthesis' | 'headers' | 'threat-intel' | 'origin' | 'attack-graph' | 'attachments'>('all');
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
   useEffect(() => {
     let mounted = true;
     setIsAnalyzing(true);
+    setLoadError(null);
     setProgressStep(0);
     setActiveStage('Email');
 
@@ -101,12 +105,23 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
 
     async function fetchAndAnimate() {
       try {
-        const decodedTargetId = decodeURIComponent(emailId);
-        const activeEmail =
+        let decodedTargetId = emailId;
+        try { decodedTargetId = decodeURIComponent(emailId); } catch { /* ignore */ }
+
+        let activeEmail =
           (selectedEmail && (selectedEmail.id === emailId || selectedEmail.id === decodedTargetId || selectedEmail.gmail_message_id === emailId))
             ? selectedEmail
             : emails.find((e) => e.id === emailId || e.id === decodedTargetId || e.gmail_message_id === emailId)
             || DEFAULT_SEED_EMAILS.find((e) => e.id === emailId || e.id === decodedTargetId || e.gmail_message_id === emailId);
+
+        if (!activeEmail) {
+          try {
+            const loaded = await EmailIngestionService.getEmails(currentUser?.email || 'user@gmail.com');
+            activeEmail = loaded.find((e) => e.id === emailId || e.id === decodedTargetId || e.gmail_message_id === emailId);
+          } catch {
+            // ignore
+          }
+        }
 
         const [data] = await Promise.all([
           EmailForensicsService.getFullForensics(emailId, currentUser?.email || 'user@gmail.com', activeEmail),
@@ -117,15 +132,21 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
         await new Promise((r) => setTimeout(r, 450));
 
         if (mounted) {
+          if (!data) {
+            setLoadError('Email message not found in local or synchronized mailboxes.');
+          }
           setReport(data);
           setIsAnalyzing(false);
           // Once forensic analysis has completed, clear pending SOC escalation
           EmailIngestionService.removeEscalation(emailId);
         }
-      } catch (err) {
+      } catch (err: any) {
         clearInterval(interval);
         console.error('Failed to load deep forensics report:', err);
-        if (mounted) setIsAnalyzing(false);
+        if (mounted) {
+          setLoadError(err?.message || 'An unexpected error occurred during forensic compilation.');
+          setIsAnalyzing(false);
+        }
       }
     }
 
@@ -135,7 +156,7 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
       mounted = false;
       clearInterval(interval);
     };
-  }, [emailId, currentUser?.email]);
+  }, [emailId, currentUser?.email, retryCount]);
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -365,15 +386,34 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
 
   if (!report) {
     return (
-      <div className="p-8 text-center text-white space-y-4">
+      <div className="p-8 text-center text-white space-y-4 max-w-md mx-auto">
         <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto" />
         <h2 className="text-lg font-bold">Email Forensic Dossier Not Found</h2>
-        <button
-          onClick={() => onNavigate('emails', { role: 'user' })}
-          className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors"
-        >
-          Back to Ingested Emails
-        </button>
+        {loadError && (
+          <p className="text-xs text-rose-400/90 font-mono bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5">
+            {loadError}
+          </p>
+        )}
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <button
+            onClick={() => {
+              setReport(null);
+              setIsAnalyzing(true);
+              setLoadError(null);
+              setRetryCount((c) => c + 1);
+            }}
+            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors flex items-center gap-1.5"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Retry Analysis
+          </button>
+          <button
+            onClick={() => onNavigate('emails', { role: 'user' })}
+            className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors"
+          >
+            Back to Ingested Emails
+          </button>
+        </div>
       </div>
     );
   }
