@@ -4,7 +4,6 @@ import {
   Palette,
   Bell,
   Lock,
-  Database,
   Check,
   Sparkles,
   Key,
@@ -15,12 +14,14 @@ import {
   Eye,
   EyeOff,
   Cpu,
-  Trash2,
   type LucideIcon,
 } from 'lucide-react';
 import { CLAUDE_KEY_STORAGE } from '@/services/claudeService';
 import { clearEphemeralStorage } from '@/utils/storageKeys';
 import { useAnalysis } from '@/contexts/AnalysisContext';
+import { useAuth, deriveInitials, getSavedDisplayName } from '@/contexts/AuthContext';
+import { SupabaseDataService } from '@/services/supabaseDataService';
+import analystAvatar from '@/analyst.png';
 
 /* ─── Slide-in entrance wrapper ─── */
 function SlideIn({
@@ -73,14 +74,15 @@ interface SettingsTabConfig {
 const TABS: SettingsTabConfig[] = [
   { id: 'profile',       label: 'Profile',       icon: User },
   { id: 'appearance',    label: 'Appearance',    icon: Palette },
-  { id: 'notifications', label: 'Notifications', icon: Bell,     analystOnly: true },
-  { id: 'privacy',       label: 'Privacy',       icon: Lock,     analystOnly: true },
-  { id: 'data',          label: 'Data',          icon: Database, analystOnly: true },
-  { id: 'ai-engine',     label: 'AI Engine',     icon: Cpu,      analystOnly: true },
+  { id: 'notifications', label: 'Notifications', icon: Bell,      analystOnly: true },
+  { id: 'privacy',       label: 'Privacy',       icon: Lock,      analystOnly: true },
+  { id: 'data',          label: 'Data Cache',    icon: RefreshCw, analystOnly: true },
+  { id: 'ai-engine',     label: 'AI Engine',     icon: Cpu,       analystOnly: true },
 ];
 
-export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => void; userRole?: string | null }) {
+export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole?: string | null }) {
   const { resetActiveAnalysis } = useAnalysis();
+  const { currentUser, updateUserProfile } = useAuth();
   const isUser = userRole === 'user';
 
   const visibleTabs = isUser ? TABS.filter((t) => !t.analystOnly) : TABS;
@@ -88,12 +90,30 @@ export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => 
   const [activeTab, setActiveTab] = useState<TabType>('profile');
 
   /* Profile state */
-  const [displayName, setDisplayName] = useState(() => localStorage.getItem('sentinel_user')?.split('@')[0] ?? 'User');
-  const [email, setEmail] = useState(() => localStorage.getItem('sentinel_user') || '');
-  const [bio, setBio] = useState('Cybersecurity Analyst & SOC Lead specializing in SENTINEL-X forensic investigation and threat correlation.');
+  const [displayName, setDisplayName] = useState(() => {
+    const activeEmail = (currentUser?.email || localStorage.getItem('sentinel_user') || '').trim().toLowerCase();
+    return currentUser?.displayName || getSavedDisplayName(activeEmail) || activeEmail.split('@')[0] || 'User';
+  });
+  const [email, setEmail] = useState(() => currentUser?.email || localStorage.getItem('sentinel_user') || '');
+  const [bio, setBio] = useState(() => currentUser?.bio || (userRole === 'analyst' ? 'Cybersecurity Analyst & SOC Lead specializing in SENTINEL-X forensic investigation and threat correlation.' : 'Standard user with active email threat monitoring.'));
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('Profile Saved!');
 
-  /* Toggles state */
+  // Sync state if currentUser changes
+  useEffect(() => {
+    if (currentUser?.displayName) {
+      setDisplayName(currentUser.displayName);
+    }
+    if (currentUser?.email) {
+      setEmail(currentUser.email);
+    }
+    if (currentUser?.bio) {
+      setBio(currentUser.bio);
+    }
+  }, [currentUser?.displayName, currentUser?.email, currentUser?.bio]);
+
+  /* Toggles & Settings state */
+  const [themePreset, setThemePreset] = useState('Dark Cyber');
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [criticalAlerts, setCriticalAlerts] = useState(true);
   const [weeklyDigest, setWeeklyDigest] = useState(false);
@@ -101,9 +121,8 @@ export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => 
   const [glowEffects, setGlowEffects] = useState(true);
   const [apiTokenCopied, setApiTokenCopied] = useState(false);
 
-  /* AI Engine (Claude) state */
+  /* AI Engine (Gemini) state */
   const [claudeKey, setClaudeKey] = useState(() => localStorage.getItem(CLAUDE_KEY_STORAGE) ?? '');
-  const [claudeKeyVisible, setClaudeKeyVisible] = useState(false);
   const [claudeKeySaved, setClaudeKeySaved] = useState(false);
   const [claudeKeyTesting, setClaudeKeyTesting] = useState(false);
   const [claudeKeyTestResult, setClaudeKeyTestResult] = useState<'ok' | 'fail' | null>(null);
@@ -111,9 +130,98 @@ export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => 
   /* Cache reset states */
   const [sessionCleared, setSessionCleared] = useState(false);
 
-  const handleSaveProfile = () => {
+  // Sync settings (theme, toggles, keys) from Supabase in the background
+  useEffect(() => {
+    let active = true;
+    const targetEmail = (currentUser?.email || email || '').trim().toLowerCase();
+    if (targetEmail) {
+      SupabaseDataService.fetchSettings(targetEmail, (userRole as any) || 'user').then((s) => {
+        if (active && s) {
+          setThemePreset(s.themePreset || 'Dark Cyber');
+          setAnimationsEnabled(s.animationsEnabled ?? true);
+          setGlowEffects(s.glowEffects ?? true);
+          setEmailNotifications(s.emailNotifications ?? true);
+          setCriticalAlerts(s.criticalAlerts ?? true);
+          setWeeklyDigest(s.weeklyDigest ?? false);
+          if (s.customAiKey) setClaudeKey(s.customAiKey);
+        }
+      });
+    }
+    return () => { active = false; };
+  }, [currentUser?.email, email, userRole]);
+
+  const handleSaveProfile = async () => {
+    const targetEmail = (email || currentUser?.email || localStorage.getItem('sentinel_user') || 'user@sentinel.local').trim().toLowerCase();
+    const role = (currentUser?.role || userRole || 'user') as 'analyst' | 'user';
+    const newName = displayName.trim() || targetEmail.split('@')[0];
+    const newBio = bio.trim();
+
+    // 1. Synchronously update AuthContext so TopBar and Sidebar update immediately on click
+    updateUserProfile({
+      displayName: newName,
+      bio: newBio,
+      email: targetEmail,
+      role,
+    });
+
+    // 2. Immediately cache in localStorage for instant persistence across pages/reloads
+    try {
+      const cachedProfile = {
+        email: targetEmail,
+        role,
+        displayName: newName,
+        bio: newBio,
+        avatarUrl: currentUser?.avatarUrl,
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(`sentinel_profile_${targetEmail}`, JSON.stringify(cachedProfile));
+      localStorage.setItem('sentinel_user_display_name', newName);
+      localStorage.setItem(`sentinel_user_display_name_${targetEmail}`, newName);
+      window.dispatchEvent(new Event('storage'));
+    } catch { /* ignore */ }
+
+    setSaveMessage('Profile Saved!');
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);
+
+    // 3. Persist to Supabase in background (resilient fallback)
+    try {
+      await SupabaseDataService.upsertProfile({
+        email: targetEmail,
+        role,
+        displayName: newName,
+        bio: newBio,
+        avatarUrl: currentUser?.avatarUrl,
+      });
+    } catch (e) {
+      console.warn('Supabase upsertProfile fallback saved locally:', e);
+    }
+  };
+
+  const handleSyncSetting = (patch: Partial<{
+    themePreset: string;
+    animationsEnabled: boolean;
+    glowEffects: boolean;
+    emailNotifications: boolean;
+    criticalAlerts: boolean;
+    weeklyDigest: boolean;
+    customAiKey: string;
+  }>) => {
+    const targetEmail = email || currentUser?.email || 'user@sentinel.local';
+    const role = (currentUser?.role || userRole || 'user') as 'analyst' | 'user';
+
+    SupabaseDataService.upsertSettings({
+      userEmail: targetEmail,
+      role,
+      themePreset: patch.themePreset ?? themePreset,
+      animationsEnabled: patch.animationsEnabled ?? animationsEnabled,
+      glowEffects: patch.glowEffects ?? glowEffects,
+      emailNotifications: patch.emailNotifications ?? emailNotifications,
+      criticalAlerts: patch.criticalAlerts ?? criticalAlerts,
+      weeklyDigest: patch.weeklyDigest ?? weeklyDigest,
+      customAiKey: patch.customAiKey ?? claudeKey,
+      activeAiModel: 'gemini-3.6-flash',
+    }).catch((e) => console.warn('Supabase settings sync error:', e));
   };
 
   const handleCopyApiToken = () => {
@@ -124,6 +232,7 @@ export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => 
 
   const handleSaveClaudeKey = () => {
     localStorage.setItem(CLAUDE_KEY_STORAGE, claudeKey.trim());
+    handleSyncSetting({ customAiKey: claudeKey.trim() });
     setClaudeKeySaved(true);
     setClaudeKeyTestResult(null);
     setTimeout(() => setClaudeKeySaved(false), 2500);
@@ -179,11 +288,11 @@ export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => 
         </div>
       </SlideIn>
 
-      {/* ── Main Layout: Sidebar & Content Panel (Matches User Image Layout) ── */}
+      {/* ── Main Layout: Sidebar & Content Panel ── */}
       <SlideIn delay={80} direction="up">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-          {/* ── Left Sidebar Navigation (Matching Image) ── */}
+          {/* ── Left Sidebar Navigation ── */}
           <div className="lg:col-span-1">
             <div
               className="rounded-2xl p-3 space-y-1.5"
@@ -236,7 +345,7 @@ export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => 
             </div>
           </div>
 
-          {/* ── Right Content Area (Matching User Screenshot Layout) ── */}
+          {/* ── Right Content Area ── */}
           <div className="lg:col-span-3">
             <div
               className="rounded-2xl p-7 min-h-[500px]"
@@ -246,41 +355,45 @@ export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => 
                 boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
               }}
             >
-              {/* ── Profile Tab (Exact Match to User Image) ── */}
+              {/* ── 1. Profile Tab ── */}
               {activeTab === 'profile' && (
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-lg font-bold text-white tracking-tight">Profile Information</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Personal identity credentials and operational focus
+                    </p>
                   </div>
 
                   {/* Avatar Card */}
                   <div className="flex items-center gap-4">
                     <div
-                      className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold text-white shrink-0"
+                      className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold text-white shrink-0 overflow-hidden"
                       style={{
                         background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
                         boxShadow: '0 0 25px rgba(139,92,246,0.4)',
                       }}
                     >
-                      {displayName
-                        ? displayName
-                            .split(' ')
-                            .map((n) => n[0])
-                            .join('')
-                            .slice(0, 2)
-                            .toUpperCase()
-                        : 'KR'}
+                      {currentUser?.role === 'analyst' ? (
+                        <img src={analystAvatar} alt="Analyst" className="w-full h-full object-cover" />
+                      ) : currentUser?.avatarUrl ? (
+                        <img src={currentUser.avatarUrl} alt={displayName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        deriveInitials(displayName || currentUser?.displayName || email || 'User')
+                      )}
                     </div>
                     <div>
-                      <h4 className="text-base font-bold text-white">{displayName || 'Kaelen Richter'}</h4>
-                      <p className="text-xs text-gray-500 font-mono">Cybersecurity Analyst · Sentinel-X SOC</p>
-                      <button className="text-xs font-semibold text-purple-400 hover:text-purple-300 transition-colors mt-1 block">
-                        Change avatar →
-                      </button>
+                      <h4 className="text-base font-bold text-white">{displayName || currentUser?.displayName || 'User'}</h4>
+                      <p className="text-xs text-gray-400 font-mono">
+                        {userRole === 'analyst' ? 'Cybersecurity Analyst · Sentinel-X SOC' : 'Standard Organization User'}
+                      </p>
+                      <span className="inline-block mt-1 text-[10px] font-mono font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+                        {userRole === 'analyst' ? 'ANALYST ACCOUNT' : 'USER ACCOUNT'}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Form Inputs (Matching Image Styling) */}
+                  {/* Form Inputs */}
                   <div className="space-y-4 pt-2">
                     {/* Display Name */}
                     <div>
@@ -299,33 +412,43 @@ export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => 
                       />
                     </div>
 
-                    {/* Email */}
+                    {/* Email (Read Only) */}
                     <div>
-                      <label className="block text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">
-                        EMAIL
-                      </label>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest">
+                          EMAIL ADDRESS
+                        </label>
+                        <span className="flex items-center gap-1 text-[10px] font-mono font-semibold text-gray-500 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                          <Lock className="w-2.5 h-2.5 text-gray-400" />
+                          LOCKED
+                        </span>
+                      </div>
                       <input
                         type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full rounded-xl px-4 py-3 text-xs text-white font-mono placeholder-gray-600 focus:outline-none transition-all"
+                        value={email || currentUser?.email || localStorage.getItem('sentinel_user') || ''}
+                        readOnly
+                        disabled
+                        className="w-full rounded-xl px-4 py-3 text-xs text-gray-400 font-mono cursor-not-allowed select-none focus:outline-none transition-all"
                         style={{
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.08)',
+                          background: 'rgba(255,255,255,0.015)',
+                          border: '1px solid rgba(255,255,255,0.05)',
                         }}
                       />
+                      <p className="text-[10px] text-gray-500 font-mono mt-1.5">
+                        Account email is tied to your authentication credentials and cannot be changed.
+                      </p>
                     </div>
 
                     {/* Bio */}
                     <div>
                       <label className="block text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">
-                        BIO
+                        BIO / ROLE FOCUS
                       </label>
                       <textarea
                         value={bio}
                         onChange={(e) => setBio(e.target.value)}
                         rows={4}
-                        placeholder="Tell us a little about yourself..."
+                        placeholder="Describe your security focus or operational role..."
                         className="w-full rounded-xl p-4 text-xs text-white font-mono placeholder-gray-600 focus:outline-none resize-none transition-all scrollbar-thin"
                         style={{
                           background: 'rgba(255,255,255,0.03)',
@@ -347,13 +470,13 @@ export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => 
                       }}
                     >
                       {savedSuccess ? <Check className="w-4 h-4 text-green-400" /> : <Save className="w-4 h-4" />}
-                      {savedSuccess ? 'Profile Saved!' : 'Save Changes'}
+                      {savedSuccess ? saveMessage : 'Save Changes'}
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* ── Appearance Tab ── */}
+              {/* ── 2. Appearance Tab ── */}
               {activeTab === 'appearance' && (
                 <div className="space-y-6">
                   <div>
@@ -366,13 +489,21 @@ export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => 
                       label="SlideIn Entrance Animations"
                       detail="Staggered entrance animations on page navigation"
                       checked={animationsEnabled}
-                      onChange={() => setAnimationsEnabled(!animationsEnabled)}
+                      onChange={() => {
+                        const next = !animationsEnabled;
+                        setAnimationsEnabled(next);
+                        handleSyncSetting({ animationsEnabled: next });
+                      }}
                     />
                     <ToggleRow
                       label="Neon Glow Effects"
                       detail="Glow box shadows on active indicators and metrics"
                       checked={glowEffects}
-                      onChange={() => setGlowEffects(!glowEffects)}
+                      onChange={() => {
+                        const next = !glowEffects;
+                        setGlowEffects(next);
+                        handleSyncSetting({ glowEffects: next });
+                      }}
                     />
                   </div>
 
@@ -382,32 +513,39 @@ export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => 
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        { name: 'Dark Cyber', color: '#8b5cf6', active: true },
-                        { name: 'Obsidian Black', color: '#3b82f6', active: false },
-                        { name: 'Cyberpunk Teal', color: '#14b8a6', active: false },
-                        { name: 'Crimson Red', color: '#ef4444', active: false },
-                      ].map((t) => (
-                        <div
-                          key={t.name}
-                          className="rounded-xl p-3.5 flex items-center justify-between cursor-pointer transition-all"
-                          style={{
-                            background: 'rgba(255,255,255,0.03)',
-                            border: `1px solid ${t.active ? t.color : 'rgba(255,255,255,0.06)'}`,
-                          }}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <span className="w-3 h-3 rounded-full" style={{ background: t.color }} />
-                            <span className="text-xs text-white font-medium">{t.name}</span>
+                        { name: 'Dark Cyber', color: '#8b5cf6' },
+                        { name: 'Obsidian Black', color: '#3b82f6' },
+                        { name: 'Cyberpunk Teal', color: '#14b8a6' },
+                        { name: 'Crimson Red', color: '#ef4444' },
+                      ].map((t) => {
+                        const isPresetActive = themePreset === t.name;
+                        return (
+                          <div
+                            key={t.name}
+                            onClick={() => {
+                              setThemePreset(t.name);
+                              handleSyncSetting({ themePreset: t.name });
+                            }}
+                            className="rounded-xl p-3.5 flex items-center justify-between cursor-pointer transition-all hover:bg-white/5"
+                            style={{
+                              background: 'rgba(255,255,255,0.03)',
+                              border: `1px solid ${isPresetActive ? t.color : 'rgba(255,255,255,0.06)'}`,
+                            }}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-3 h-3 rounded-full" style={{ background: t.color }} />
+                              <span className="text-xs text-white font-medium">{t.name}</span>
+                            </div>
+                            {isPresetActive && <Check className="w-3.5 h-3.5" style={{ color: t.color }} />}
                           </div>
-                          {t.active && <Check className="w-3.5 h-3.5" style={{ color: t.color }} />}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* ── Notifications Tab ── */}
+              {/* ── 3. Notifications Tab ── */}
               {activeTab === 'notifications' && (
                 <div className="space-y-6">
                   <div>
@@ -420,25 +558,37 @@ export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => 
                       label="Critical Threat Push Alerts"
                       detail="Instant browser notification when a high/critical risk email is detected"
                       checked={criticalAlerts}
-                      onChange={() => setCriticalAlerts(!criticalAlerts)}
+                      onChange={() => {
+                        const next = !criticalAlerts;
+                        setCriticalAlerts(next);
+                        handleSyncSetting({ criticalAlerts: next });
+                      }}
                     />
                     <ToggleRow
                       label="Email Incident Notifications"
                       detail="Dispatch automated email reports when a case status changes"
                       checked={emailNotifications}
-                      onChange={() => setEmailNotifications(!emailNotifications)}
+                      onChange={() => {
+                        const next = !emailNotifications;
+                        setEmailNotifications(next);
+                        handleSyncSetting({ emailNotifications: next });
+                      }}
                     />
                     <ToggleRow
                       label="Weekly Intelligence Digest"
                       detail="Weekly summary report of top campaigns and IOCs"
                       checked={weeklyDigest}
-                      onChange={() => setWeeklyDigest(!weeklyDigest)}
+                      onChange={() => {
+                        const next = !weeklyDigest;
+                        setWeeklyDigest(next);
+                        handleSyncSetting({ weeklyDigest: next });
+                      }}
                     />
                   </div>
                 </div>
               )}
 
-              {/* ── Privacy Tab ── */}
+              {/* ── 4. Privacy Tab ── */}
               {activeTab === 'privacy' && (
                 <div className="space-y-6">
                   <div>
@@ -490,37 +640,15 @@ export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => 
                 </div>
               )}
 
-              {/* ── Data Tab ── */}
+              {/* ── 5. Data Tab ── */}
               {activeTab === 'data' && (
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-lg font-bold text-white tracking-tight">Data Management</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Manage local cache and synthetic data states</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Manage session cache and synthetic forensic states</p>
                   </div>
 
                   <div className="space-y-3">
-                    {/* ── Reset Cache (full wipe, both tiers) ── */}
-                    <div
-                      className="rounded-xl p-4 flex items-start justify-between gap-4"
-                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-                    >
-                      <div>
-                        <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <Trash2 className="w-3.5 h-3.5 text-red-400" /> Reset Cache
-                        </h4>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          Removes <span className="text-white font-semibold">all</span> stored data — Dashboard, Reports, Alerts, Campaigns, and analysis sessions. API key is preserved.
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => onResetCache?.()}
-                        className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-red-300 hover:text-white transition-colors"
-                        style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)' }}
-                      >
-                        Reset Cache
-                      </button>
-                    </div>
-
                     {/* ── Clear Analysis Session (ephemeral tier only) ── */}
                     <div
                       className="rounded-xl p-4 flex items-start justify-between gap-4"
@@ -570,24 +698,11 @@ export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => 
                         <RefreshCw className="w-3.5 h-3.5" /> Reload
                       </button>
                     </div>
-
-                    {/* ── Info banner ── */}
-                    <div
-                      className="rounded-xl p-3.5 flex items-start gap-2.5"
-                      style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}
-                    >
-                      <Shield className="w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5" />
-                      <p className="text-[11px] text-gray-400 leading-relaxed">
-                        <span className="text-purple-300 font-semibold">Persistent data</span> (Dashboard · Reports · Alerts · Campaigns) is stored locally and survives tab refresh and re-login.
-                        Only <span className="text-white font-semibold">Reset Cache</span> removes it.
-                        Forensic analysis pages (Email Analyzer · Header Forensics · etc.) always start with a fresh session.
-                      </p>
-                    </div>
                   </div>
                 </div>
               )}
 
-              {/* ── AI Engine Tab ── */}
+              {/* ── 6. AI Engine Tab ── */}
               {activeTab === 'ai-engine' && (
                 <div className="space-y-6">
                   <div>
@@ -596,7 +711,7 @@ export function SettingsPage({ onResetCache, userRole }: { onResetCache?: () => 
                       AI Engine — Google Gemini
                     </h3>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      Sentinel-X utilizes Google Gemini 2.0 Flash for zero-latency email threat forensics.
+                      Sentinel-X utilizes Google Gemini Flash for zero-latency email threat forensics.
                     </p>
                   </div>
 

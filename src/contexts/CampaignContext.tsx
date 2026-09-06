@@ -8,6 +8,7 @@ import {
   KEY_CASE_STATUS_OVERRIDES,
   KEY_DELETED_CAMPAIGNS,
 } from '@/utils/storageKeys';
+import { SupabaseDataService } from '@/services/supabaseDataService';
 
 // IDs that belong to the static mock dataset (handled via overrides, not customCampaigns)
 const STATIC_CAMPAIGN_IDS = new Set(CAMPAIGNS.map((c) => c.id));
@@ -95,6 +96,24 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
       liveTickRef.current += 1;
     }, 30_000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Sync campaigns & case statuses from Supabase on mount
+  useEffect(() => {
+    let active = true;
+    SupabaseDataService.fetchCampaigns().then((remoteCamps) => {
+      if (active && remoteCamps && remoteCamps.length > 0) {
+        setCustomCampaigns(remoteCamps.filter((c: any) => !STATIC_CAMPAIGN_IDS.has(c.id)));
+      }
+    }).catch((e) => console.warn('Supabase fetchCampaigns error:', e));
+
+    SupabaseDataService.fetchAlertStates().then((states) => {
+      if (active && states?.caseStatusOverrides && Object.keys(states.caseStatusOverrides).length > 0) {
+        setCaseStatusOverrides((prev) => ({ ...prev, ...(states.caseStatusOverrides as Record<string, CaseStatus>) }));
+      }
+    }).catch((e) => console.warn('Supabase fetchAlertStates error:', e));
+
+    return () => { active = false; };
   }, []);
 
   // ── Persist to localStorage — always, no route-gating ────────────────────
@@ -239,6 +258,7 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
     };
 
     setCustomCampaigns((prev) => [newCamp, ...prev.filter((c) => c.id !== id)]);
+    SupabaseDataService.upsertCampaign(newCamp).catch((e) => console.warn('Supabase upsertCampaign error:', e));
     return newCamp;
   }, []);
 
@@ -248,9 +268,14 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
       setCampaignOverrides((prev) => ({ ...prev, [id]: { ...(prev[id] ?? {}), ...updates } }));
     } else {
       // For custom campaigns, update in-place
-      setCustomCampaigns((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, ...updates } : c))
-      );
+      setCustomCampaigns((prev) => {
+        const next = prev.map((c) => (c.id === id ? { ...c, ...updates } : c));
+        const updated = next.find((c) => c.id === id);
+        if (updated) {
+          SupabaseDataService.upsertCampaign(updated).catch((e) => console.warn('Supabase updateCampaign error:', e));
+        }
+        return next;
+      });
       // Also update any analysis-derived campaign via overrides
       setCampaignOverrides((prev) => ({ ...prev, [id]: { ...(prev[id] ?? {}), ...updates } }));
     }
@@ -264,6 +289,7 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
       delete next[id];
       return next;
     });
+    SupabaseDataService.deleteCampaign(id).catch((e) => console.warn('Supabase deleteCampaign error:', e));
   }, []);
 
   /** Full campaign clear — clears in-memory state AND localStorage. Used by logout / Reset Cache. */
@@ -280,7 +306,11 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
 
   // ── Case status helpers ───────────────────────────────────────────────────
   const setCaseStatus = useCallback((caseId: string, status: CaseStatus) => {
-    setCaseStatusOverrides((prev) => ({ ...prev, [caseId]: status }));
+    setCaseStatusOverrides((prev) => {
+      const next = { ...prev, [caseId]: status };
+      SupabaseDataService.saveCaseStatusOverrides(next).catch((e) => console.warn('Supabase saveCaseStatusOverrides error:', e));
+      return next;
+    });
   }, []);
 
   const getCaseStatus = useCallback(

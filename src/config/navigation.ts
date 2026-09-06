@@ -13,6 +13,7 @@ import {
   ClipboardList,
   Inbox,
   Lock,
+  Mail,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -40,6 +41,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'user-requests',       label: 'User Requests',      icon: Inbox,           roles: ['analyst'] },
 
   // ── Standard user ─────────────────────────────────────────────────────────
+  { id: 'emails',              label: 'Emails',             icon: Mail,            roles: ['user'] },
   { id: 'submit-report',       label: 'Submit Report',      icon: Upload,          roles: ['user'] },
   { id: 'check-status',        label: 'Check Status',       icon: ClipboardList,   roles: ['user'] },
 
@@ -57,6 +59,6 @@ export function getNavItemsForRole(role: NavRole): NavItem[] {
 /** Default landing route per role */
 export const DEFAULT_ROUTE: Record<NavRole, string> = {
   analyst: 'dashboard',
-  user: 'submit-report',
+  user: 'emails',
   all: 'dashboard',
 };

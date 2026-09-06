@@ -235,7 +235,7 @@ export function EvidenceVaultPage({ onNavigate }: { onNavigate?: (route: string)
     setIsVerifyingAll(true);
     try {
       const res = await verifyAllIntegrity();
-      setNotification(`Audited ${res.total} evidence blocks — ${res.verified} verified.`);
+      setNotification(`Verified ${res.total} evidence blocks — ${res.verified} verified.`);
       setTimeout(() => setNotification(null), 4000);
     } catch {
       // ignore
@@ -304,10 +304,10 @@ export function EvidenceVaultPage({ onNavigate }: { onNavigate?: (route: string)
               onClick={handleVerifyAll}
               disabled={isVerifyingAll}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-300 bg-white/5 border border-white/10 hover:text-white transition-all disabled:opacity-50 font-mono"
-              title="Audit SHA-256 hashes against ledger"
+              title="Verify SHA-256 hashes against ledger"
             >
               <RefreshCw className={`w-3 h-3 text-green-400 ${isVerifyingAll ? 'animate-spin' : ''}`} />
-              <span>{isVerifyingAll ? 'Auditing...' : 'Audit All'}</span>
+              <span>{isVerifyingAll ? 'Verifying...' : 'Verify All'}</span>
             </button>
 
             <button

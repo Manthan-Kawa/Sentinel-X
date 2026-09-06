@@ -14,19 +14,22 @@ import { SettingsPage } from '@/pages/SettingsPage';
 import { SubmitReportPage } from '@/pages/SubmitReportPage';
 import { CheckStatusPage } from '@/pages/CheckStatusPage';
 import { UserRequestsPage } from '@/pages/UserRequestsPage';
+import { EmailsPage } from '@/pages/EmailsPage';
+import { UserDeepForensicsPage } from '@/pages/UserDeepForensicsPage';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AnalysisProvider, useAnalysis } from '@/contexts/AnalysisContext';
 import { CampaignProvider, useCampaigns } from '@/contexts/CampaignContext';
 import { EvidenceProvider, useEvidence } from '@/contexts/EvidenceContext';
-import { AuthProvider, useAuth, buildUser, type UserRole } from '@/contexts/AuthContext';
+import { AuthProvider, useAuth, buildUser, deriveRoleFromEmail, type UserRole } from '@/contexts/AuthContext';
 import { TicketProvider } from '@/contexts/TicketContext';
-import { clearAllSentinelStorage, clearEphemeralStorage, KEY_AUTH, KEY_USER, KEY_USER_ROLE } from '@/utils/storageKeys';
+import { EmailIngestionProvider } from '@/contexts/EmailIngestionContext';
+import { clearAllSentinelStorage, clearEphemeralStorage, KEY_AUTH, KEY_USER, KEY_USER_ROLE, KEY_ACTIVE_CASE } from '@/utils/storageKeys';
 
 function getInitialRoute(role: UserRole | null): string {
   const hash = window.location.hash.replace('#/', '');
-  const valid = NAV_ITEMS.some((n) => n.id === hash);
+  const valid = NAV_ITEMS.some((n) => n.id === hash) || hash.includes('/forensics');
   if (valid) return hash;
-  if (role === 'user') return 'submit-report';
+  if (role === 'user') return 'emails';
   return 'dashboard';
 }
 
@@ -34,7 +37,11 @@ function AppShell() {
   const { currentUser, setCurrentUser, signOut } = useAuth();
   const role = currentUser?.role ?? null;
 
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(() => {
+    const isAuth = localStorage.getItem(KEY_AUTH) === 'true';
+    const user = localStorage.getItem(KEY_USER);
+    return !(isAuth && user);
+  });
   const [route, setRoute] = useState<string>(() => getInitialRoute(role));
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -47,7 +54,7 @@ function AppShell() {
   useEffect(() => {
     const onHashChange = () => {
       const hash = window.location.hash.replace('#/', '');
-      if (NAV_ITEMS.some((n) => n.id === hash)) {
+      if (NAV_ITEMS.some((n) => n.id === hash) || hash.includes('/forensics')) {
         setShowWelcome(false);
         setRoute(hash);
       }
@@ -59,11 +66,26 @@ function AppShell() {
   /** Unified navigation handler */
   function handleNavigate(id: string, opts?: { role?: UserRole }) {
     setShowWelcome(false);
-    setRoute(id);
 
-    const effectiveRole = opts?.role || (localStorage.getItem(KEY_USER_ROLE) as UserRole) || (localStorage.getItem(KEY_USER)?.includes('user') ? 'user' : 'analyst');
-    const email = localStorage.getItem(KEY_USER) || (effectiveRole === 'analyst' ? 'analyst@gmail.com' : 'demouser1@gmail.com');
-    setCurrentUser(buildUser(email, effectiveRole));
+    const email = localStorage.getItem(KEY_USER) || '';
+    const rawRole = opts?.role || (localStorage.getItem(KEY_USER_ROLE) as UserRole) || (email ? deriveRoleFromEmail(email) : 'user');
+    const isMasterAnalyst = email.toLowerCase().trim() === 'sentinelx.analyst@gmail.com' || email.toLowerCase().trim() === 'analyst@gmail.com';
+    const effectiveRole: UserRole = isMasterAnalyst && rawRole === 'analyst' ? 'analyst' : (email ? deriveRoleFromEmail(email) : 'user');
+
+    const effectiveEmail = email || (effectiveRole === 'analyst' ? 'sentinelx.analyst@gmail.com' : 'demouser1@gmail.com');
+    localStorage.setItem(KEY_AUTH, 'true');
+    localStorage.setItem(KEY_USER, effectiveEmail);
+    localStorage.setItem(KEY_USER_ROLE, effectiveRole);
+
+    // If standard user attempts to access an analyst-only route, redirect to user emails view
+    const analystOnlyRoutes = ['dashboard', 'email-analyzer', 'header-forensics', 'threat-intelligence', 'origin-investigation', 'attack-graph', 'campaigns', 'reports', 'alerts', 'user-requests'];
+    const targetRoute = effectiveRole === 'user' && analystOnlyRoutes.includes(id) ? 'emails' : id;
+    setRoute(targetRoute);
+
+    // Only update currentUser if not initialized or if account/role explicitly changed
+    if (!currentUser || currentUser.email.toLowerCase() !== effectiveEmail.toLowerCase() || (opts?.role && opts.role !== currentUser.role)) {
+      setCurrentUser(buildUser(effectiveEmail, effectiveRole));
+    }
   }
 
   // Show fullscreen welcome page first
@@ -71,9 +93,21 @@ function AppShell() {
     return <WelcomePage onNavigate={handleNavigate} />;
   }
 
-  const activeNav = NAV_ITEMS.find((n) => n.id === route);
+  const effectiveNavId = route.includes('/forensics') ? 'emails' : route;
+  const activeNav = NAV_ITEMS.find((n) => n.id === route) || (route.includes('/forensics') ? NAV_ITEMS.find((n) => n.id === 'emails') : undefined);
 
   function renderPage() {
+    // Security guard: Standard users can never view analyst-only screens
+    const analystOnlyRoutes = ['dashboard', 'email-analyzer', 'header-forensics', 'threat-intelligence', 'origin-investigation', 'attack-graph', 'campaigns', 'reports', 'alerts', 'user-requests'];
+    if (role === 'user' && analystOnlyRoutes.includes(route)) {
+      return <EmailsPage onNavigate={handleNavigate} />;
+    }
+
+    if (route.startsWith('emails/') && route.endsWith('/forensics')) {
+      const emailId = decodeURIComponent(route.slice('emails/'.length, route.length - '/forensics'.length));
+      return <UserDeepForensicsPage emailId={emailId} onNavigate={handleNavigate} />;
+    }
+
     switch (route) {
       case 'dashboard':
         return <DashboardPage onNavigate={handleNavigate} />;
@@ -91,11 +125,12 @@ function AppShell() {
       case 'reports':             return <ReportsPage onNavigate={handleNavigate} />;
       case 'alerts':              return <AlertsPage onNavigate={handleNavigate} />;
       case 'settings':            return <SettingsPage onResetCache={handleResetCache} userRole={role} />;
+      case 'emails':              return <EmailsPage onNavigate={handleNavigate} />;
       case 'submit-report':       return <SubmitReportPage onNavigate={handleNavigate} />;
       case 'check-status':        return <CheckStatusPage onNavigate={handleNavigate} />;
       case 'user-requests':       return <UserRequestsPage onNavigate={handleNavigate} />;
       default:                    return role === 'user'
-        ? <SubmitReportPage onNavigate={handleNavigate} />
+        ? <EmailsPage onNavigate={handleNavigate} />
         : <DashboardPage onNavigate={handleNavigate} />;
     }
   }
@@ -132,7 +167,7 @@ function AppShell() {
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: '#08090e' }}>
       <Sidebar
-        activeId={route}
+        activeId={effectiveNavId}
         onNavigate={(id) => handleNavigate(id)}
         onSignOut={handleSignOut}
         mobileOpen={mobileOpen}
@@ -141,7 +176,7 @@ function AppShell() {
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar
           onMenuClick={() => setMobileOpen(true)}
-          activeLabel={activeNav?.label ?? 'Dashboard'}
+          activeLabel={route.includes('/forensics') ? 'Deep Forensics Report' : (activeNav?.label ?? 'Dashboard')}
           onNavigate={(id) => handleNavigate(id)}
         />
         <main className="flex-1 overflow-y-auto scrollbar-thin p-4 lg:p-5" style={{ background: '#08090e' }}>
@@ -218,13 +253,15 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <TicketProvider>
-            <AnalysisProvider>
-              <EvidenceProvider>
-                <CampaignProvider>
-                  <AppShell />
-                </CampaignProvider>
-              </EvidenceProvider>
-            </AnalysisProvider>
+            <EmailIngestionProvider>
+              <AnalysisProvider>
+                <EvidenceProvider>
+                  <CampaignProvider>
+                    <AppShell />
+                  </CampaignProvider>
+                </EvidenceProvider>
+              </AnalysisProvider>
+            </EmailIngestionProvider>
           </TicketProvider>
         </AuthProvider>
       </ThemeProvider>

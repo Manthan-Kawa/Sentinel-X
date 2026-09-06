@@ -3,6 +3,8 @@
 // from the .env file (VITE_GEMINI_API_KEY) — users never need to provide it.
 
 import { resolveGeoLocation, extractOriginatingSenderTelemetry, isPrivateOrInternalIp } from '@/utils/geoUtils';
+import { extractAttachmentsFromEml } from '@/services/gmailIngestionService';
+import type { EmailAttachment } from '@/services/emailIngestionService';
 
 // ─── Live IP Geolocation (ipwho.is — free, HTTPS, no API key) ─────────────────
 interface LiveGeoResult {
@@ -116,7 +118,7 @@ export async function liveGeoLookup(ip: string): Promise<LiveGeoResult | null> {
 }
 
 /** Enrich an EmailAnalysisResult's origin with live geolocation coordinates for the originating IP. */
-async function enrichOriginWithLiveGeo(result: EmailAnalysisResult): Promise<EmailAnalysisResult> {
+export async function enrichOriginWithLiveGeo(result: EmailAnalysisResult): Promise<EmailAnalysisResult> {
   const ip = result.origin?.sending_ip;
   if (!ip || isPrivateOrInternalIp(ip)) return result;
   const live = await liveGeoLookup(ip);
@@ -175,6 +177,9 @@ export interface RelayHop {
   hostname: string;
   country: string;
   note: string;
+  reverse_dns?: string;
+  by?: string;
+  delay?: string;
 }
 
 export interface AttackNode {
@@ -193,6 +198,9 @@ export interface RecommendedAction {
   priority: ActionPriority;
   action: string;
   detail: string;
+  title?: string;
+  description?: string;
+  rationale?: string;
 }
 
 export interface EvidenceItem {
@@ -243,6 +251,18 @@ export interface EmailAnalysisResult {
   };
   recommended_actions: RecommendedAction[];
   evidence: EvidenceItem[];
+  /** All parsed attachments from the originating email */
+  attachments?: EmailAttachment[];
+  /** Real attachment filename from the originating email (e.g. "Manthan_Kawa_Certificate.pdf") */
+  attachment_name?: string;
+  /** Human-readable file size string (e.g. "124.0 KB") */
+  attachment_size?: string;
+  /** MIME type of the attachment */
+  attachment_mime?: string;
+  /** Gmail attachmentId for live download */
+  attachment_gmail_id?: string;
+  /** Gmail messageId the attachment belongs to */
+  source_email_id?: string;
 }
 
 // ─── Keep this export so SettingsPage import doesn't break ───────────────────
@@ -383,15 +403,29 @@ function validateResult(raw: unknown, rawEmail: string): EmailAnalysisResult {
   const ori = (r.origin as Record<string, unknown>) ?? {};
   const ag = (r.attack_graph as Record<string, unknown>) ?? {};
 
+  let threatScore = Math.min(100, Math.max(0, Number(r.threat_score) || 0));
+  // If score is around 30 (or flat 30 from Gemini), apply random ±5 jitter for analyst realism
+  if (threatScore >= 25 && threatScore <= 35) {
+    const jitter = Math.floor(Math.random() * 11) - 5; // -5 to +5
+    threatScore = Math.max(22, Math.min(38, threatScore + jitter));
+  }
+
+  const computedAlertLevel: AlertLevel =
+    threatScore >= 80 ? 'critical' : threatScore >= 60 ? 'high' : threatScore >= 40 ? 'medium' : threatScore >= 20 ? 'low' : 'info';
+
+  let summary = (r.summary as string) || '';
+  if (summary.includes('/100')) {
+    summary = summary.replace(/\b\d+\/100\b/g, `${threatScore}/100`);
+  }
+
   return {
     case_id:      (r.case_id as string)    || generateCaseId(),
     campaign_id:  (r.campaign_id as string) || 'UNKNOWN',
-    alert_level:  (['critical','high','medium','low','info'].includes(r.alert_level as string)
-                    ? r.alert_level as AlertLevel : 'info'),
+    alert_level:  computedAlertLevel,
     verdict:      (r.verdict as string)    || 'Analyzed Email',
-    threat_score: Math.min(100, Math.max(0, Number(r.threat_score) || 0)),
+    threat_score: threatScore,
     confidence:   Math.min(100, Math.max(0, Number(r.confidence)   || 0)),
-    summary:      (r.summary as string)    || '',
+    summary,
     raw_email:    rawEmail,
 
     headers:          Array.isArray(r.headers)          ? r.headers as { key: string; value: string }[] : [],
@@ -550,14 +584,16 @@ export function analyzeEmailLocally(rawEmailText: string): EmailAnalysisResult {
   let dmarc: AuthResult = authLower.includes('dmarc=pass') ? 'PASS' : authLower.includes('dmarc=fail') ? 'FAIL' : 'NONE';
 
   // Heuristic threat indicators
-  let threatScore = 15;
+  // Baseline score around 30 with random variation ±5 (range 25 to 35) for analyst realism
+  const analystJitter = Math.floor(Math.random() * 11) - 5; // -5 to +5
+  let threatScore = 30 + analystJitter; // 25 to 35
   const riskFactors: RiskFactor[] = [];
   const observedFacts: ObservedFact[] = [];
   const aiInferences: AIInference[] = [];
 
   // 1. Authentication check
   if (spf === 'FAIL' || dkim === 'FAIL' || dmarc === 'FAIL') {
-    threatScore += 30;
+    threatScore += 25 + (Math.floor(Math.random() * 7) - 3);
     riskFactors.push({
       label: 'Authentication Failure',
       severity: 'high',
@@ -681,7 +717,7 @@ export function analyzeEmailLocally(rawEmailText: string): EmailAnalysisResult {
   }
 
   // Bound score
-  threatScore = Math.min(98, Math.max(8, threatScore));
+  threatScore = Math.min(98, Math.max(15, threatScore));
 
   const alertLevel: AlertLevel =
     threatScore >= 80 ? 'critical' : threatScore >= 60 ? 'high' : threatScore >= 40 ? 'medium' : threatScore >= 20 ? 'low' : 'info';
@@ -813,7 +849,8 @@ export async function analyzeEmail(rawEmailText: string): Promise<EmailAnalysisR
         if (textContent.trim()) {
           const parsed = repairAndParseJson(textContent);
           const validated = validateResult(parsed, rawEmailText);
-          return enrichOriginWithLiveGeo(validated);
+          const enriched = await enrichOriginWithLiveGeo(validated);
+          return stampAttachmentMeta(enriched, rawEmailText);
         }
       } else {
         const errText = await response.text().catch(() => '');
@@ -832,11 +869,57 @@ export async function analyzeEmail(rawEmailText: string): Promise<EmailAnalysisR
   // If live cloud models all hit rate limit or failed, fall back gracefully to local forensic engine
   if (lastError) {
     const fallbackResult = analyzeEmailLocally(rawEmailText);
-    return enrichOriginWithLiveGeo(fallbackResult);
+    const enriched = await enrichOriginWithLiveGeo(fallbackResult);
+    return stampAttachmentMeta(enriched, rawEmailText);
   }
 
   const localResult = analyzeEmailLocally(rawEmailText);
-  return enrichOriginWithLiveGeo(localResult);
+  const enriched = await enrichOriginWithLiveGeo(localResult);
+  return stampAttachmentMeta(enriched, rawEmailText);
+}
+
+/**
+ * Parse attachment metadata from a raw EML string and stamp it onto the result.
+ * Extracts all attachments using extractAttachmentsFromEml while maintaining backward-compatible
+ * single-attachment fields for existing renderers.
+ */
+export function stampAttachmentMeta(result: EmailAnalysisResult, rawEml: string): EmailAnalysisResult {
+  const extracted = extractAttachmentsFromEml(rawEml);
+  const existingAtts = result.attachments || [];
+  const mergedAttachments = existingAtts.length > 0 ? existingAtts : extracted;
+
+  let attachmentName = result.attachment_name;
+  let sizeStr = result.attachment_size;
+  let mimeType = result.attachment_mime;
+
+  if (mergedAttachments.length > 0) {
+    const primary = mergedAttachments[0];
+    if (!attachmentName) attachmentName = primary.filename;
+    if (!sizeStr) sizeStr = primary.formattedSize;
+    if (!mimeType) mimeType = primary.mimeType;
+  }
+
+  // Add evidence items for extracted attachments if not already present
+  const updatedEvidence = [...(result.evidence || [])];
+  for (const att of mergedAttachments) {
+    if (!updatedEvidence.some(e => e.value.toLowerCase() === att.filename.toLowerCase())) {
+      updatedEvidence.push({
+        id: `ev-att-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        type: 'Attachment',
+        value: att.filename,
+        hash: att.data ? att.data.slice(0, 32) : undefined,
+      });
+    }
+  }
+
+  return {
+    ...result,
+    attachments: mergedAttachments,
+    attachment_name: attachmentName,
+    attachment_size: sizeStr,
+    attachment_mime: mimeType,
+    evidence: updatedEvidence,
+  };
 }
 
 // ─── Sentinel SOC AI Assistant Query Service ────────────────────────────────

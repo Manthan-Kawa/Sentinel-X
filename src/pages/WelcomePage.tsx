@@ -2,10 +2,14 @@ import Spline from '@splinetool/react-spline';
 import { useState } from 'react';
 import {
   Shield, ArrowRight, Mail, Zap, Eye, EyeOff, Lock, Globe,
-  UserPlus, ChevronLeft,
+  UserPlus, ChevronLeft, Check, Sparkles, UserCheck,
 } from 'lucide-react';
 import { TransparentLogo } from '@/components/TransparentLogo';
-import { buildUser, type UserRole } from '@/contexts/AuthContext';
+import { buildUser, type UserRole, deriveRoleFromEmail } from '@/contexts/AuthContext';
+import { GoogleAuthService } from '@/services/googleAuthService';
+import { GmailIngestionService } from '@/services/gmailIngestionService';
+import { GoogleSetupModal } from '@/components/GoogleSetupModal';
+import { SupabaseDataService } from '@/services/supabaseDataService';
 
 interface WelcomePageProps {
   onNavigate: (route: string, opts?: { role?: UserRole }) => void;
@@ -19,6 +23,7 @@ interface RegisteredUser {
 }
 
 const USERS_DB: RegisteredUser[] = [
+  { email: 'sentinelx.analyst@gmail.com', password: 'password', role: 'analyst' },
   { email: 'analyst@gmail.com', password: 'password', role: 'analyst' },
   { email: 'demouser1@gmail.com', password: 'password', role: 'user' },
   { email: 'demouser2@gmail.com', password: 'password', role: 'user' },
@@ -29,15 +34,54 @@ const USERS_DB: RegisteredUser[] = [
   { email: 'manthank0306@gmail.com', password: 'password', role: 'user' },
 ];
 
-/* ─── Auth hook (localStorage) ─── */
+/* ─── Auth hook (Supabase + localStorage) ─── */
 function useAuth() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() =>
     localStorage.getItem('sentinel_auth') === 'true'
   );
 
-  function login(email: string, password: string): { success: boolean; role?: UserRole; error?: string } {
+  async function login(
+    email: string,
+    password: string,
+    requestedRole?: UserRole
+  ): Promise<{ success: boolean; role?: UserRole; error?: string }> {
     const e = email.trim().toLowerCase();
     const p = password.trim();
+
+    if (!e || !p) {
+      return { success: false, error: 'Please fill in all fields.' };
+    }
+
+    // Try Supabase auth first if available
+    try {
+      const supabaseRes = await SupabaseDataService.signInWithEmail(e, p);
+      if (supabaseRes.success && supabaseRes.role) {
+        const resolvedRole = deriveRoleFromEmail(e);
+        localStorage.setItem('sentinel_auth', 'true');
+        localStorage.setItem('sentinel_user', e);
+        localStorage.setItem('sentinel_user_role', resolvedRole);
+        setIsLoggedIn(true);
+        return { success: true, role: resolvedRole };
+      }
+    } catch {
+      // Fallback to local DB check
+    }
+
+    // Clear any mismatched Google session tokens if logging in as another account
+    const storedGoogleProfile = localStorage.getItem('sentinel_google_user_profile') || sessionStorage.getItem('sentinel_google_user_profile');
+    if (storedGoogleProfile) {
+      try {
+        const parsed = JSON.parse(storedGoogleProfile);
+        if (parsed.email && parsed.email.toLowerCase() !== e) {
+          localStorage.removeItem('sentinel_google_user_profile');
+          sessionStorage.removeItem('sentinel_google_user_profile');
+          localStorage.removeItem('sentinel_google_access_token');
+          sessionStorage.removeItem('sentinel_google_access_token');
+          localStorage.removeItem('sentinel_google_token_expiry');
+          sessionStorage.removeItem('sentinel_google_token_expiry');
+        }
+      } catch {}
+    }
 
     // Check known users DB
     const known = USERS_DB.find((u) => u.email === e);
@@ -49,25 +93,51 @@ function useAuth() {
       localStorage.setItem('sentinel_user', known.email);
       localStorage.setItem('sentinel_user_role', known.role);
       setIsLoggedIn(true);
+
+      // Ensure any custom display name previously set for this account is preserved and active
+      const existingName =
+        localStorage.getItem(`sentinel_user_display_name_${known.email}`) ||
+        localStorage.getItem('sentinel_user_display_name');
+      if (existingName) {
+        localStorage.setItem(`sentinel_user_display_name_${known.email}`, existingName);
+        localStorage.setItem('sentinel_user_display_name', existingName);
+      }
+
+      // Async sync profile to Supabase only if not already established
+      SupabaseDataService.fetchProfile(known.email).then((existingProfile) => {
+        if (!existingProfile) {
+          SupabaseDataService.upsertProfile({
+            email: known.email,
+            role: known.role,
+            displayName: existingName || (known.role === 'analyst' ? 'Sentinel Analyst' : 'Demo User'),
+          }).catch(() => {});
+        }
+      }).catch(() => {});
+
       return { success: true, role: known.role };
     }
 
-    // Unknown users: treat as a new standard user (sign-up flow)
-    if (e && p) {
-      localStorage.setItem('sentinel_auth', 'true');
-      localStorage.setItem('sentinel_user', email.trim());
-      localStorage.setItem('sentinel_user_role', 'user');
-      setIsLoggedIn(true);
-      return { success: true, role: 'user' };
-    }
+    // Dynamic signup / new user: ALL new emails strictly receive 'user' role
+    const finalRole: UserRole = deriveRoleFromEmail(e);
 
-    return { success: false, error: 'Please fill in all fields.' };
+    localStorage.setItem('sentinel_auth', 'true');
+    localStorage.setItem('sentinel_user', e);
+    localStorage.setItem('sentinel_user_role', finalRole);
+    setIsLoggedIn(true);
+
+    return { success: true, role: finalRole };
   }
 
   function logout() {
     localStorage.removeItem('sentinel_auth');
     localStorage.removeItem('sentinel_user');
     localStorage.removeItem('sentinel_user_role');
+    localStorage.removeItem('sentinel_google_user_profile');
+    sessionStorage.removeItem('sentinel_google_user_profile');
+    localStorage.removeItem('sentinel_google_access_token');
+    sessionStorage.removeItem('sentinel_google_access_token');
+    localStorage.removeItem('sentinel_google_token_expiry');
+    sessionStorage.removeItem('sentinel_google_token_expiry');
     setIsLoggedIn(false);
   }
 
@@ -102,15 +172,18 @@ function AppleIcon() {
 interface AuthModalProps {
   initialMode?: 'login' | 'signup';
   onClose: () => void;
-  onSuccess: (email: string, password: string) => void;
+  onSuccess: (email: string, password: string, role?: UserRole) => void;
+  onGoogleSignIn?: (role?: UserRole) => void;
+  isGoogleLoading?: boolean;
 }
 
-function AuthModal({ initialMode = 'login', onClose, onSuccess }: AuthModalProps) {
+function AuthModal({ initialMode = 'login', onClose, onSuccess, onGoogleSignIn, isGoogleLoading }: AuthModalProps) {
   const [tab, setTab] = useState<'login' | 'signup'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
+  const [role, setRole] = useState<UserRole>('user');
   const [error, setError] = useState('');
 
   function handleSubmit(e: React.FormEvent) {
@@ -124,7 +197,8 @@ function AuthModal({ initialMode = 'login', onClose, onSuccess }: AuthModalProps
       setError('Passwords do not match.');
       return;
     }
-    onSuccess(email, password);
+    const resolvedRole = deriveRoleFromEmail(email);
+    onSuccess(email, password, resolvedRole);
   }
 
   return (
@@ -134,7 +208,7 @@ function AuthModal({ initialMode = 'login', onClose, onSuccess }: AuthModalProps
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-[360px] mx-4 rounded-3xl p-7 animate-slide-up"
+        className="relative w-full max-w-[390px] mx-4 rounded-3xl p-7 animate-slide-up"
         style={{
           background: 'rgba(18,18,26,0.97)',
           border: '1px solid rgba(255,255,255,0.08)',
@@ -151,13 +225,13 @@ function AuthModal({ initialMode = 'login', onClose, onSuccess }: AuthModalProps
         </button>
 
         {/* Brand */}
-        <div className="flex flex-col items-center mb-5 mt-2">
-          <TransparentLogo src="/Logo-SentinelX.png" alt="SENTINEL-X" className="h-11 w-auto object-contain mb-2 drop-shadow-md" />
-          <p className="text-[10px] text-gray-500 font-mono tracking-[0.2em] uppercase">Secure Access Portal</p>
+        <div className="flex flex-col items-center mb-6 mt-1">
+          <TransparentLogo src="/Logo-SentinelX.png" alt="SENTINEL-X" className="h-10 w-auto object-contain mb-1.5 drop-shadow-md" />
+          <p className="text-[10px] text-gray-500 tracking-[0.2em] uppercase font-medium">Secure Access Portal</p>
         </div>
 
         {/* Tab switcher */}
-        <div className="flex mb-6 border-b border-white/8">
+        <div className="flex mb-5 border-b border-white/8">
           {(['login', 'signup'] as const).map((t) => (
             <button
               key={t}
@@ -176,6 +250,14 @@ function AuthModal({ initialMode = 'login', onClose, onSuccess }: AuthModalProps
           ))}
         </div>
 
+        {/* Note on Sign Up */}
+        {tab === 'signup' && (
+          <div className="mb-4 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300 flex items-center gap-2">
+            <UserCheck className="w-4 h-4 text-blue-400 shrink-0" />
+            <span>New accounts are created as <strong>Standard User</strong> (Protected Mailbox &amp; Threat Detection).</span>
+          </div>
+        )}
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-3">
           {/* Email */}
@@ -188,7 +270,7 @@ function AuthModal({ initialMode = 'login', onClose, onSuccess }: AuthModalProps
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
+              placeholder="Email address"
               className="flex-1 bg-transparent text-sm text-white placeholder-gray-600 focus:outline-none"
             />
           </div>
@@ -232,16 +314,7 @@ function AuthModal({ initialMode = 'login', onClose, onSuccess }: AuthModalProps
             </div>
           )}
 
-          {/* Forgot password */}
-          {tab === 'login' && (
-            <div className="flex justify-end">
-              <button type="button" className="text-xs font-medium" style={{ color: '#06b6d4' }}>
-                Forgot password?
-              </button>
-            </div>
-          )}
-
-          {error && <p className="text-red-400 text-xs">{error}</p>}
+          {error && <p className="text-red-400 text-xs text-center">{error}</p>}
 
           {/* Primary CTA */}
           <button
@@ -252,14 +325,14 @@ function AuthModal({ initialMode = 'login', onClose, onSuccess }: AuthModalProps
               boxShadow: '0 4px 24px rgba(99,102,241,0.4)',
             }}
           >
-            {tab === 'login' ? 'Sign In' : 'Create Account'}
+            {tab === 'login' ? 'Sign In' : 'Create User Account'}
           </button>
         </form>
 
         {/* Divider */}
         <div className="flex items-center gap-3 my-4">
           <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
-          <span className="text-gray-600 text-xs">or</span>
+          <span className="text-gray-600 text-xs">or continue with</span>
           <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
         </div>
 
@@ -267,17 +340,20 @@ function AuthModal({ initialMode = 'login', onClose, onSuccess }: AuthModalProps
         <div className="space-y-2.5">
           <button
             type="button"
-            onClick={() => onSuccess('user@google.com', 'google-oauth')}
-            className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl text-white text-sm font-medium transition-all hover:brightness-110"
+            disabled={isGoogleLoading}
+            onClick={() => onGoogleSignIn ? onGoogleSignIn() : onSuccess('demouser1@gmail.com', 'google-oauth', 'user')}
+            className="w-full flex items-center justify-center gap-3 py-3 rounded-2xl text-white text-sm font-medium transition-all hover:brightness-110 disabled:opacity-50"
             style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)' }}
           >
             <GoogleIcon />
-            Continue with Google
+            {isGoogleLoading
+              ? 'Connecting to Google...'
+              : 'Continue with Google'}
           </button>
           <button
             type="button"
-            onClick={() => onSuccess('user@apple.com', 'apple-oauth')}
-            className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl text-white text-sm font-medium transition-all hover:brightness-110"
+            onClick={() => onSuccess('user@apple.com', 'apple-oauth', 'user')}
+            className="w-full flex items-center justify-center gap-3 py-3 rounded-2xl text-white text-sm font-medium transition-all hover:brightness-110"
             style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)' }}
           >
             <AppleIcon />
@@ -306,14 +382,73 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
   // null = closed | 'login' | 'signup' = open in that tab
   const [authModal, setAuthModal] = useState<'login' | 'signup' | null>(null);
   const [authError, setAuthError] = useState('');
+  const [setupModalOpen, setSetupModalOpen] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   // pendingDemo tracks whether we should navigate to email-analyzer after successful login
   const [pendingDemo, setPendingDemo] = useState(false);
 
+  async function handleGoogleSignIn(requestedRole?: UserRole) {
+    setAuthError('');
+    const clientId = GoogleAuthService.getClientId();
+    if (!clientId) {
+      setSetupModalOpen(true);
+      return;
+    }
+
+    try {
+      setGoogleLoading(true);
+      const { token, profile } = await GoogleAuthService.signInWithGoogle();
+
+      // Only official master SOC analyst accounts receive 'analyst' role.
+      // ALL other emails & new Google sign-ins strictly receive 'user'.
+      const resolvedRole: UserRole = deriveRoleFromEmail(profile.email);
+
+      // Set user session in storage
+      localStorage.setItem('sentinel_auth', 'true');
+      localStorage.setItem('sentinel_user', profile.email);
+      localStorage.setItem('sentinel_user_role', resolvedRole);
+
+      // Preserve any custom display name saved by the user
+      const cleanEmail = profile.email.toLowerCase().trim();
+      const savedCustomName =
+        localStorage.getItem(`sentinel_user_display_name_${cleanEmail}`) ||
+        localStorage.getItem('sentinel_user_display_name');
+      if (savedCustomName) {
+        localStorage.setItem(`sentinel_user_display_name_${cleanEmail}`, savedCustomName);
+        localStorage.setItem('sentinel_user_display_name', savedCustomName);
+      }
+
+      // Background sync to Supabase profiles
+      SupabaseDataService.syncGoogleUser(profile, resolvedRole).catch((e) => {
+        console.warn('Supabase Google user sync error:', e);
+      });
+
+      // Trigger background sync of real emails from Gmail if user
+      GmailIngestionService.syncGmailEmails(token, profile.email).catch((e) => {
+        console.warn('Initial live Gmail sync error:', e);
+      });
+
+      setAuthModal(null);
+      setGoogleLoading(false);
+
+      const targetRoute = resolvedRole === 'analyst' ? 'dashboard' : 'emails';
+      onNavigate(targetRoute, { role: resolvedRole });
+    } catch (err: any) {
+      setGoogleLoading(false);
+      if (err?.message === 'GOOGLE_CLIENT_ID_MISSING') {
+        setSetupModalOpen(true);
+      } else {
+        setAuthError(err?.message || 'Google sign in failed.');
+      }
+    }
+  }
+
   function handleAnalyzeEmailClick() {
     if (isLoggedIn) {
-      const storedRole = (localStorage.getItem('sentinel_user_role') as UserRole) || (localStorage.getItem('sentinel_user')?.includes('user') ? 'user' : 'analyst');
-      const targetRoute = storedRole === 'user' ? 'submit-report' : 'email-analyzer';
+      const storedEmail = localStorage.getItem('sentinel_user') || '';
+      const storedRole = (localStorage.getItem('sentinel_user_role') as UserRole) || deriveRoleFromEmail(storedEmail);
+      const targetRoute = storedRole === 'user' ? 'emails' : 'email-analyzer';
       onNavigate(targetRoute, { role: storedRole });
     } else {
       setPendingDemo(true);
@@ -321,8 +456,8 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
     }
   }
 
-  function handleAuthSuccess(email: string, password: string) {
-    const result = login(email, password);
+  async function handleAuthSuccess(email: string, password: string, selectedRole?: UserRole) {
+    const result = await login(email, password, selectedRole);
     if (!result.success) {
       setAuthError(result.error ?? 'Login failed.');
       return;
@@ -333,10 +468,10 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
 
     if (pendingDemo) {
       setPendingDemo(false);
-      const target = role === 'analyst' ? 'email-analyzer' : 'submit-report';
+      const target = role === 'analyst' ? 'email-analyzer' : 'emails';
       onNavigate(target, { role });
     } else {
-      const defaultRoute = role === 'analyst' ? 'dashboard' : 'submit-report';
+      const defaultRoute = role === 'analyst' ? 'dashboard' : 'emails';
       onNavigate(defaultRoute, { role });
     }
   }
@@ -468,8 +603,20 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
           initialMode={authModal}
           onClose={handleAuthClose}
           onSuccess={handleAuthSuccess}
+          onGoogleSignIn={handleGoogleSignIn}
+          isGoogleLoading={googleLoading}
         />
       )}
+
+      {/* ── Google Setup Modal ── */}
+      <GoogleSetupModal
+        isOpen={setupModalOpen}
+        onClose={() => setSetupModalOpen(false)}
+        onSuccessConnect={() => {
+          setSetupModalOpen(false);
+          handleGoogleSignIn();
+        }}
+      />
       {/* Show auth error as an overlay toast if needed */}
       {authError && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-sm text-red-300 font-medium"

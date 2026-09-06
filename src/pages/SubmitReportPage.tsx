@@ -115,6 +115,10 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
   const [submitted, setSubmitted] = useState<{ caseId: string } | null>(null);
   const [error, setError] = useState('');
 
+  const [clickedLink, setClickedLink] = useState(false);
+  const [enteredCreds, setEnteredCreds] = useState(false);
+  const [isUrgent, setIsUrgent] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback(async (file: File) => {
@@ -147,10 +151,15 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
     if (!currentUser) { setError('You must be logged in.'); return; }
     setSubmitting(true);
     await new Promise((r) => setTimeout(r, 800)); // Simulated async
-    const caseId = submitTicket({
+    const caseId = await submitTicket({
       userEmail: currentUser.email,
       userComment: comment.trim(),
       emlFile,
+      priority: isUrgent ? 'critical' : clickedLink ? 'high' : 'medium',
+      didInteract: {
+        clickedLink,
+        enteredCreds,
+      },
     });
     setSubmitted({ caseId });
     setSubmitting(false);
@@ -174,8 +183,8 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
           className="px-6 py-4 rounded-2xl text-center"
           style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)' }}
         >
-          <p className="text-xs text-gray-400 font-mono mb-1">Case ID</p>
-          <p className="text-xl font-black text-green-400 font-mono">{submitted.caseId}</p>
+          <p className="text-xs text-gray-400 mb-1">Case ID</p>
+          <p className="text-xl font-black text-green-400">{submitted.caseId}</p>
         </div>
         <p className="text-xs text-gray-500 text-center max-w-sm">
           You will be notified when an analyst has reviewed your submission. Track the status in Check Status.
@@ -257,7 +266,7 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
               <FileText className="w-6 h-6 text-green-400" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-white font-mono truncate">{emlFile.name}</p>
+              <p className="text-sm font-bold text-white truncate">{emlFile.name}</p>
               <p className="text-xs text-gray-500 mt-0.5">{formatBytes(emlFile.size)} · .eml</p>
             </div>
             <button
@@ -281,7 +290,7 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
               <p className="text-gray-500 text-xs mt-1">or click to browse</p>
             </div>
             <span
-              className="px-3 py-1 rounded-full text-[10px] font-mono font-bold text-blue-400"
+              className="px-3 py-1 rounded-full text-[10px] font-bold text-blue-400"
               style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
             >
               .EML files only
@@ -307,7 +316,7 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
       >
         <div className="px-5 py-3 flex items-center gap-2 border-b border-white/5">
           <HelpCircle className="w-4 h-4 text-gray-400" />
-          <span className="text-xs font-bold text-gray-300 uppercase tracking-wider font-mono">
+          <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">
             How to export a .eml file
           </span>
         </div>
@@ -358,7 +367,7 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
 
       {/* Comment / Notes */}
       <div className="space-y-2">
-        <label className="text-xs font-bold text-gray-300 uppercase tracking-wider font-mono flex items-center gap-2">
+        <label className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
           <Mail className="w-3.5 h-3.5 text-gray-400" />
           Additional Notes (optional)
         </label>
@@ -376,6 +385,45 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
           onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = 'none'; }}
         />
         <p className="text-[11px] text-gray-600">{comment.length} characters</p>
+      </div>
+
+      {/* Incident Urgency & Interaction Checklist */}
+      <div
+        className="p-4 rounded-2xl space-y-2.5"
+        style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}
+      >
+        <p className="text-xs font-bold text-gray-300 uppercase tracking-wider">
+          Incident Severity & Interaction (Helps SOC prioritize)
+        </p>
+        <div className="space-y-2 text-xs text-gray-300">
+          <label className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors">
+            <input
+              type="checkbox"
+              checked={clickedLink}
+              onChange={(e) => setClickedLink(e.target.checked)}
+              className="rounded accent-red-500 w-4 h-4 cursor-pointer"
+            />
+            <span>I clicked a link or opened a web page inside this email</span>
+          </label>
+          <label className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors">
+            <input
+              type="checkbox"
+              checked={enteredCreds}
+              onChange={(e) => setEnteredCreds(e.target.checked)}
+              className="rounded accent-red-500 w-4 h-4 cursor-pointer"
+            />
+            <span>I entered my password, credentials, or personal info</span>
+          </label>
+          <label className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors">
+            <input
+              type="checkbox"
+              checked={isUrgent}
+              onChange={(e) => setIsUrgent(e.target.checked)}
+              className="rounded accent-amber-500 w-4 h-4 cursor-pointer"
+            />
+            <span className="text-amber-300 font-semibold">Mark as Critical / Urgent triage request</span>
+          </label>
+        </div>
       </div>
 
       {/* Submit */}

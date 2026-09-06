@@ -676,7 +676,7 @@ export function renderAttackGraphToSvg(
     const mx = (sx + tx) / 2;
     const my = (sy + ty) / 2;
     const col = e.color || '#6366f1';
-    const badgeW = Math.max(56, e.label.length * 6.8 + 14);
+    const badgeW = Math.max(56, (e.label?.length || 0) * 6.8 + 14);
 
     let pathD = '';
     if (Math.abs(dx) >= Math.abs(dy)) {

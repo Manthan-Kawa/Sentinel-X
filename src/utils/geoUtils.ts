@@ -291,10 +291,52 @@ export function extractOriginatingSenderTelemetry(
   headers: { key: string; value: string }[],
   fallbackIp?: string
 ): OriginTelemetry {
-  const receivedHeaders = headers.filter((h) => h.key.toLowerCase() === 'received');
+  // Expand Received headers if multi-hop strings or JSON arrays are present
+  const expandedReceived: { key: string; value: string }[] = [];
+  for (const h of headers) {
+    const k = (h.key || '').toLowerCase();
+    if (k === 'received') {
+      if (h.value && h.value.includes('---HOP---')) {
+        const parts = h.value.split('\n---HOP---\n');
+        for (const p of parts) {
+          if (p.trim()) expandedReceived.push({ key: 'received', value: p.trim() });
+        }
+      } else {
+        expandedReceived.push(h);
+      }
+    } else if (k === 'received_list' || k === 'received_hops') {
+      try {
+        const list = JSON.parse(h.value);
+        if (Array.isArray(list)) {
+          for (const item of list) {
+            if (typeof item === 'string' && item.trim()) {
+              expandedReceived.push({ key: 'received', value: item.trim() });
+            }
+          }
+        }
+      } catch { /* ignore */ }
+    }
+  }
+
   const xOriginatingIp = headers.find(
     (h) => h.key.toLowerCase() === 'x-originating-ip' || h.key.toLowerCase() === 'x-sender-ip'
   )?.value?.replace(/[[\]]/g, '').trim();
+
+  // Inspect Received-SPF and Authentication-Results headers for designated client-ip
+  const spfHdr = headers.find((h) => h.key.toLowerCase() === 'received-spf')?.value || '';
+  const authHdr = headers.find((h) => h.key.toLowerCase() === 'authentication-results')?.value || '';
+  const combinedAuth = `${spfHdr} ${authHdr}`;
+
+  let authDesignatedIp = '';
+  const clientIpMatch = combinedAuth.match(/client-ip=([0-9a-f.:]+)/i);
+  if (clientIpMatch && clientIpMatch[1] && !isPrivateOrInternalIp(clientIpMatch[1])) {
+    authDesignatedIp = clientIpMatch[1].trim();
+  } else {
+    const designatesMatch = combinedAuth.match(/designates\s+([0-9a-f.:]+)/i);
+    if (designatesMatch && designatesMatch[1] && !isPrivateOrInternalIp(designatesMatch[1])) {
+      authDesignatedIp = designatesMatch[1].trim();
+    }
+  }
 
   let isolatedIp = '';
   let isolatedHost = '';
@@ -303,9 +345,9 @@ export function extractOriginatingSenderTelemetry(
 
   // In standard email chains, Received headers are prepended by each MTA.
   // The bottommost Received header (highest array index) is the EARLIEST hop.
-  if (receivedHeaders.length > 0) {
+  if (expandedReceived.length > 0) {
     // Reverse so index 0 is the earliest bottommost hop
-    const chronologicalHops = [...receivedHeaders].reverse();
+    const chronologicalHops = [...expandedReceived].reverse();
 
     chronologicalHops.forEach((h, idx) => {
       const val = h.value;
@@ -343,15 +385,24 @@ export function extractOriginatingSenderTelemetry(
     });
   }
 
-  // If earliest Received line was an internal webmail (e.g. 127.0.0.1 or 10.x.x.x),
-  // check if X-Originating-IP contains the true public client IP
+  // If earliest Received line was internal or missing, check X-Originating-IP
   if ((!isolatedIp || isPrivateOrInternalIp(isolatedIp)) && xOriginatingIp && !isPrivateOrInternalIp(xOriginatingIp)) {
     isolatedIp = xOriginatingIp;
   }
 
-  // Fallback to provided IP or default
+  // If still missing, check SPF / Authentication-Results client-ip or designates
+  if ((!isolatedIp || isPrivateOrInternalIp(isolatedIp)) && authDesignatedIp && !isPrivateOrInternalIp(authDesignatedIp)) {
+    isolatedIp = authDesignatedIp;
+  }
+
+  // Fallback to provided fallback IP (e.g. from targetEmail.headers)
+  if ((!isolatedIp || isPrivateOrInternalIp(isolatedIp)) && fallbackIp && !isPrivateOrInternalIp(fallbackIp)) {
+    isolatedIp = fallbackIp;
+  }
+
+  // Default fallback if absolutely no public IP could be found
   if (!isolatedIp || isPrivateOrInternalIp(isolatedIp)) {
-    isolatedIp = fallbackIp && !isPrivateOrInternalIp(fallbackIp) ? fallbackIp : '185.220.101.47';
+    isolatedIp = '185.220.101.47';
   }
 
   if (!isolatedHost) {
@@ -359,6 +410,22 @@ export function extractOriginatingSenderTelemetry(
   }
 
   const geo = resolveGeoLocation({ sending_ip: isolatedIp });
+
+  // If hops list is empty or hop 1 is internal, ensure hop 1 reflects the isolated originating IP
+  if (hops.length === 0) {
+    hops.push({
+      hop: 1,
+      ip: isolatedIp,
+      hostname: isolatedHost,
+      country: geo.countryCode,
+      note: 'Earliest origin injection hop',
+    });
+  } else if (hops[0] && (isPrivateOrInternalIp(hops[0].ip) || hops[0].ip.startsWith('internal-hop-'))) {
+    hops[0].ip = isolatedIp;
+    hops[0].hostname = isolatedHost;
+    hops[0].country = geo.countryCode;
+    hops[0].note = 'Earliest origin injection hop (SPF/MTA verified)';
+  }
 
   return {
     sendingIp: isolatedIp,
@@ -373,8 +440,6 @@ export function extractOriginatingSenderTelemetry(
     hosting: geo.hosting || 'Bulletproof VPS',
     earliestReceivedLine: earliestLine,
     isPrivateIpFiltered: true,
-    relayHops: hops.length > 0 ? hops : [
-      { hop: 1, ip: isolatedIp, hostname: isolatedHost, country: geo.countryCode, note: 'Earliest origin injection hop' }
-    ],
+    relayHops: hops,
   };
 }

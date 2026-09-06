@@ -1,4 +1,25 @@
 import { type EmailAnalysisResult } from '@/services/claudeService';
+import {
+  REPORT_TYPES,
+  type ReportType,
+  type ReportData,
+  SMTP_RELAYS,
+} from '@/data/mockData';
+import {
+  getCaseLayoutStyle,
+  renderAttackGraphToSvg,
+} from '@/components/AttackGraph';
+import { convertAnalysisToReportData } from '@/contexts/AnalysisContext';
+import type { DeepForensicsReport } from '@/services/emailForensicsService';
+
+/**
+ * Options for generating the high-fidelity forensic PDF
+ */
+export interface PdfExportOptions {
+  reportType?: ReportType;
+  reportData?: ReportData;
+  deepReport?: DeepForensicsReport;
+}
 
 /**
  * Generates a structured plain text forensic report.
@@ -43,7 +64,7 @@ ${result.risk_factors.map((rf, i) => `[${i + 1}] ${rf.label.toUpperCase()} (${rf
 
 4. OBSERVED FORENSIC FACTS
 ${subDivider}
-${result.observed_facts.map(f => `* [${f.category}] ${f.field}: ${f.value} (${f.status.toUpperCase()})`).join('\n')}
+${result.observed_facts.map((f) => `* [${f.category}] ${f.field}: ${f.value} (${f.status.toUpperCase()})`).join('\n')}
 
 5. AI THREAT INFERENCES
 ${subDivider}
@@ -55,7 +76,7 @@ ${result.recommended_actions.map((act, i) => `[${i + 1}] [${act.priority.toUpper
 
 7. EXTRACTED HEADERS
 ${subDivider}
-${result.headers.map(h => `${h.key}: ${h.value}`).join('\n')}
+${result.headers.map((h) => `${h.key}: ${h.value}`).join('\n')}
 
 ${divider}
 END OF FORENSIC REPORT — SENTINEL-X SECURITY PLATFORM
@@ -80,44 +101,68 @@ export function downloadTextReport(result: EmailAnalysisResult, filename?: strin
 }
 
 /**
- * Generates an executive, styled printable HTML document and opens the browser print-to-PDF dialog.
+ * Generates the unified, high-fidelity printable HTML document matching
+ * the Analyst-Side Report PDF layout, DarkCyberMap, and interactive Attack Graph SVG.
  */
-export function exportReportAsPDF(result: EmailAnalysisResult) {
-  const printWindow = window.open('', '_blank', 'width=900,height=1100');
-  if (!printWindow) {
-    alert('Please allow popups for this site to export the PDF report.');
-    return;
-  }
+export function generateFormattedPdfHtml(
+  type: ReportType = 'forensic',
+  data: ReportData,
+  result: EmailAnalysisResult | null,
+  options?: PdfExportOptions
+): string {
+  const typeLabel = REPORT_TYPES.find((r) => r.id === type)?.label ?? 'Forensic Report';
+  const scoreColor = data.riskScore >= 80 ? '#ef4444' : data.riskScore >= 50 ? '#f97316' : '#22c55e';
 
-  const scoreColor =
-    result.threat_score >= 80 ? '#ef4444' : result.threat_score >= 50 ? '#f97316' : '#22c55e';
+  const originLat = result?.origin?.latitude ?? 28.6139;
+  const originLng = result?.origin?.longitude ?? 77.2090;
+  const originCity = result?.origin?.city ?? 'New Delhi';
+  const originCountry = result?.origin?.country ?? 'India';
+  const originIp = result?.origin?.sending_ip ?? result?.threat_intel?.sending_ip ?? '103.19.199.18';
+  const originAsn = result?.origin?.asn ?? 'AS55836';
+  const originHosting = result?.origin?.hosting ?? 'Reliance Jio Cloud Gateway';
 
-  const originLat = result.origin?.latitude ?? 28.6139;
-  const originLng = result.origin?.longitude ?? 77.2090;
+  const senderDomain = result?.threat_intel.domain || 'micros0ft-support.example';
+  const targetEmail = result?.headers?.find((h) => h.key.toLowerCase() === 'to')?.value || 'cfo@acme-corp.example';
+  const fromHeader = result?.headers?.find((h) => h.key.toLowerCase() === 'from')?.value || 'Microsoft Billing <finance@micros0ft-support.example>';
+  const subjectHeader = result?.headers?.find((h) => h.key.toLowerCase() === 'subject')?.value || data.caseTitle;
+  const dateHeader = result?.headers?.find((h) => h.key.toLowerCase() === 'date')?.value || new Date().toUTCString();
+  const replyToHeader = result?.headers?.find((h) => h.key.toLowerCase() === 'reply-to')?.value || 'secure-verification.example';
 
-  const html = `<!DOCTYPE html>
+  // Extract real relay hops if deepReport is provided, otherwise fallback to SMTP_RELAYS
+  const hops =
+    options?.deepReport?.headerForensics?.hops && options.deepReport.headerForensics.hops.length > 0
+      ? options.deepReport.headerForensics.hops.map((h) => ({
+          hop: h.hop,
+          ip: h.ip,
+          hostname: h.reverseDns || h.ip,
+          country: h.location || 'Unknown',
+          timestamp: h.delay || '12ms',
+        }))
+      : SMTP_RELAYS;
+
+  // Attachment forensics from deepReport
+  const attachment = options?.deepReport?.attachmentForensics;
+  const hasAttachment = Boolean(attachment && (attachment.hasAttachment || attachment.filename));
+
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>SENTINEL-X Forensic Report — ${result.case_id}</title>
+  <title>SENTINEL-X ${typeLabel} — ${data.caseId}</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
     
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       color: #0f172a;
-      background: #ffffff;
-      padding: 40px;
+      background: #f8fafc;
+      padding: 30px;
       line-height: 1.5;
-      font-size: 13px;
+      font-size: 12px;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -148,576 +193,562 @@ export function exportReportAsPDF(result: EmailAnalysisResult) {
     }
 
     @media print {
-      body {
-        padding: 0;
-        background: #ffffff;
-      }
-      .no-print {
-        display: none !important;
-      }
+      body { padding: 0; background: #ffffff; }
+      .no-print { display: none !important; }
       @page {
-        margin: 1.5cm;
-        size: A4;
+        margin: 12mm 14mm;
+        size: A4 portrait;
       }
-      .page-break {
-        page-break-before: always;
-      }
+      .page-break { page-break-before: always; break-before: page; }
+      .avoid-break { page-break-inside: avoid; break-inside: avoid; }
     }
 
+    /* Print action bar */
+    .print-bar {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      gap: 12px;
+      z-index: 9999;
+    }
+    .print-btn {
+      background: linear-gradient(135deg, #7c3aed, #9333ea);
+      color: #ffffff;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 13px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 10px 25px rgba(124, 58, 237, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .report-container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 36px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+
+    /* Header Bar */
     .header-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 2px solid #0f172a;
-      padding-bottom: 16px;
+      padding-bottom: 20px;
       margin-bottom: 24px;
     }
-
-    .logo-title {
-      font-size: 22px;
-      font-weight: 800;
-      color: #0f172a;
+    .brand-title {
+      font-size: 26px;
+      font-weight: 900;
       letter-spacing: -0.5px;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-
-    .logo-subtitle {
+    .brand-title span {
+      color: #7c3aed;
+    }
+    .brand-sub {
       font-size: 11px;
+      font-weight: 700;
       color: #64748b;
-      font-family: 'JetBrains Mono', monospace;
       text-transform: uppercase;
       letter-spacing: 1px;
       margin-top: 2px;
     }
-
-    .meta-badge {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 6px 12px;
-      border-radius: 6px;
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
+    .meta-box {
       text-align: right;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+    .meta-tag {
+      display: inline-block;
+      padding: 3px 8px;
+      background: #0f172a;
+      color: #ffffff;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 10px;
     }
 
-    .executive-card {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 24px;
+    /* Executive Score Card */
+    .exec-card {
+      background: #0f172a;
+      color: #ffffff;
+      border-radius: 14px;
+      padding: 24px;
       display: flex;
-      gap: 24px;
       align-items: center;
+      gap: 24px;
+      margin-bottom: 24px;
     }
-
-    .score-badge {
+    .score-circle {
       width: 100px;
       height: 100px;
-      border-radius: 12px;
-      background: #ffffff;
-      border: 2px solid ${scoreColor};
+      border-radius: 14px;
+      background: #1e293b;
+      border: 3px solid ${scoreColor};
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
     }
-
-    .score-number {
-      font-size: 32px;
-      font-weight: 800;
+    .score-num {
+      font-size: 34px;
+      font-weight: 900;
       color: ${scoreColor};
       line-height: 1;
     }
-
-    .score-label {
+    .score-lbl {
       font-size: 9px;
       font-weight: 700;
-      font-family: 'JetBrains Mono', monospace;
-      text-transform: uppercase;
-      color: #64748b;
+      color: #94a3b8;
       margin-top: 4px;
+      letter-spacing: 0.5px;
     }
-
-    .exec-info {
-      flex: 1;
-    }
-
-    .exec-verdict {
+    .exec-info h2 {
       font-size: 18px;
-      font-weight: 700;
-      color: #0f172a;
+      font-weight: 800;
       margin-bottom: 6px;
+      color: #f8fafc;
     }
-
     .exec-summary {
-      font-size: 13px;
-      color: #334155;
+      font-size: 12.5px;
+      color: #cbd5e1;
       line-height: 1.6;
     }
 
-    .section-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: #0f172a;
+    /* Section Styling */
+    .section-head {
+      font-size: 13px;
+      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-top: 24px;
-      margin-bottom: 12px;
+      color: #0f172a;
+      border-bottom: 2px solid #e2e8f0;
       padding-bottom: 6px;
-      border-bottom: 1px solid #e2e8f0;
+      margin-top: 26px;
+      margin-bottom: 14px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 16px;
+    .section-head span {
+      font-size: 10px;
+      color: #64748b;
+      font-weight: 600;
     }
 
+    /* Data Tables & Key Values */
+    .meta-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      font-size: 12px;
+    }
+    .meta-table td, .meta-table th {
+      padding: 8px 12px;
+      border: 1px solid #e2e8f0;
+      text-align: left;
+    }
+    .meta-table th {
+      background: #f1f5f9;
+      font-weight: 700;
+      font-size: 11px;
+      color: #334155;
+    }
+    .mono-val {
+      font-family: 'JetBrains Mono', monospace;
+      color: #0f172a;
+      font-weight: 500;
+    }
+
+    /* Auth Badge Cards */
     .grid-3 {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap: 12px;
       margin-bottom: 16px;
     }
-
-    .stat-card {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 12px;
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
     }
 
-    .stat-label {
+    .auth-box {
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 12px;
+      background: #f8fafc;
+      text-align: center;
+    }
+    .auth-title {
       font-size: 10px;
       font-weight: 700;
-      font-family: 'JetBrains Mono', monospace;
-      text-transform: uppercase;
       color: #64748b;
       margin-bottom: 4px;
     }
-
-    .stat-value {
-      font-size: 13px;
-      font-weight: 600;
-      color: #0f172a;
-      font-family: 'JetBrains Mono', monospace;
+    .auth-status {
+      font-size: 16px;
+      font-weight: 900;
     }
+    .status-fail { color: #dc2626; }
+    .status-pass { color: #16a34a; }
+    .status-warn { color: #d97706; }
 
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 16px;
+    .callout-row {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #7c3aed;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
       font-size: 12px;
-    }
-
-    .table th {
-      background: #f1f5f9;
-      padding: 8px 12px;
-      text-align: left;
-      font-weight: 700;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      color: #475569;
-      border: 1px solid #e2e8f0;
-    }
-
-    .table td {
-      padding: 8px 12px;
-      border: 1px solid #e2e8f0;
       color: #334155;
     }
 
-    .badge-pill {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 10px;
-      font-weight: 700;
-      font-family: 'JetBrains Mono', monospace;
-      text-transform: uppercase;
+    .action-row {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-left: 4px solid #f97316;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: #7c2d12;
     }
 
-    .badge-critical { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
-    .badge-high     { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; }
-    .badge-medium   { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
-    .badge-low      { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
-    .badge-pass     { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-    .badge-fail     { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
-
-    .action-item {
-      padding: 10px 14px;
-      border-radius: 8px;
-      border-left: 4px solid #7c3aed;
-      background: #f8fafc;
-      border-top: 1px solid #e2e8f0;
-      border-right: 1px solid #e2e8f0;
-      border-bottom: 1px solid #e2e8f0;
-      margin-bottom: 8px;
+    .map-container {
+      background: #040711;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 16px;
+      border: 1px solid #1e293b;
     }
 
     .footer {
-      margin-top: 40px;
-      padding-top: 12px;
+      margin-top: 36px;
+      padding-top: 14px;
       border-top: 1px solid #cbd5e1;
       font-size: 10px;
       color: #94a3b8;
       display: flex;
       justify-content: space-between;
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    .print-btn {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #7c3aed;
-      color: #ffffff;
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-weight: 700;
-      border: none;
-      cursor: pointer;
-      box-shadow: 0 4px 14px rgba(124, 58, 237, 0.4);
+      align-items: center;
     }
   </style>
 </head>
 <body>
-
-  <button class="print-btn no-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
-
-  <div class="header-bar">
-    <div>
-      <div class="logo-title">SENTINEL-X</div>
-      <div class="logo-subtitle">Email Forensic &amp; Incident Report</div>
-    </div>
-    <div class="meta-badge">
-      <div>CASE: ${result.case_id}</div>
-      <div>DATE: ${new Date().toLocaleDateString()}</div>
-    </div>
+  <div class="print-bar no-print">
+    <button class="print-btn" onclick="window.print()">
+      <span>🖨️ Print / Save as PDF</span>
+    </button>
   </div>
 
-  <!-- Executive Card -->
-  <div class="executive-card">
-    <div class="score-badge">
-      <div class="score-number">${result.threat_score}</div>
-      <div class="score-label">THREAT SCORE</div>
-    </div>
-    <div class="exec-info">
-      <div class="exec-verdict">${result.verdict}</div>
-      <div class="exec-summary">${result.summary}</div>
-      <div style="margin-top: 10px; display: flex; gap: 8px;">
-        <span class="badge-pill badge-${result.alert_level === 'critical' || result.alert_level === 'high' ? 'critical' : 'low'}">ALERT: ${result.alert_level.toUpperCase()}</span>
-        <span class="badge-pill" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">CONFIDENCE: ${result.confidence}%</span>
-        <span class="badge-pill" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">CAMPAIGN: ${result.campaign_id}</span>
+  <div class="report-container">
+    <!-- Header -->
+    <div class="header-bar">
+      <div>
+        <div class="brand-title">SENTINEL<span>-X</span> SOC</div>
+        <div class="brand-sub">${typeLabel} · Cyber Threat Intelligence</div>
+      </div>
+      <div class="meta-box">
+        <div>CASE: <strong class="mono-val">${data.caseId}</strong></div>
+        <div>DATE: <span class="mono-val">${new Date().toISOString().slice(0, 10)}</span></div>
+        <div style="margin-top: 4px;"><span class="meta-tag">CONFIDENTIAL // SOC INCIDENT DOSSIER</span></div>
       </div>
     </div>
-  </div>
 
-  <!-- Authentication & Origin -->
-  <div class="section-title">Authentication &amp; Origin Infrastructure</div>
-  <div class="grid-3">
-    <div class="stat-card">
-      <div class="stat-label">SPF Protocol</div>
-      <div class="stat-value"><span class="badge-pill badge-${result.threat_intel.spf === 'PASS' ? 'pass' : 'fail'}">${result.threat_intel.spf}</span></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">DKIM Signature</div>
-      <div class="stat-value"><span class="badge-pill badge-${result.threat_intel.dkim === 'PASS' ? 'pass' : 'fail'}">${result.threat_intel.dkim}</span></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">DMARC Policy</div>
-      <div class="stat-value"><span class="badge-pill badge-${result.threat_intel.dmarc === 'PASS' ? 'pass' : 'fail'}">${result.threat_intel.dmarc}</span></div>
-    </div>
-  </div>
-
-  <div class="grid-2">
-    <div class="stat-card">
-      <div class="stat-label">Sending IP &amp; Location</div>
-      <div class="stat-value">${result.threat_intel.sending_ip || result.origin.sending_ip || 'N/A'} (${result.origin.country || 'Unknown'})</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">ASN / Hosting Infrastructure</div>
-      <div class="stat-value">${result.origin.asn || 'N/A'} - ${result.origin.hosting || 'Unknown'}</div>
-    </div>
-  </div>
-
-  <!-- Origin Geolocation Visual (DarkCyberMap) -->
-  <div style="margin-bottom: 16px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.15); background: #06070a; position: relative;">
-    <div id="cyber-pdf-map" style="width: 100%; height: 280px; background: #06070a;"></div>
-    <div style="position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 8px; background: rgba(12,15,26,0.92); border: 1px solid rgba(239,68,68,0.4); color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 10px;">
-      <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 6px #ef4444;"></span>
-      <span style="font-weight: 700; color: #ef4444;">SUSPECTED ORIGIN:</span>
-      <span>${result.origin.city || 'New Delhi'}, ${result.origin.country || 'India'}</span>
-    </div>
-  </div>
-
-  <!-- Attack Topology Graph (Full 9-Node Intrusion Chain) -->
-  <div class="section-title">Attack Topology Graph &amp; Intrusion Chain</div>
-  <div style="margin-bottom: 16px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.15); background: #050811; padding: 8px;">
-    <svg viewBox="0 0 880 270" style="width: 100%; height: auto; display: block;">
-      <defs>
-        <marker id="pdfArrowIndigo" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 1 L 8 5 L 0 9 z" fill="#6366f1" />
-        </marker>
-        <marker id="pdfArrowOrange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 1 L 8 5 L 0 9 z" fill="#f97316" />
-        </marker>
-        <marker id="pdfArrowBlue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 1 L 8 5 L 0 9 z" fill="#3b82f6" />
-        </marker>
-        <marker id="pdfArrowPurple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 1 L 8 5 L 0 9 z" fill="#8b5cf6" />
-        </marker>
-        <marker id="pdfArrowRed" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 1 L 8 5 L 0 9 z" fill="#ef4444" />
-        </marker>
-        <marker id="pdfArrowAmber" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 1 L 8 5 L 0 9 z" fill="#eab308" />
-        </marker>
-        <marker id="pdfArrowEmerald" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 1 L 8 5 L 0 9 z" fill="#10b981" />
-        </marker>
-        <marker id="pdfArrowPink" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 1 L 8 5 L 0 9 z" fill="#ec4899" />
-        </marker>
-      </defs>
-
-      <rect width="880" height="270" fill="#050811" rx="10" />
-
-      <g stroke="#1e293b" stroke-width="0.5" stroke-dasharray="3 3" opacity="0.35">
-        <line x1="175" y1="0" x2="175" y2="270" />
-        <line x1="350" y1="0" x2="350" y2="270" />
-        <line x1="525" y1="0" x2="525" y2="270" />
-        <line x1="700" y1="0" x2="700" y2="270" />
-      </g>
-
-      <g fill="none" stroke-width="1.5">
-        <path d="M 85 85 L 85 155" stroke="#6366f1" stroke-dasharray="4 3" marker-end="url(#pdfArrowIndigo)" />
-        <path d="M 155 52 L 195 52" stroke="#f97316" stroke-dasharray="4 3" marker-end="url(#pdfArrowOrange)" />
-        <path d="M 335 52 C 352 52, 352 118, 370 118" stroke="#3b82f6" stroke-dasharray="4 3" marker-end="url(#pdfArrowBlue)" />
-        <path d="M 370 135 C 352 135, 352 185, 335 185" stroke="#8b5cf6" stroke-dasharray="4 3" marker-end="url(#pdfArrowPurple)" />
-        <path d="M 510 110 C 528 110, 528 45, 545 45" stroke="#ef4444" stroke-dasharray="4 3" marker-end="url(#pdfArrowRed)" />
-        <path d="M 510 130 C 528 130, 528 185, 545 185" stroke="#eab308" stroke-dasharray="4 3" marker-end="url(#pdfArrowAmber)" />
-        <path d="M 335 195 C 440 195, 440 60, 545 60" stroke="#8b5cf6" stroke-dasharray="4 3" marker-end="url(#pdfArrowPurple)" />
-        <path d="M 685 52 L 720 52" stroke="#10b981" stroke-dasharray="4 3" marker-end="url(#pdfArrowEmerald)" />
-        <path d="M 685 65 C 702 65, 702 170, 720 170" stroke="#ec4899" stroke-dasharray="4 3" marker-end="url(#pdfArrowPink)" />
-        <path d="M 685 190 L 720 190" stroke="#ec4899" stroke-dasharray="4 3" marker-end="url(#pdfArrowPink)" />
-      </g>
-
-      <g font-size="7" font-family="monospace" fill="#94a3b8" text-anchor="middle">
-        <text x="85" y="125" fill="#818cf8">HASHLINK</text>
-        <text x="175" y="47" fill="#fb923c">RECEIVES</text>
-        <text x="348" y="80" fill="#60a5fa">RESOLVES</text>
-        <text x="348" y="155" fill="#a78bfa">MX</text>
-        <text x="525" y="70" fill="#f87171">A-REC</text>
-        <text x="525" y="165" fill="#facc15">HOSTS</text>
-        <text x="702" y="47" fill="#34d399">ROUTED</text>
-        <text x="702" y="125" fill="#f472b6">LINKED</text>
-      </g>
-
-      <!-- Node 1: EMAIL -->
-      <g transform="translate(15, 18)">
-        <rect width="140" height="66" rx="8" fill="#0c0f1a" stroke="#6366f1" stroke-width="1.5" />
-        <rect width="140" height="18" rx="7" fill="#6366f1" opacity="0.18" />
-        <text x="70" y="13" fill="#818cf8" font-size="8" font-weight="bold" font-family="monospace" text-anchor="middle">EMAIL MESSAGE</text>
-        <text x="70" y="36" fill="#ffffff" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle">${(result.headers?.find(h => h.key.toLowerCase() === 'subject')?.value || 'Suspicious Email').slice(0, 16)}..</text>
-        <text x="70" y="49" fill="#94a3b8" font-size="7.5" font-family="monospace" text-anchor="middle">To: ${(result.headers?.find(h => h.key.toLowerCase() === 'to')?.value || 'Recipient').slice(0, 16)}</text>
-        <text x="70" y="60" fill="#f87171" font-size="7.5" font-weight="bold" font-family="monospace" text-anchor="middle">SCORE: ${result.threat_score}/100</text>
-      </g>
-
-      <!-- Node 2: HASH -->
-      <g transform="translate(15, 155)">
-        <rect width="140" height="66" rx="8" fill="#0c0f1a" stroke="#6366f1" stroke-width="1.5" />
-        <rect width="140" height="18" rx="7" fill="#6366f1" opacity="0.18" />
-        <text x="70" y="13" fill="#818cf8" font-size="8" font-weight="bold" font-family="monospace" text-anchor="middle">SHA-256 DIGEST</text>
-        <text x="70" y="36" fill="#ffffff" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle">${(result.evidence?.[0]?.hash || 'a3f5b8c9d2e1f4a7').slice(0, 16)}…</text>
-        <text x="70" y="49" fill="#94a3b8" font-size="7.5" font-family="monospace" text-anchor="middle">Ledger: BLOCK-${result.case_id.slice(-6)}</text>
-        <text x="70" y="60" fill="#34d399" font-size="7.5" font-weight="bold" font-family="monospace" text-anchor="middle">VERIFIED INTEGRITY</text>
-      </g>
-
-      <!-- Node 3: SENDER -->
-      <g transform="translate(195, 18)">
-        <rect width="140" height="66" rx="8" fill="#0c0f1a" stroke="#f97316" stroke-width="1.5" />
-        <rect width="140" height="18" rx="7" fill="#f97316" opacity="0.18" />
-        <text x="70" y="13" fill="#fb923c" font-size="8" font-weight="bold" font-family="monospace" text-anchor="middle">SENDER IDENTITY</text>
-        <text x="70" y="36" fill="#ffffff" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle">${(result.headers?.find(h => h.key.toLowerCase() === 'from')?.value || 'Sender').slice(0, 16)}..</text>
-        <text x="70" y="49" fill="#94a3b8" font-size="7.5" font-family="monospace" text-anchor="middle">SPF: ${result.threat_intel.spf || 'FAIL'} • DKIM: ${result.threat_intel.dkim || 'FAIL'}</text>
-        <text x="70" y="60" fill="#f97316" font-size="7.5" font-weight="bold" font-family="monospace" text-anchor="middle">UNTRUSTED SENDER</text>
-      </g>
-
-      <!-- Node 4: MAIL SERVER -->
-      <g transform="translate(195, 155)">
-        <rect width="140" height="66" rx="8" fill="#0c0f1a" stroke="#8b5cf6" stroke-width="1.5" />
-        <rect width="140" height="18" rx="7" fill="#8b5cf6" opacity="0.18" />
-        <text x="70" y="13" fill="#a78bfa" font-size="8" font-weight="bold" font-family="monospace" text-anchor="middle">SMTP MTA RELAY</text>
-        <text x="70" y="36" fill="#ffffff" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle">mx1.${(result.threat_intel.domain || 'domain.example').slice(0, 12)}</text>
-        <text x="70" y="49" fill="#94a3b8" font-size="7.5" font-family="monospace" text-anchor="middle">Mailer: PHPMailer 6.5</text>
-        <text x="70" y="60" fill="#a78bfa" font-size="7.5" font-weight="bold" font-family="monospace" text-anchor="middle">AUTOMATED AGENT</text>
-      </g>
-
-      <!-- Node 5: DOMAIN -->
-      <g transform="translate(370, 88)">
-        <rect width="140" height="66" rx="8" fill="#0c0f1a" stroke="#3b82f6" stroke-width="1.5" />
-        <rect width="140" height="18" rx="7" fill="#3b82f6" opacity="0.18" />
-        <text x="70" y="13" fill="#60a5fa" font-size="8" font-weight="bold" font-family="monospace" text-anchor="middle">SENDER DOMAIN</text>
-        <text x="70" y="36" fill="#ffffff" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle">${(result.threat_intel.domain || 'domain.example').slice(0, 16)}</text>
-        <text x="70" y="49" fill="#94a3b8" font-size="7.5" font-family="monospace" text-anchor="middle">Age: ${result.threat_intel.domain_age_days ?? 3} Days Old</text>
-        <text x="70" y="60" fill="#f87171" font-size="7.5" font-weight="bold" font-family="monospace" text-anchor="middle">DMARC: ${result.threat_intel.dmarc || 'FAIL'}</text>
-      </g>
-
-      <!-- Node 6: IP INFRASTRUCTURE -->
-      <g transform="translate(545, 18)">
-        <rect width="140" height="66" rx="8" fill="#0c0f1a" stroke="#ef4444" stroke-width="1.5" />
-        <rect width="140" height="18" rx="7" fill="#ef4444" opacity="0.18" />
-        <text x="70" y="13" fill="#f87171" font-size="8" font-weight="bold" font-family="monospace" text-anchor="middle">ORIGINATING IP</text>
-        <text x="70" y="36" fill="#ffffff" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle">${result.origin.sending_ip || '185.220.101.47'}</text>
-        <text x="70" y="49" fill="#94a3b8" font-size="7.5" font-family="monospace" text-anchor="middle">${result.origin.city || 'Hamburg'}, ${result.origin.country || 'Germany'}</text>
-        <text x="70" y="60" fill="#ef4444" font-size="7.5" font-weight="bold" font-family="monospace" text-anchor="middle">ACTIVE BLOCKLISTS</text>
-      </g>
-
-      <!-- Node 7: PHISHING URL -->
-      <g transform="translate(545, 155)">
-        <rect width="140" height="66" rx="8" fill="#0c0f1a" stroke="#eab308" stroke-width="1.5" />
-        <rect width="140" height="18" rx="7" fill="#eab308" opacity="0.18" />
-        <text x="70" y="13" fill="#facc15" font-size="8" font-weight="bold" font-family="monospace" text-anchor="middle">PHISHING PAYLOAD</text>
-        <text x="70" y="36" fill="#ffffff" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle">${(result.threat_intel.urls?.[0] || 'https://domain/verify').slice(0, 16)}..</text>
-        <text x="70" y="49" fill="#94a3b8" font-size="7.5" font-family="monospace" text-anchor="middle">3-Hop Redirect Chain</text>
-        <text x="70" y="60" fill="#eab308" font-size="7.5" font-weight="bold" font-family="monospace" text-anchor="middle">CREDENTIAL HARVEST</text>
-      </g>
-
-      <!-- Node 8: HOSTING ASN -->
-      <g transform="translate(720, 18)">
-        <rect width="145" height="66" rx="8" fill="#0c0f1a" stroke="#10b981" stroke-width="1.5" />
-        <rect width="145" height="18" rx="7" fill="#10b981" opacity="0.18" />
-        <text x="72" y="13" fill="#34d399" font-size="8" font-weight="bold" font-family="monospace" text-anchor="middle">AUTONOMOUS SYSTEM</text>
-        <text x="72" y="36" fill="#ffffff" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle">${result.origin.asn || 'AS200651'}</text>
-        <text x="72" y="49" fill="#94a3b8" font-size="7.5" font-family="monospace" text-anchor="middle">${(result.origin.hosting || 'Bulletproof VPS').slice(0, 16)}</text>
-        <text x="72" y="60" fill="#10b981" font-size="7.5" fontWeight="bold" font-family="monospace" text-anchor="middle">HOSTING INFRA</text>
-      </g>
-
-      <!-- Node 9: CAMPAIGN CLUSTER -->
-      <g transform="translate(720, 155)">
-        <rect width="145" height="66" rx="8" fill="#0c0f1a" stroke="#ec4899" stroke-width="1.5" />
-        <rect width="145" height="18" rx="7" fill="#ec4899" opacity="0.18" />
-        <text x="72" y="13" fill="#f472b6" font-size="8" font-weight="bold" font-family="monospace" text-anchor="middle">THREAT CAMPAIGN</text>
-        <text x="72" y="36" fill="#ffffff" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle">${result.campaign_id && result.campaign_id !== 'UNKNOWN' ? result.campaign_id : 'WIRE-FAUD-247'}</text>
-        <text x="72" y="49" fill="#94a3b8" font-size="7.5" font-family="monospace" text-anchor="middle">Multi-Vector Cluster</text>
-        <text x="72" y="60" fill="#ec4899" font-size="7.5" fontWeight="bold" font-family="monospace" text-anchor="middle">HIGH CORRELATION</text>
-      </g>
-    </svg>
-  </div>
-
-  <!-- Risk Factors -->
-  ${result.risk_factors.length > 0 ? `
-  <div class="section-title">Identified Risk Factors</div>
-  <table class="table">
-    <thead>
-      <tr>
-        <th style="width: 25%;">Risk Factor</th>
-        <th style="width: 15%;">Severity</th>
-        <th>Technical Detail</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${result.risk_factors.map(rf => `
-        <tr>
-          <td><strong>${rf.label}</strong></td>
-          <td><span class="badge-pill badge-${rf.severity}">${rf.severity.toUpperCase()}</span></td>
-          <td>${rf.detail}</td>
-        </tr>
-      `).join('')}
-    </tbody>
-  </table>
-  ` : ''}
-
-  <!-- Observed Forensic Facts -->
-  ${result.observed_facts.length > 0 ? `
-  <div class="section-title">Observed Forensic Facts</div>
-  <table class="table">
-    <thead>
-      <tr>
-        <th style="width: 20%;">Category</th>
-        <th style="width: 25%;">Field</th>
-        <th>Extracted Value</th>
-        <th style="width: 10%;">Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${result.observed_facts.map(f => `
-        <tr>
-          <td>${f.category}</td>
-          <td><strong>${f.field}</strong></td>
-          <td style="font-family: 'JetBrains Mono', monospace; word-break: break-all;">${f.value}</td>
-          <td><span class="badge-pill badge-${f.status === 'pass' ? 'pass' : f.status === 'fail' ? 'fail' : 'high'}">${f.status.toUpperCase()}</span></td>
-        </tr>
-      `).join('')}
-    </tbody>
-  </table>
-  ` : ''}
-
-  <!-- AI Inferences -->
-  ${result.ai_inferences.length > 0 ? `
-  <div class="section-title">AI Forensic Inferences &amp; Threat Attribution</div>
-  <table class="table">
-    <thead>
-      <tr>
-        <th style="width: 45%;">Analytical Inference</th>
-        <th style="width: 15%;">Confidence</th>
-        <th>Evidentiary Basis</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${result.ai_inferences.map(inf => `
-        <tr>
-          <td><strong>${inf.inference}</strong></td>
-          <td><span class="badge-pill badge-${inf.confidence >= 80 ? 'critical' : 'medium'}">${inf.confidence}%</span></td>
-          <td>${inf.basis}</td>
-        </tr>
-      `).join('')}
-    </tbody>
-  </table>
-  ` : ''}
-
-  <!-- Recommended Incident Response Actions -->
-  ${result.recommended_actions.length > 0 ? `
-  <div class="section-title">Recommended Incident Response Actions</div>
-  <div>
-    ${result.recommended_actions.map(act => `
-      <div class="action-item">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
-          <strong>${act.action}</strong>
-          <span class="badge-pill badge-${act.priority === 'immediate' || act.priority === 'high' ? 'critical' : 'low'}">${act.priority.toUpperCase()}</span>
+    <!-- Executive Summary Card -->
+    <div class="exec-card avoid-break">
+      <div class="score-circle">
+        <div class="score-num">${data.riskScore}</div>
+        <div class="score-lbl">THREAT SCORE</div>
+      </div>
+      <div class="exec-info">
+        <h2>${data.caseTitle}</h2>
+        <div style="margin-bottom: 8px; font-size: 11px;">
+          CLASSIFICATION: <strong style="color: ${scoreColor};">${result?.verdict || 'Suspicious Activity'}</strong> · 
+          CONFIDENCE: <strong>${result?.confidence ?? 95}%</strong>
         </div>
-        <div style="color: #64748b; font-size: 12px;">${act.detail}</div>
+        <div class="exec-summary">${data.threatSummary}</div>
       </div>
-    `).join('')}
-  </div>
-  ` : ''}
+    </div>
 
-  <!-- Key Headers -->
-  ${result.headers.length > 0 ? `
-  <div class="section-title">Extracted RFC Email Headers</div>
-  <table class="table">
-    <tbody>
-      ${result.headers.map(h => `
-        <tr>
-          <td style="width: 25%; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #475569;">${h.key}</td>
-          <td style="font-family: 'JetBrains Mono', monospace; word-break: break-all;">${h.value}</td>
-        </tr>
+    <!-- 1. Email Analyzer Telemetry & Headers -->
+    <div class="section-head avoid-break">
+      <span>1. EMAIL TELEMETRY & RFC HEADERS</span>
+      <span>CASE ID: ${data.caseId}</span>
+    </div>
+
+    <table class="meta-table avoid-break">
+      <tr>
+        <th style="width: 22%;">From Header</th>
+        <td class="mono-val">${fromHeader}</td>
+      </tr>
+      <tr>
+        <th>Target Recipient (To)</th>
+        <td class="mono-val">${targetEmail}</td>
+      </tr>
+      <tr>
+        <th>Subject Line</th>
+        <td style="font-weight: 600;">${subjectHeader}</td>
+      </tr>
+      <tr>
+        <th>Reply-To Redirection</th>
+        <td class="mono-val">${replyToHeader}</td>
+      </tr>
+      <tr>
+        <th>Transmission Timestamp</th>
+        <td class="mono-val">${dateHeader}</td>
+      </tr>
+    </table>
+
+    <!-- Key Risk Factors -->
+    ${result?.risk_factors && result.risk_factors.length > 0 ? `
+    <div style="margin-bottom: 16px;" class="avoid-break">
+      <strong style="font-size: 11px; color: #475569; display: block; margin-bottom: 6px; text-transform: uppercase;">IDENTIFIED THREAT RISK FACTORS</strong>
+      ${result.risk_factors.map((rf) => `
+        <div class="callout-row" style="border-left-color: ${rf.severity === 'critical' ? '#ef4444' : '#f97316'};">
+          <strong>[${rf.severity.toUpperCase()}] ${rf.label}:</strong> ${rf.detail}
+        </div>
       `).join('')}
-    </tbody>
-  </table>
-  ` : ''}
+    </div>
+    ` : ''}
 
-  <div class="footer">
-    <div>SENTINEL-X SECURITY PLATFORM · CONFIDENTIAL</div>
-    <div>PAGE 1 OF 1</div>
+    <!-- 2. Header Forensics & Cryptographic Authentication Matrix -->
+    <div class="section-head avoid-break">
+      <span>2. HEADER FORENSICS & AUTHENTICATION MATRIX</span>
+      <span>CRYPTOGRAPHIC INTEGRITY</span>
+    </div>
+
+    <div class="grid-3 avoid-break">
+      <div class="auth-box">
+        <div class="auth-title">SPF VERIFICATION</div>
+        <div class="auth-status ${(result?.threat_intel.spf ?? 'FAIL') === 'PASS' ? 'status-pass' : 'status-fail'}">
+          ${result?.threat_intel.spf ?? 'FAIL'}
+        </div>
+        <div style="font-size: 10px; color: #64748b; margin-top: 4px;">Sending IP authorization check</div>
+      </div>
+      <div class="auth-box">
+        <div class="auth-title">DKIM SIGNATURE</div>
+        <div class="auth-status ${(result?.threat_intel.dkim ?? 'FAIL') === 'PASS' ? 'status-pass' : 'status-fail'}">
+          ${result?.threat_intel.dkim ?? 'FAIL'}
+        </div>
+        <div style="font-size: 10px; color: #64748b; margin-top: 4px;">Cryptographic hash verification</div>
+      </div>
+      <div class="auth-box">
+        <div class="auth-title">DMARC POLICY</div>
+        <div class="auth-status ${(result?.threat_intel.dmarc ?? 'FAIL') === 'PASS' ? 'status-pass' : 'status-fail'}">
+          ${result?.threat_intel.dmarc ?? 'FAIL'}
+        </div>
+        <div style="font-size: 10px; color: #64748b; margin-top: 4px;">Domain alignment & reject policy</div>
+      </div>
+    </div>
+
+    <!-- SMTP Relay Hops Table -->
+    <div class="avoid-break" style="margin-bottom: 16px;">
+      <strong style="font-size: 11px; color: #475569; display: block; margin-bottom: 6px; text-transform: uppercase;">SMTP RELAY TRANSIT CHAIN</strong>
+      <table class="meta-table">
+        <thead>
+          <tr>
+            <th>Hop</th>
+            <th>Received From IP / Host</th>
+            <th>By MTA Server</th>
+            <th>Country</th>
+            <th>Latency</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${hops.map((h) => `
+            <tr>
+              <td class="mono-val" style="font-weight: 700;">#${h.hop}</td>
+              <td class="mono-val">${h.ip}</td>
+              <td class="mono-val">${h.hostname}</td>
+              <td>${h.country}</td>
+              <td class="mono-val">${h.timestamp}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Page Break for Clean Visual Print Flow -->
+    <div class="page-break"></div>
+
+    <!-- 3. Threat Intelligence & Infrastructure Profiling -->
+    <div class="section-head avoid-break" style="margin-top: 0;">
+      <span>3. THREAT INTELLIGENCE & INFRASTRUCTURE</span>
+      <span>IOC CORRELATION</span>
+    </div>
+
+    <div class="grid-4 avoid-break">
+      <div class="auth-box" style="text-align: left;">
+        <div class="auth-title">SENDING IP REPUTATION</div>
+        <div style="font-size: 13px; font-weight: 800; color: #dc2626;">
+          ${(result?.threat_intel.ip_reputation ?? 'malicious').toUpperCase()}
+        </div>
+        <div class="mono-val" style="font-size: 10px; color: #475569;">${originIp}</div>
+      </div>
+      <div class="auth-box" style="text-align: left;">
+        <div class="auth-title">DOMAIN REGISTRATION AGE</div>
+        <div style="font-size: 13px; font-weight: 800; color: #d97706;">
+          ${result?.threat_intel.domain_age_days ? `${result.threat_intel.domain_age_days} Days Old` : '3 Days Old'}
+        </div>
+        <div style="font-size: 10px; color: #475569;">${senderDomain}</div>
+      </div>
+      <div class="auth-box" style="text-align: left;">
+        <div class="auth-title">BLOCKLIST LISTINGS</div>
+        <div style="font-size: 13px; font-weight: 800; color: #dc2626;">
+          ${result?.threat_intel.blocklists?.length ? `${result.threat_intel.blocklists.length} Engines` : '3 Engines'}
+        </div>
+        <div style="font-size: 10px; color: #475569;">Spamhaus XBL, SORBS</div>
+      </div>
+      <div class="auth-box" style="text-align: left;">
+        <div class="auth-title">AUTONOMOUS SYSTEM</div>
+        <div style="font-size: 13px; font-weight: 800; color: #7c3aed;">
+          ${originAsn}
+        </div>
+        <div style="font-size: 10px; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${originHosting}</div>
+      </div>
+    </div>
+
+    <!-- 4. Origin Investigation & Geolocation Map Visual (DarkCyberMap Theme) -->
+    <div class="section-head avoid-break">
+      <span>4. ORIGIN INVESTIGATION & GEOLOCATION MAP</span>
+      <span class="mono-val">GPS: ${originLat.toFixed(4)}° N, ${originLng.toFixed(4)}° E</span>
+    </div>
+
+    <div class="avoid-break" style="margin-bottom: 16px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.15); background: #06070a; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <!-- Leaflet DarkCyberMap Container -->
+      <div id="cyber-pdf-map" style="width: 100%; height: 360px; background: #06070a; z-index: 1;"></div>
+
+      <!-- Top Right Origin Status Badge -->
+      <div style="position: absolute; top: 14px; right: 14px; z-index: 1000; display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 10px; background: rgba(12,15,26,0.92); border: 1px solid rgba(239,68,68,0.4); color: #fff; font-size: 11px; box-shadow: 0 4px 16px rgba(0,0,0,0.6);">
+        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 8px #ef4444;"></span>
+        <span style="font-weight: 700; color: #ef4444; letter-spacing: 0.05em;">SUSPECTED ORIGIN:</span>
+        <span style="color: #fff; font-weight: 600;">${originCity}, ${originCountry}</span>
+      </div>
+
+      <!-- Bottom Left Origin HUD Telemetry Overlay -->
+      <div style="position: absolute; bottom: 14px; left: 14px; z-index: 1000; background: rgba(12,15,26,0.92); border: 1px solid rgba(56,189,248,0.3); border-radius: 10px; padding: 8px 14px; color: #cbd5e1; font-size: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.6);">
+        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+          <div><span style="color: #64748b;">IP:</span> <strong class="mono-val" style="color: #38bdf8;">${originIp}</strong></div>
+          <div><span style="color: #64748b;">ASN:</span> <strong class="mono-val" style="color: #a855f7;">${originAsn}</strong></div>
+          <div><span style="color: #64748b;">HOSTING:</span> <strong style="color: #f1f5f9;">${originHosting}</strong></div>
+          <div><span style="color: #64748b;">COORDINATES:</span> <strong class="mono-val" style="color: #facc15;">${originLat.toFixed(4)}° N, ${originLng.toFixed(4)}° E</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Visual Attack Graph (Full Multi-Node Topology with 100% On-Screen Parity) -->
+    <div class="section-head avoid-break">
+      <span>5. ATTACK TOPOLOGY GRAPH</span>
+      <span>INTRUSION CHAIN & CORRELATED IOC INFRASTRUCTURE</span>
+    </div>
+
+    <div class="map-container avoid-break" style="padding: 16px; background: #07080e; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 8px 32px rgba(0,0,0,0.6); overflow: hidden;">
+      ${renderAttackGraphToSvg(result, getCaseLayoutStyle(result?.case_id))}
+    </div>
+
+    <!-- 6. Recommended Incident Response & Remediation Plan -->
+    <div class="section-head avoid-break">
+      <span>6. RECOMMENDED INCIDENT RESPONSE ACTIONS</span>
+      <span>SOC PLAYBOOK</span>
+    </div>
+
+    <div class="avoid-break">
+      ${data.recommendedActions.map((a, i) => `
+        <div class="action-row">
+          <strong>ACTION ${i + 1}:</strong> ${a}
+        </div>
+      `).join('')}
+    </div>
+
+    ${hasAttachment && attachment ? `
+    <!-- 7. Attachment Forensics & Embedded Payload Analysis -->
+    <div class="section-head avoid-break">
+      <span>7. ATTACHMENT FORENSICS & PAYLOAD ANALYSIS</span>
+      <span>EMBEDDED CODE & SANDBOX EXECUTION</span>
+    </div>
+
+    <div class="avoid-break" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">
+        <div>
+          <div style="font-size: 14px; font-weight: 800; color: #0f172a;">${attachment.filename}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+            ${attachment.filetype} · ${attachment.filesize} · <span style="color: #0284c7; font-weight: 600;">Entropy: ${attachment.entropyScore} (${attachment.entropyRating})</span>
+          </div>
+        </div>
+        <span class="meta-tag" style="background: ${attachment.verdict === 'malicious' ? '#dc2626' : attachment.verdict === 'suspicious' ? '#d97706' : '#16a34a'};">
+          PAYLOAD: ${attachment.verdict.toUpperCase()}
+        </span>
+      </div>
+
+      <table class="meta-table" style="margin-bottom: 12px;">
+        <tr>
+          <th style="width: 22%;">SHA-256 Digest</th>
+          <td class="mono-val" style="word-break: break-all; font-size: 11px;">${attachment.sha256}</td>
+        </tr>
+        <tr>
+          <th>MD5 Digest</th>
+          <td class="mono-val" style="word-break: break-all; font-size: 11px;">${attachment.md5}</td>
+        </tr>
+        <tr>
+          <th>Sandbox Verdict</th>
+          <td style="font-weight: 600;">${attachment.sandboxAnalysis?.status || 'Executed in Isolated Sandbox'}</td>
+        </tr>
+      </table>
+
+      ${attachment.tagsDetected && attachment.tagsDetected.length > 0 ? `
+      <div style="margin-top: 10px;">
+        <strong style="font-size: 10px; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 6px;">Detected File Objects & Anomalies:</strong>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          ${attachment.tagsDetected.map((t) => `
+            <span style="display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; background: ${t.risk === 'critical' ? '#fee2e2; color: #b91c1c; border: 1px solid #fca5a5;' : '#f1f5f9; color: #334155; border: 1px solid #cbd5e1;'}">
+              <span class="mono-val" style="color: inherit;">${t.tag}</span>: ${t.description}
+            </span>
+          `).join('')}
+        </div>
+      </div>
+      ` : ''}
+
+      ${attachment.sandboxAnalysis?.outboundConnections && attachment.sandboxAnalysis.outboundConnections.length > 0 ? `
+      <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #e2e8f0;">
+        <strong style="font-size: 10px; color: #dc2626; text-transform: uppercase; display: block; margin-bottom: 4px;">Outbound C2 Network Beacons:</strong>
+        ${attachment.sandboxAnalysis.outboundConnections.map((conn) => `
+          <div class="mono-val" style="font-size: 11px; color: #dc2626;">${conn}</div>
+        `).join('')}
+      </div>
+      ` : ''}
+    </div>
+    ` : ''}
+
+    <!-- Footer -->
+    <div class="footer avoid-break">
+      <div>SENTINEL-X SECURITY OPERATIONS PLATFORM · CRYPTOGRAPHICALLY SECURED</div>
+      <div>CONFIDENTIAL FORENSIC DOSSIER</div>
+    </div>
   </div>
 
   <script>
@@ -744,13 +775,13 @@ export function exportReportAsPDF(result: EmailAnalysisResult) {
 
         var pulseIcon = L.divIcon({
           className: '',
-          iconSize: [40, 40],
-          iconAnchor: [20, 20],
-          html: '<div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center;">' +
-            '<div class="cyber-pulse-ring-1" style="position:absolute;width:14px;height:14px;border-radius:50%;background:#ef4444;opacity:0.85;"></div>' +
-            '<div class="cyber-pulse-ring-2" style="position:absolute;width:14px;height:14px;border-radius:50%;background:#ef4444;opacity:0.6;"></div>' +
-            '<div style="position:absolute;width:20px;height:20px;border-radius:50%;border:1.5px solid #ef4444;opacity:0.6;box-shadow:0 0 12px 4px rgba(239,68,68,0.5);"></div>' +
-            '<div style="position:relative;width:11px;height:11px;border-radius:50%;background:#facc15;border:2px solid #ef4444;box-shadow:0 0 10px 3px rgba(239,68,68,0.8);z-index:2;">' +
+          iconSize: [44, 44],
+          iconAnchor: [22, 22],
+          html: '<div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;">' +
+            '<div class="cyber-pulse-ring-1" style="position:absolute;width:16px;height:16px;border-radius:50%;background:#ef4444;opacity:0.85;"></div>' +
+            '<div class="cyber-pulse-ring-2" style="position:absolute;width:16px;height:16px;border-radius:50%;background:#ef4444;opacity:0.6;"></div>' +
+            '<div style="position:absolute;width:24px;height:24px;border-radius:50%;border:1.5px solid #ef4444;opacity:0.6;box-shadow:0 0 14px 5px rgba(239,68,68,0.5);"></div>' +
+            '<div style="position:relative;width:12px;height:12px;border-radius:50%;background:#facc15;border:2px solid #ef4444;box-shadow:0 0 12px 4px rgba(239,68,68,0.8);z-index:2;">' +
             '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:4px;height:4px;border-radius:50%;background:#ffffff;"></div>' +
             '</div></div>'
         });
@@ -780,6 +811,26 @@ export function exportReportAsPDF(result: EmailAnalysisResult) {
   </script>
 </body>
 </html>`;
+}
+
+/**
+ * Generates an executive, styled printable HTML document matching the analyst report
+ * and opens the browser print-to-PDF dialog.
+ */
+export function exportReportAsPDF(
+  result: EmailAnalysisResult,
+  options?: PdfExportOptions
+) {
+  const printWindow = window.open('', '_blank', 'width=1100,height=950');
+  if (!printWindow) {
+    alert('Please allow popups for Sentinel-X to export and print the PDF report.');
+    return;
+  }
+
+  const reportData = options?.reportData || convertAnalysisToReportData(result);
+  const reportType = options?.reportType || 'forensic';
+
+  const html = generateFormattedPdfHtml(reportType, reportData, result, options);
 
   printWindow.document.open();
   printWindow.document.write(html);

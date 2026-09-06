@@ -44,11 +44,32 @@ export const KEY_USER = 'sentinel_user';
 /** Authenticated user role ('analyst' | 'user') */
 export const KEY_USER_ROLE = 'sentinel_user_role';
 
+/** Custom display name set by the user in Settings */
+export const KEY_USER_DISPLAY_NAME = 'sentinel_user_display_name';
+
 /** User-submitted report tickets */
 export const KEY_TICKETS = 'sentinel_tickets';
 
+/** Automated ingested emails and threat analysis for users */
+export const KEY_USER_INGESTED_EMAILS = 'sentinel_user_ingested_emails_v1';
+
+/** Email ingestion sync timestamp and status */
+export const KEY_EMAIL_SYNC_STATE = 'sentinel_email_sync_state_v1';
+
 /** Gemini / Claude API key entered in Settings → AI Engine */
 export const KEY_CLAUDE_API = 'sentinel_gemini_key';
+
+/** Google OAuth 2.0 Web Client ID */
+export const KEY_GOOGLE_CLIENT_ID = 'sentinel_google_client_id';
+
+/** Google OAuth access token for Gmail API */
+export const KEY_GOOGLE_ACCESS_TOKEN = 'sentinel_google_access_token';
+
+/** Google OAuth token expiration timestamp */
+export const KEY_GOOGLE_TOKEN_EXPIRY = 'sentinel_google_token_expiry';
+
+/** Google User Profile metadata */
+export const KEY_GOOGLE_USER_PROFILE = 'sentinel_google_user_profile';
 
 /** Deleted campaign IDs to suppress across sessions */
 export const KEY_DELETED_CAMPAIGNS = 'sentinel_deleted_campaigns_v1';
@@ -61,6 +82,8 @@ export const PERSISTENT_KEYS: readonly string[] = [
   KEY_ALERT_STATUS_OVERRIDES,
   KEY_DELETED_CAMPAIGNS,
   KEY_TICKETS,
+  KEY_USER_INGESTED_EMAILS,
+  KEY_EMAIL_SYNC_STATE,
 ] as const;
 
 // ── Tier 2: Ephemeral ─────────────────────────────────────────────────────────

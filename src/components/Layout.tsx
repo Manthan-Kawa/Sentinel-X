@@ -18,6 +18,12 @@ import {
   Upload,
   ClipboardList,
   Inbox,
+  Clock,
+  AlertTriangle,
+  CheckCircle2,
+  ShieldCheck,
+  MessageSquare,
+  Trash2,
 } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { getNavItemsForRole, type NavRole } from '@/config/navigation';
@@ -25,9 +31,11 @@ import type { LucideIcon } from 'lucide-react';
 import { TransparentLogo } from '@/components/TransparentLogo';
 import { useAnalysis } from '@/contexts/AnalysisContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTickets } from '@/contexts/TicketContext';
+import { useTickets, type TicketMessage } from '@/contexts/TicketContext';
 import { resultToAlert } from '@/utils/alertUtils';
 import { SECURITY_ALERTS, type SecurityAlert } from '@/data/mockData';
+import { SupabaseDataService } from '@/services/supabaseDataService';
+import analystAvatar from '@/analyst.png';
 
 interface SearchableItem {
   id: string;
@@ -299,7 +307,7 @@ export function Sidebar({ activeId, onNavigate, onSignOut, mobileOpen, onMobileC
         <div className="border-t border-[#1a1a1a] p-4">
           <div className="flex items-center gap-3">
             <div
-              className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0 overflow-hidden"
               style={{
                 background: role === 'analyst'
                   ? 'linear-gradient(135deg, #1e3a5f, #0f2340)'
@@ -309,7 +317,22 @@ export function Sidebar({ activeId, onNavigate, onSignOut, mobileOpen, onMobileC
                   : '1px solid rgba(34,197,94,0.4)',
               }}
             >
-              {currentUser?.initials ?? 'U'}
+              {role === 'analyst' ? (
+                <img
+                  src={analystAvatar}
+                  alt="Analyst"
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : currentUser?.avatarUrl ? (
+                <img
+                  src={currentUser.avatarUrl}
+                  alt={currentUser.displayName}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                currentUser?.initials ?? 'U'
+              )}
             </div>
             <div className="min-w-0">
               <p className="text-sm text-white font-medium truncate">{currentUser?.displayName ?? 'User'}</p>
@@ -348,67 +371,10 @@ export interface SystemNotification {
   category: 'alerts' | 'intel' | 'auth' | 'system' | 'ticket';
   route: string;
   read: boolean;
+  ticketId?: string;
 }
 
-const NOW = Date.now();
 
-const INITIAL_NOTIFICATIONS: SystemNotification[] = [
-  {
-    id: 'notif-1',
-    title: 'Critical Threat Detected',
-    msg: 'Critical BEC threat detected — CASE-2026-0471 (Risk: 96/100)',
-    time: '2m ago',
-    timestamp: NOW - 2 * 60 * 1000,
-    sev: 'critical',
-    category: 'alerts',
-    route: 'alerts',
-    read: false,
-  },
-  {
-    id: 'notif-2',
-    title: 'Campaign Correlation',
-    msg: 'New campaign cluster identified — WIRE-FAUD-247 (AS55836)',
-    time: '14m ago',
-    timestamp: NOW - 14 * 60 * 1000,
-    sev: 'high',
-    category: 'intel',
-    route: 'campaigns',
-    read: false,
-  },
-  {
-    id: 'notif-3',
-    title: 'Authentication Failure',
-    msg: 'DMARC & SPF policy enforcement updated for acme-corp.example',
-    time: '1h ago',
-    timestamp: NOW - 60 * 60 * 1000,
-    sev: 'medium',
-    category: 'auth',
-    route: 'header-forensics',
-    read: false,
-  },
-  {
-    id: 'notif-4',
-    title: 'Origin Telemetry Synced',
-    msg: 'Infrastructure trace mapped to AS55836 (New Delhi, India)',
-    time: '2h ago',
-    timestamp: NOW - 2 * 60 * 60 * 1000,
-    sev: 'info',
-    category: 'intel',
-    route: 'origin-investigation',
-    read: true,
-  },
-  {
-    id: 'notif-5',
-    title: 'AI Engine Ready',
-    msg: 'Gemini 3.6 Flash inference engine connected with JSON schema enforcement',
-    time: '4h ago',
-    timestamp: NOW - 4 * 60 * 60 * 1000,
-    sev: 'info',
-    category: 'system',
-    route: 'settings',
-    read: true,
-  },
-];
 
 export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
   const { currentUser } = useAuth();
@@ -421,21 +387,48 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
   const [alertIdx, setAlertIdx] = useState(0);
   const [slideState, setSlideState] = useState<'in' | 'out'>('in');
 
-  // Track read notification IDs in localStorage so 'mark as read' persists across sync
+  // Track read notification IDs in Supabase and localStorage
+  const userNotifKey = currentUser?.email || role;
   const [readNotifIds, setReadNotifIds] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem(`sentinel_read_notifs_${currentUser?.email || role}`);
+      const saved = localStorage.getItem(`sentinel_read_notifs_${userNotifKey}`);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
   });
 
+  // Track dismissed (deleted) notification IDs in localStorage
+  const [dismissedNotifIds, setDismissedNotifIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`sentinel_dismissed_notifs_${userNotifKey}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Sync notification read state from Supabase on mount/user change
+  useEffect(() => {
+    let active = true;
+    if (userNotifKey) {
+      SupabaseDataService.fetchReadNotifications(userNotifKey).then((remoteIds) => {
+        if (active && remoteIds && remoteIds.length > 0) {
+          setReadNotifIds(remoteIds);
+        }
+      }).catch((e) => console.warn('Supabase fetchReadNotifications error:', e));
+    }
+    return () => { active = false; };
+  }, [userNotifKey]);
+
   const saveReadNotifs = (ids: string[]) => {
     setReadNotifIds(ids);
     try {
-      localStorage.setItem(`sentinel_read_notifs_${currentUser?.email || role}`, JSON.stringify(ids));
+      localStorage.setItem(`sentinel_read_notifs_${userNotifKey}`, JSON.stringify(ids));
     } catch { /* ignore */ }
+    SupabaseDataService.saveReadNotifications(userNotifKey, ids).catch((e) => {
+      console.warn('Supabase saveReadNotifications error:', e);
+    });
   };
 
   // Build notifications dynamically from tickets, analyzedReports, and system alerts
@@ -450,23 +443,78 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
         const subTime = new Date(t.submittedAt).getTime() || (Date.now() - 60000);
         const respTime = t.respondedAt ? new Date(t.respondedAt).getTime() : subTime + 1000;
 
-        // If analyzed, add the completed review notification (with higher timestamp)
+        // 1. If analyzed, add the completed review notification (with higher timestamp)
         if (t.status === 'analyzed') {
           const revId = `notif-rev-${t.id}`;
           notifs.push({
             id: revId,
             title: 'Report Review Complete',
-            msg: `Analyst completed review for ${t.id}. Response and report are ready in Check Status.`,
+            msg: `Analyst completed review for ${t.id}. Forensic report and findings are ready in Check Status.`,
             time: t.respondedAt ? new Date(t.respondedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Completed',
             timestamp: respTime,
             sev: 'high',
             category: 'ticket',
             route: 'check-status',
+            ticketId: t.id,
             read: readNotifIds.includes(revId),
           });
         }
 
-        // Add the submitted ticket notification
+        // 2. If in_review, add the active investigation notification
+        if (t.status === 'in_review') {
+          const inRevId = `notif-in-review-${t.id}`;
+          notifs.push({
+            id: inRevId,
+            title: 'Case Under Active Investigation',
+            msg: `SOC Analyst has started investigating ${t.id}. Telemetry & header analysis in progress.`,
+            time: t.respondedAt ? new Date(t.respondedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'In Review',
+            timestamp: respTime,
+            sev: 'info',
+            category: 'ticket',
+            route: 'check-status',
+            ticketId: t.id,
+            read: readNotifIds.includes(inRevId),
+          });
+        }
+
+        // 3. If resolved, add resolution notification
+        if (t.status === 'resolved' || t.status === 'closed') {
+          const resId = `notif-res-${t.id}`;
+          notifs.push({
+            id: resId,
+            title: 'Case Resolved & Confirmed',
+            msg: `Case ${t.id} has been marked resolved. Thank you for your feedback!`,
+            time: t.closedAt ? new Date(t.closedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Resolved',
+            timestamp: t.closedAt ? new Date(t.closedAt).getTime() : respTime + 1000,
+            sev: 'info',
+            category: 'ticket',
+            route: 'check-status',
+            ticketId: t.id,
+            read: readNotifIds.includes(resId),
+          });
+        }
+
+        // 4. Add analyst live messages in ticket thread
+        if (t.threadMessages && t.threadMessages.length > 0) {
+          const analystMsgs = t.threadMessages.filter((m) => m.sender === 'analyst');
+          analystMsgs.forEach((m) => {
+            const msgId = `notif-msg-${m.id}`;
+            notifs.push({
+              id: msgId,
+              title: `Analyst Message (${t.id})`,
+              msg: m.message,
+              time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              timestamp: new Date(m.timestamp).getTime(),
+              sev: 'medium',
+              category: 'ticket',
+              route: 'check-status',
+              ticketId: t.id,
+              read: readNotifIds.includes(msgId),
+            });
+          });
+        }
+
+        // 5. Add the submitted ticket notification
         const subId = `notif-sub-${t.id}`;
         notifs.push({
           id: subId,
@@ -477,6 +525,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
           sev: 'info',
           category: 'ticket',
           route: 'check-status',
+          ticketId: t.id,
           read: readNotifIds.includes(subId),
         });
       });
@@ -491,25 +540,69 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
     // 1. User ticket requests
     tickets.forEach((t) => {
       const isPending = t.status === 'pending';
+      const isInReview = t.status === 'in_review';
+      const isAnalyzed = t.status === 'analyzed';
+      const isResolved = t.status === 'resolved' || t.status === 'closed';
       const tickId = `notif-analyst-ticket-${t.id}-${t.status}`;
       const subTime = new Date(t.submittedAt).getTime() || (Date.now() - 60000);
       const respTime = t.respondedAt ? new Date(t.respondedAt).getTime() : subTime + 1000;
 
+      let title = 'Report Request Update';
+      let msg = `${t.userEmail} — ${t.id}`;
+      let sev: 'critical' | 'high' | 'medium' | 'low' | 'info' = 'info';
+
+      if (isPending) {
+        title = 'New Report Request Received';
+        msg = `${t.userEmail} submitted ${t.id} — awaiting review`;
+        sev = 'high';
+      } else if (isInReview) {
+        title = 'Case Under Active Investigation';
+        msg = `Investigation started for ${t.id} (${t.userEmail})`;
+        sev = 'info';
+      } else if (isAnalyzed) {
+        title = 'Report Analyzed & Sent';
+        msg = `Investigation for ${t.id} completed and sent to ${t.userEmail}`;
+        sev = 'info';
+      } else if (isResolved) {
+        title = 'Case Resolved & Confirmed';
+        msg = `${t.userEmail} acknowledged resolution for ${t.id}`;
+        sev = 'info';
+      }
+
       analystNotifs.push({
         id: tickId,
-        title: isPending ? 'New Report Request Received' : 'Report Analyzed & Sent',
-        msg: isPending
-          ? `${t.userEmail} submitted ${t.id} — awaiting review`
-          : `Investigation for ${t.id} completed and sent to ${t.userEmail}`,
+        title,
+        msg,
         time: isPending
           ? new Date(t.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          : (t.respondedAt ? new Date(t.respondedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Analyzed'),
+          : (t.respondedAt ? new Date(t.respondedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Updated'),
         timestamp: isPending ? subTime : respTime,
-        sev: isPending ? 'high' : 'info',
+        sev,
         category: 'ticket',
         route: 'user-requests',
+        ticketId: t.id,
         read: readNotifIds.includes(tickId),
       });
+
+      // 1b. User messages in ticket thread for analyst
+      if (t.threadMessages && t.threadMessages.length > 0) {
+        const userMsgs = t.threadMessages.filter((m) => m.sender === 'user');
+        userMsgs.forEach((m) => {
+          const msgId = `notif-analyst-msg-${t.id}-${m.id}`;
+          analystNotifs.push({
+            id: msgId,
+            title: `User Message (${t.id})`,
+            msg: `${m.senderName || t.userEmail}: "${m.message}"`,
+            time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: new Date(m.timestamp).getTime(),
+            sev: 'high',
+            category: 'ticket',
+            route: 'user-requests',
+            ticketId: t.id,
+            read: readNotifIds.includes(msgId),
+          });
+        });
+      }
     });
 
     // 2. Newly analyzed local SOC reports (threats only: score >= 40, never benign / authentic)
@@ -535,17 +628,16 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
         });
       });
 
-    // 3. Baseline system notifications
-    INITIAL_NOTIFICATIONS.forEach((n) => {
-      analystNotifs.push({
-        ...n,
-        read: readNotifIds.includes(n.id) ? true : n.read,
-      });
-    });
+
 
     // Sort descending: newest on top
     return analystNotifs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   }, [isAnalyst, currentUser?.email, tickets, analyzedReports, readNotifIds]);
+
+  const isMountedRef = useRef(false);
+  useEffect(() => {
+    isMountedRef.current = true;
+  }, []);
 
   const [notifCategory, setNotifCategory] = useState<'all' | 'requests' | 'alerts' | 'intel' | 'system' | 'ticket'>('all');
   const [activeToast, setActiveToast] = useState<SystemNotification | null>(null);
@@ -553,54 +645,121 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
   const prevReportsCountRef = useRef(analyzedReports.length);
   const prevTicketsCountRef = useRef(tickets.length);
   const prevUserTicketsCountRef = useRef(
-    tickets.filter((t) => t.userEmail.toLowerCase() === currentUser?.email?.toLowerCase()).length
+    tickets.filter((t) => t.userEmail.toLowerCase().trim() === currentUser?.email?.toLowerCase().trim()).length
   );
-  const prevAnalyzedTicketsRef = useRef(
-    tickets.filter((t) => t.userEmail.toLowerCase() === currentUser?.email?.toLowerCase() && t.status === 'analyzed').length
+  const prevInReviewTicketsRef = useRef<string[]>(
+    tickets
+      .filter((t) => t.userEmail.toLowerCase().trim() === currentUser?.email?.toLowerCase().trim() && t.status === 'in_review')
+      .map((t) => t.id)
+  );
+  const prevAnalyzedTicketsRef = useRef<string[]>(
+    tickets
+      .filter((t) => t.userEmail.toLowerCase().trim() === currentUser?.email?.toLowerCase().trim() && t.status === 'analyzed')
+      .map((t) => t.id)
+  );
+  const prevAnalystMessagesRef = useRef<string[]>(
+    tickets
+      .filter((t) => t.userEmail.toLowerCase().trim() === currentUser?.email?.toLowerCase().trim())
+      .flatMap((t) => (t.threadMessages || []).filter((m) => m.sender === 'analyst').map((m) => m.id))
+  );
+  const prevUserMessagesRef = useRef<string[]>(
+    tickets.flatMap((t) => (t.threadMessages || []).filter((m) => m.sender === 'user').map((m) => m.id))
   );
   const notifDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Analyst: toast when a new user ticket is submitted
+  // Keep tracking refs in sync when active user or role switches
+  const prevUserEmailRef = useRef(currentUser?.email);
+  const prevRoleRef = useRef(role);
+  useEffect(() => {
+    if (prevUserEmailRef.current !== currentUser?.email || prevRoleRef.current !== role) {
+      prevUserEmailRef.current = currentUser?.email;
+      prevRoleRef.current = role;
+      const userMail = currentUser?.email?.toLowerCase().trim();
+      const myTickets = userMail ? tickets.filter((t) => t.userEmail.toLowerCase().trim() === userMail) : [];
+      prevUserTicketsCountRef.current = myTickets.length;
+      prevInReviewTicketsRef.current = myTickets.filter((t) => t.status === 'in_review').map((t) => t.id);
+      prevAnalyzedTicketsRef.current = myTickets.filter((t) => t.status === 'analyzed').map((t) => t.id);
+      prevAnalystMessagesRef.current = myTickets.flatMap((t) => (t.threadMessages || []).filter((m) => m.sender === 'analyst').map((m) => m.id));
+      prevUserMessagesRef.current = tickets.flatMap((t) => (t.threadMessages || []).filter((m) => m.sender === 'user').map((m) => m.id));
+    }
+  }, [currentUser?.email, role, tickets]);
+
+  // Analyst: toast when a new user ticket is submitted OR when a user sends a message
   useEffect(() => {
     if (!isAnalyst) return;
+
+    // A. New ticket request submitted
     if (tickets.length > prevTicketsCountRef.current) {
       const newest = tickets[0];
-      if (newest) {
+      if (newest && isMountedRef.current) {
         const n: SystemNotification = {
           id: `notif-ticket-${Date.now()}`,
           title: 'New Report Request Received',
           msg: `${newest.userEmail} submitted ${newest.id} — awaiting review`,
           time: 'Just now',
+          timestamp: Date.now(),
           sev: 'high',
           category: 'ticket',
           route: 'user-requests',
+          ticketId: newest.id,
           read: false,
         };
         fireToast(n);
       }
     }
     prevTicketsCountRef.current = tickets.length;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tickets.length, isAnalyst]);
 
-  // Standard user: toast when they submit a ticket or analyst responds
+    // B. New message from user in any ticket thread
+    const allUserMsgs: { ticketId: string; userEmail: string; msg: TicketMessage }[] = [];
+    tickets.forEach((t) => {
+      (t.threadMessages || []).forEach((m) => {
+        if (m.sender === 'user') {
+          allUserMsgs.push({ ticketId: t.id, userEmail: t.userEmail, msg: m });
+        }
+      });
+    });
+
+    const newMsgs = allUserMsgs.filter((item) => !prevUserMessagesRef.current.includes(item.msg.id));
+    if (newMsgs.length > 0 && isMountedRef.current) {
+      const latest = newMsgs[newMsgs.length - 1];
+      const n: SystemNotification = {
+        id: `notif-analyst-toast-msg-${latest.msg.id}`,
+        title: `New Message (${latest.ticketId})`,
+        msg: `${latest.msg.senderName || latest.userEmail}: "${latest.msg.message}"`,
+        time: 'Just now',
+        timestamp: Date.now(),
+        sev: 'high',
+        category: 'ticket',
+        route: 'user-requests',
+        ticketId: latest.ticketId,
+        read: false,
+      };
+      fireToast(n);
+    }
+    prevUserMessagesRef.current = allUserMsgs.map((item) => item.msg.id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickets, isAnalyst]);
+
+  // Standard user: toast when ticket is submitted, moved to in_review, analyst responds, or analyst sends message
   useEffect(() => {
     if (isAnalyst || !currentUser?.email) return;
     const userMail = currentUser.email.toLowerCase().trim();
     const myTickets = tickets.filter((t) => t.userEmail.toLowerCase().trim() === userMail);
 
-    // Submission notification
+    // 1. Submission toast
     if (myTickets.length > prevUserTicketsCountRef.current) {
       const newest = myTickets[0];
-      if (newest) {
+      if (newest && isMountedRef.current) {
         const n: SystemNotification = {
           id: `notif-sub-${Date.now()}`,
           title: 'Report Submitted',
           msg: `Case ${newest.id} successfully submitted — queued for review`,
           time: 'Just now',
+          timestamp: Date.now(),
           sev: 'info',
           category: 'ticket',
           route: 'check-status',
+          ticketId: newest.id,
           read: false,
         };
         fireToast(n);
@@ -608,23 +767,74 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
     }
     prevUserTicketsCountRef.current = myTickets.length;
 
-    // Review response notification
-    const analyzedForMe = myTickets.filter((t) => t.status === 'analyzed').length;
-    if (analyzedForMe > prevAnalyzedTicketsRef.current) {
-      const latestAnalyzed = myTickets.find((t) => t.status === 'analyzed');
+    // 2. In-Review notification: Analyst started investigation
+    const currentInReview = myTickets.filter((t) => t.status === 'in_review');
+    const newInReviewTicket = currentInReview.find((t) => !prevInReviewTicketsRef.current.includes(t.id));
+    if (newInReviewTicket && isMountedRef.current) {
       const n: SystemNotification = {
-        id: `notif-analyzed-${Date.now()}`,
-        title: 'Report Review Complete',
-        msg: `Analyst completed review for ${latestAnalyzed?.id ?? 'your case'}. View the report in Check Status.`,
+        id: `notif-in-review-${Date.now()}`,
+        title: 'Investigation In Progress',
+        msg: `SOC Analyst has started investigating ${newInReviewTicket.id}. Check telemetry & status.`,
         time: 'Just now',
-        sev: 'high',
+        timestamp: Date.now(),
+        sev: 'info',
         category: 'ticket',
         route: 'check-status',
+        ticketId: newInReviewTicket.id,
         read: false,
       };
       fireToast(n);
     }
-    prevAnalyzedTicketsRef.current = analyzedForMe;
+    prevInReviewTicketsRef.current = currentInReview.map((t) => t.id);
+
+    // 3. Review completed notification
+    const currentAnalyzed = myTickets.filter((t) => t.status === 'analyzed');
+    const newAnalyzedTicket = currentAnalyzed.find((t) => !prevAnalyzedTicketsRef.current.includes(t.id));
+    if (newAnalyzedTicket && isMountedRef.current) {
+      const n: SystemNotification = {
+        id: `notif-analyzed-${Date.now()}`,
+        title: 'Report Review Complete',
+        msg: `Analyst completed review for ${newAnalyzedTicket.id}. Forensic report is ready.`,
+        time: 'Just now',
+        timestamp: Date.now(),
+        sev: 'high',
+        category: 'ticket',
+        route: 'check-status',
+        ticketId: newAnalyzedTicket.id,
+        read: false,
+      };
+      fireToast(n);
+    }
+    prevAnalyzedTicketsRef.current = currentAnalyzed.map((t) => t.id);
+
+    // 4. New analyst message in user's ticket thread
+    const allAnalystMsgs: { ticketId: string; msg: TicketMessage }[] = [];
+    myTickets.forEach((t) => {
+      (t.threadMessages || []).forEach((m) => {
+        if (m.sender === 'analyst') {
+          allAnalystMsgs.push({ ticketId: t.id, msg: m });
+        }
+      });
+    });
+
+    const newAnalystMsgs = allAnalystMsgs.filter((item) => !prevAnalystMessagesRef.current.includes(item.msg.id));
+    if (newAnalystMsgs.length > 0 && isMountedRef.current) {
+      const latest = newAnalystMsgs[newAnalystMsgs.length - 1];
+      const n: SystemNotification = {
+        id: `notif-user-toast-msg-${latest.msg.id}`,
+        title: `Analyst Message (${latest.ticketId})`,
+        msg: latest.msg.message,
+        time: 'Just now',
+        timestamp: Date.now(),
+        sev: 'medium',
+        category: 'ticket',
+        route: 'check-status',
+        ticketId: latest.ticketId,
+        read: false,
+      };
+      fireToast(n);
+    }
+    prevAnalystMessagesRef.current = allAnalystMsgs.map((item) => item.msg.id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tickets, currentUser?.email, isAnalyst]);
 
@@ -692,20 +902,32 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
   const handleNotificationClick = (n: SystemNotification) => {
     saveReadNotifs([...new Set([...readNotifIds, n.id])]);
     setNotifOpen(false);
+    if (n.ticketId) {
+      sessionStorage.setItem('sentinel_active_ticket_id', n.ticketId);
+    }
     onNavigate(n.route);
   };
 
+  const dismissNotification = (id: string) => {
+    const updated = [...new Set([...dismissedNotifIds, id])];
+    setDismissedNotifIds(updated);
+    try {
+      localStorage.setItem(`sentinel_dismissed_notifs_${userNotifKey}`, JSON.stringify(updated));
+    } catch { /* ignore */ }
+  };
+
   const filteredNotifs = useMemo(() => {
+    const notDismissed = (n: SystemNotification) => !dismissedNotifIds.includes(n.id);
     if (!isAnalyst) {
-      return notifications.filter((n) => n.category === 'ticket');
+      return notifications.filter((n) => n.category === 'ticket' && notDismissed(n));
     }
-    if (notifCategory === 'all') return notifications;
-    if (notifCategory === 'requests' || notifCategory === 'ticket') return notifications.filter((n) => n.category === 'ticket');
-    if (notifCategory === 'alerts') return notifications.filter((n) => n.category === 'alerts');
-    if (notifCategory === 'intel') return notifications.filter((n) => n.category === 'intel' || n.category === 'auth');
-    if (notifCategory === 'system') return notifications.filter((n) => n.category === 'system');
-    return notifications;
-  }, [notifications, notifCategory, isAnalyst]);
+    let base = notifications;
+    if (notifCategory === 'requests' || notifCategory === 'ticket') base = notifications.filter((n) => n.category === 'ticket');
+    else if (notifCategory === 'alerts') base = notifications.filter((n) => n.category === 'alerts');
+    else if (notifCategory === 'intel') base = notifications.filter((n) => n.category === 'intel' || n.category === 'auth');
+    else if (notifCategory === 'system') base = notifications.filter((n) => n.category === 'system');
+    return base.filter(notDismissed);
+  }, [notifications, notifCategory, isAnalyst, dismissedNotifIds]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -1085,8 +1307,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                     return (
                       <div
                         key={n.id}
-                        onClick={() => handleNotificationClick(n)}
-                        className={`px-4 py-3 flex items-start gap-3 cursor-pointer transition-all duration-150 ${
+                        className={`px-4 py-3 flex items-start gap-3 transition-all duration-150 ${
                           !n.read ? 'bg-white/[0.03] hover:bg-white/[0.07]' : 'hover:bg-white/[0.04]'
                         }`}
                       >
@@ -1097,14 +1318,19 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                             boxShadow: !n.read ? `0 0 6px ${ns.dot}` : undefined,
                           }}
                         />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
+                        <div
+                          className="min-w-0 flex-1 cursor-pointer"
+                          onClick={() => handleNotificationClick(n)}
+                        >
+                          <div className="flex items-center gap-2">
                             <p className={`text-xs font-bold font-mono truncate ${!n.read ? 'text-white' : 'text-gray-300'}`}>
                               {n.title}
                             </p>
-                            <span className="text-[9px] text-gray-500 font-mono shrink-0">{n.time}</span>
+                            {!n.read && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0" />
+                            )}
                           </div>
-                          <p className="text-[11px] text-gray-400 leading-snug mt-0.5 line-clamp-2">
+                          <p className="text-[11px] text-gray-400 leading-snug mt-0.5 line-clamp-2 pr-2">
                             {n.msg}
                           </p>
                           <div className="flex items-center gap-1 text-[9px] text-purple-400/80 font-mono font-medium mt-1">
@@ -1112,9 +1338,19 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                             <ArrowRight className="w-2.5 h-2.5" />
                           </div>
                         </div>
-                        {!n.read && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0 self-center" />
-                        )}
+                        <div className="flex flex-col items-center gap-1 shrink-0 pt-0.5">
+                          <span className="text-[9px] text-gray-500 font-mono">{n.time}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              dismissNotification(n.id);
+                            }}
+                            className="w-6 h-6 rounded-lg flex items-center justify-center text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 group mt-0.5"
+                            title="Delete notification"
+                          >
+                            <Trash2 className="w-3 h-3 group-hover:drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]" />
+                          </button>
+                        </div>
                       </div>
                     );
                   })
@@ -1134,7 +1370,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
         >
           <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 overflow-hidden"
             style={{
               background: isAnalyst
                 ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)'
@@ -1144,7 +1380,22 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                 : '1px solid rgba(34,197,94,0.25)',
             }}
           >
-            {currentUser?.initials ?? 'U'}
+            {isAnalyst ? (
+              <img
+                src={analystAvatar}
+                alt="Analyst"
+                className="w-full h-full object-cover rounded-full"
+              />
+            ) : currentUser?.avatarUrl ? (
+              <img
+                src={currentUser.avatarUrl}
+                alt={currentUser.displayName}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover rounded-full"
+              />
+            ) : (
+              currentUser?.initials ?? 'U'
+            )}
           </div>
           <div className="flex flex-col justify-center">
             <p className="text-[12px] font-semibold text-white whitespace-nowrap leading-tight">{currentUser?.displayName ?? 'User'}</p>
@@ -1172,14 +1423,18 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
           style={{
             background: 'linear-gradient(135deg, rgba(15,18,28,0.98), rgba(9,11,18,0.98))',
             borderColor:
-              activeToast.sev === 'critical'
+              activeToast.title.includes('Investigation')
+                ? 'rgba(6,182,212,0.5)'
+                : activeToast.sev === 'critical'
                 ? 'rgba(239,68,68,0.45)'
                 : activeToast.sev === 'high'
                 ? 'rgba(249,115,22,0.45)'
                 : activeToast.category === 'ticket'
                 ? 'rgba(139,92,246,0.45)'
                 : 'rgba(168,85,247,0.45)',
-            boxShadow: '0 20px 50px rgba(0,0,0,0.8), 0 0 24px rgba(139,92,246,0.18)',
+            boxShadow: activeToast.title.includes('Investigation')
+              ? '0 20px 50px rgba(0,0,0,0.8), 0 0 24px rgba(6,182,212,0.22)'
+              : '0 20px 50px rgba(0,0,0,0.8), 0 0 24px rgba(139,92,246,0.18)',
             backdropFilter: 'blur(16px)',
           }}
         >
@@ -1187,13 +1442,17 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
             style={{
               background:
-                activeToast.sev === 'critical'
+                activeToast.title.includes('Investigation')
+                  ? 'rgba(6,182,212,0.18)'
+                  : activeToast.sev === 'critical'
                   ? 'rgba(239,68,68,0.18)'
                   : activeToast.sev === 'high'
                   ? 'rgba(249,115,22,0.18)'
                   : 'rgba(139,92,246,0.18)',
               border: `1px solid ${
-                activeToast.sev === 'critical'
+                activeToast.title.includes('Investigation')
+                  ? 'rgba(6,182,212,0.4)'
+                  : activeToast.sev === 'critical'
                   ? 'rgba(239,68,68,0.35)'
                   : activeToast.sev === 'high'
                   ? 'rgba(249,115,22,0.35)'
@@ -1201,16 +1460,34 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
               }`,
             }}
           >
-            <Bell
-              className={`w-4 h-4 ${
-                activeToast.sev === 'critical' ? 'text-red-400 animate-pulse' : 'text-orange-400'
-              }`}
-            />
+            {activeToast.title.includes('Investigation') ? (
+              <Clock className="w-4 h-4 text-cyan-400 animate-spin" />
+            ) : activeToast.title.includes('Message') ? (
+              <MessageSquare className="w-4 h-4 text-purple-400" />
+            ) : activeToast.sev === 'critical' ? (
+              <AlertTriangle className="w-4 h-4 text-red-400 animate-pulse" />
+            ) : activeToast.sev === 'high' ? (
+              <Bell className="w-4 h-4 text-orange-400" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-bold text-white font-mono flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    activeToast.title.includes('Investigation')
+                      ? 'bg-cyan-400 animate-pulse'
+                      : activeToast.title.includes('Message')
+                      ? 'bg-purple-400 animate-ping'
+                      : activeToast.sev === 'critical'
+                      ? 'bg-red-500 animate-ping'
+                      : activeToast.sev === 'high'
+                      ? 'bg-orange-500 animate-ping'
+                      : 'bg-emerald-400 animate-pulse'
+                  }`}
+                />
                 {activeToast.title}
               </span>
               <span className="text-[9px] text-gray-500 font-mono">Just now</span>
@@ -1219,7 +1496,17 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
               {activeToast.msg}
             </p>
             <div className="flex items-center gap-1 text-[10px] text-purple-400 font-mono font-semibold mt-1">
-              <span>Open in triage</span>
+              <span>
+                {activeToast.title.includes('Message') && activeToast.route === 'user-requests'
+                  ? 'Reply to User'
+                  : activeToast.title.includes('Message') && activeToast.route === 'check-status'
+                  ? 'Reply to Analyst'
+                  : activeToast.route === 'check-status'
+                  ? 'View in Check Status'
+                  : activeToast.route === 'user-requests'
+                  ? 'View User Requests'
+                  : 'Open in triage'}
+              </span>
               <ArrowRight className="w-3 h-3" />
             </div>
           </div>

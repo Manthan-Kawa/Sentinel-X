@@ -26,6 +26,7 @@ import {
 import { useAnalysis } from '@/contexts/AnalysisContext';
 import { resultToAlert } from '@/utils/alertUtils';
 import type { EmailAnalysisResult } from '@/services/claudeService';
+import { SupabaseDataService } from '@/services/supabaseDataService';
 
 /* ─── Slide-in entrance wrapper ─── */
 function SlideIn({
@@ -140,6 +141,17 @@ export function AlertsPage({ onNavigate }: { onNavigate?: (id: string) => void }
     return {};
   });
 
+  // Sync alert status overrides from Supabase on mount
+  useEffect(() => {
+    let active = true;
+    SupabaseDataService.fetchAlertStates().then((states) => {
+      if (active && states?.alertStatusOverrides && Object.keys(states.alertStatusOverrides).length > 0) {
+        setStatusOverrides((prev) => ({ ...prev, ...(states.alertStatusOverrides as Record<string, AlertStatus>) }));
+      }
+    }).catch((e) => console.warn('Supabase fetchAlertStates error:', e));
+    return () => { active = false; };
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem('sentinel_alert_status_overrides', JSON.stringify(statusOverrides));
@@ -177,7 +189,11 @@ export function AlertsPage({ onNavigate }: { onNavigate?: (id: string) => void }
   });
 
   const changeStatus = (alertId: string, newStatus: AlertStatus) => {
-    setStatusOverrides((prev) => ({ ...prev, [alertId]: newStatus }));
+    setStatusOverrides((prev) => {
+      const next = { ...prev, [alertId]: newStatus };
+      SupabaseDataService.saveAlertStatusOverrides(next).catch((e) => console.warn('Supabase saveAlertStatusOverrides error:', e));
+      return next;
+    });
     if (selected?.id === alertId) setSelected((prev) => (prev ? { ...prev, status: newStatus } : prev));
   };
 

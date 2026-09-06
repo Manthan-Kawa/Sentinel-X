@@ -1,10 +1,11 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Inbox, Clock, CheckCircle2, Download, Upload, X, ChevronRight,
   MessageSquare, FileText, User, Calendar, Hash, Send, AlertTriangle,
-  Filter, Search, Mail, ExternalLink, ShieldCheck,
+  Filter, Search, Mail, ShieldCheck, Star, ArrowRight, ShieldAlert,
 } from 'lucide-react';
-import { useTickets, type Ticket, type TicketAttachment } from '@/contexts/TicketContext';
+import { useTickets, type Ticket, type TicketAttachment, type TicketStatus } from '@/contexts/TicketContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface UserRequestsPageProps {
   onNavigate: (id: string) => void;
@@ -52,7 +53,6 @@ function sendEmailToUser(ticket: Ticket, analystComment?: string, analystReport?
     ? `\nAttached Investigation Report: ${reportObj.name}\n(Available for instant download in your Sentinel-X Check Status portal)`
     : '';
 
-  // Auto-download the attached PDF report file so it is ready on the analyst's machine to attach in Gmail
   if (reportObj?.data) {
     try {
       downloadAttachment(reportObj.data, reportObj.name);
@@ -60,7 +60,7 @@ function sendEmailToUser(ticket: Ticket, analystComment?: string, analystReport?
   }
 
   const subject = `[SENTINEL-X SOC] Investigation Report: ${ticket.id}`;
-  
+
   const bodyText = `Dear User,
 
 The Security Operations Center (SOC) team has analyzed your suspicious email submission (${ticket.id}).
@@ -78,87 +78,105 @@ ${comment}
 ${reportInfo}
 
 SECURITY RECOMMENDATION:
-Please log in to your Sentinel-X portal under "Check Status" to view full telemetry details and download the complete forensic dossier.
+Please log in to your Sentinel-X portal under "Check Status" to view telemetry details.
 
 Regards,
 SENTINEL-X Cyber Defense Operations
 Security Operations Center (SOC)`;
 
-  // Copy rich HTML with bold styling to clipboard for instant pasting
-  const richHtml = `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #222; line-height: 1.6;">
-<p>Dear User,</p>
-<p>The <b>Security Operations Center (SOC)</b> team has analyzed your suspicious email submission (<b>${ticket.id}</b>).</p>
-<hr style="border: 0; border-top: 1px solid #ccc; margin: 15px 0;" />
-<p><b>CASE SUMMARY:</b></p>
-<ul style="margin: 5px 0 15px 20px; padding: 0;">
-  <li><b>Case Number:</b> ${ticket.id}</li>
-  <li><b>Submitted At:</b> ${formatDate(ticket.submittedAt)}</li>
-  <li><b>Status:</b> <span style="color: #16a34a; font-weight: bold;">ANALYZED & RESOLVED</span></li>
-  ${ticket.emlFile ? `<li><b>Original File:</b> ${ticket.emlFile.name}</li>` : ''}
-</ul>
-<hr style="border: 0; border-top: 1px solid #ccc; margin: 15px 0;" />
-<p><b>ANALYST INVESTIGATION FINDINGS:</b></p>
-<div style="background: #f4f4f5; padding: 12px; border-left: 4px solid #7c3aed; border-radius: 4px; margin: 10px 0;">
-  <p style="margin: 0; white-space: pre-wrap;">${comment}</p>
-</div>
-${reportObj ? `<p><b>Attached Investigation Report:</b> ${reportObj.name}<br /><i style="color: #666; font-size: 12px;">(Available for instant download in your Sentinel-X Check Status portal)</i></p>` : ''}
-<p><b>SECURITY RECOMMENDATION:</b></p>
-<p>Please log in to your Sentinel-X portal under <b>"Check Status"</b> to view full telemetry details and download the complete forensic dossier.</p>
-<p style="margin-top: 20px;">Regards,<br /><b>SENTINEL-X Cyber Defense Operations</b><br />Security Operations Center (SOC)</p>
-</div>`;
-
-  try {
-    if (navigator.clipboard && window.ClipboardItem) {
-      const blobHtml = new Blob([richHtml], { type: 'text/html' });
-      const blobText = new Blob([bodyText], { type: 'text/plain' });
-      navigator.clipboard.write([new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText })]);
-    }
-  } catch { /* ignore */ }
-
-  // Opens directly in the browser's logged-in Gmail composer tab with prefilled fields
   const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(ticket.userEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
   window.open(gmailUrl, '_blank');
 }
 
 /* ── Status Badge ─────────────────────────────────────────────── */
-function StatusBadge({ status }: { status: Ticket['status'] }) {
-  if (status === 'analyzed') {
-    return (
-      <span
-        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono"
-        style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}
-      >
-        <CheckCircle2 className="w-2.5 h-2.5" /> Analyzed
-      </span>
-    );
+function StatusBadge({ status }: { status: TicketStatus }) {
+  switch (status) {
+    case 'resolved':
+    case 'closed':
+      return (
+        <span
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono"
+          style={{ background: 'rgba(168,85,247,0.12)', border: '1px solid rgba(168,85,247,0.3)', color: '#c084fc' }}
+        >
+          <CheckCircle2 className="w-2.5 h-2.5" /> Resolved
+        </span>
+      );
+    case 'analyzed':
+      return (
+        <span
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono"
+          style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80' }}
+        >
+          <CheckCircle2 className="w-2.5 h-2.5" /> Analyzed
+        </span>
+      );
+    case 'in_review':
+      return (
+        <span
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono"
+          style={{ background: 'rgba(6,182,212,0.12)', border: '1px solid rgba(6,182,212,0.3)', color: '#22d3ee' }}
+        >
+          <Clock className="w-2.5 h-2.5 animate-spin" /> In Investigation
+        </span>
+      );
+    case 'pending':
+    default:
+      return (
+        <span
+          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono"
+          style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#fbbf24' }}
+        >
+          <Clock className="w-2.5 h-2.5 animate-pulse" /> Pending
+        </span>
+      );
   }
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono"
-      style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#fbbf24' }}
-    >
-      <Clock className="w-2.5 h-2.5 animate-pulse" /> Pending
-    </span>
-  );
 }
 
 /* ── Detail Modal ─────────────────────────────────────────────── */
 interface ModalProps {
   ticket: Ticket;
   onClose: () => void;
-  onRespond: (id: string, data: { analystComment: string; analystReport: TicketAttachment | null; status: Ticket['status'] }) => void;
+  onRespond: (
+    id: string,
+    data: {
+      analystComment: string;
+      analystReport: TicketAttachment | null;
+      status: TicketStatus;
+      verdict?: string;
+      threatScore?: number;
+      recommendedAction?: string;
+      remediationTaken?: string;
+    }
+  ) => void;
 }
 
 function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
+  const { addTicketMessage } = useTickets();
+  const { currentUser } = useAuth();
+
   const [analystComment, setAnalystComment] = useState(ticket.analystComment ?? '');
   const [reportFile, setReportFile] = useState<TicketAttachment | null>(ticket.analystReport ?? null);
-  const [status, setStatus] = useState<Ticket['status']>(ticket.status);
+  const [status, setStatus] = useState<TicketStatus>(ticket.status === 'pending' ? 'in_review' : ticket.status);
+
   const [sendEmail, setSendEmail] = useState(true);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
-  const [dragging, setDragging] = useState(false);
+  const [chatMessage, setChatMessage] = useState('');
   const reportFileRef = useRef<HTMLInputElement>(null);
+
+  // Synchronize status whenever ticket prop updates
+  useEffect(() => {
+    if (ticket.status === 'resolved' || ticket.userAcknowledged) {
+      setStatus('resolved');
+    } else if (ticket.status === 'in_review') {
+      setStatus('in_review');
+    } else if (ticket.status === 'analyzed') {
+      setStatus('analyzed');
+    } else if (ticket.status === 'pending') {
+      setStatus('in_review');
+    }
+  }, [ticket.status, ticket.userAcknowledged]);
 
   const handleReportFile = useCallback(async (file: File) => {
     const att = await fileToAttachment(file);
@@ -166,36 +184,55 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
   }, []);
 
   async function handleSend() {
-    if (!analystComment.trim()) { setError('Please write a response comment.'); return; }
+    if (status !== 'in_review' && status !== 'resolved' && !analystComment.trim()) {
+      setError('Please write an investigation comment.');
+      return;
+    }
     setError('');
     setSending(true);
     await new Promise((r) => setTimeout(r, 600));
 
-    // Save in portal store
-    onRespond(ticket.id, { analystComment: analystComment.trim(), analystReport: reportFile, status: 'analyzed' });
+    const finalComment = analystComment.trim() || (status === 'in_review' ? (ticket.analystComment || 'Case is actively being investigated by the SOC team.') : ticket.analystComment || '');
 
-    // If email dispatch is enabled, launch mailto to user email
-    if (sendEmail) {
-      sendEmailToUser(ticket, analystComment.trim(), reportFile);
+    // Save in portal store & Supabase
+    onRespond(ticket.id, {
+      analystComment: finalComment,
+      analystReport: reportFile,
+      status,
+    });
+
+    if (sendEmail && status === 'analyzed') {
+      sendEmailToUser(ticket, finalComment, reportFile);
     }
 
     setSending(false);
     setSent(true);
-    setTimeout(onClose, 1400);
+    setTimeout(onClose, 1200);
   }
+
+  const handleSendChatMessage = () => {
+    if (!chatMessage.trim()) return;
+    addTicketMessage(ticket.id, {
+      sender: 'analyst',
+      senderEmail: currentUser?.email || 'sentinelx.analyst@gmail.com',
+      senderName: 'SOC Analyst',
+      message: chatMessage.trim(),
+    });
+    setChatMessage('');
+  };
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(8px)' }}
+      style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-2xl rounded-3xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh]"
+        className="relative w-full max-w-3xl rounded-3xl overflow-hidden animate-slide-up flex flex-col max-h-[92vh]"
         style={{
           background: 'linear-gradient(145deg, #0d1118, #0a0c14)',
           border: '1px solid rgba(255,255,255,0.1)',
-          boxShadow: '0 32px 80px rgba(0,0,0,0.75)',
+          boxShadow: '0 32px 80px rgba(0,0,0,0.85)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -216,19 +253,17 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
                 <p className="text-sm font-black text-white font-mono">{ticket.id}</p>
                 <StatusBadge status={status} />
               </div>
-              <p className="text-[11px] text-gray-500">{formatDate(ticket.submittedAt)}</p>
+              <p className="text-[11px] text-gray-500">{formatDate(ticket.submittedAt)} • From: {ticket.userEmail}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {ticket.status === 'analyzed' && (
-              <button
-                onClick={() => sendEmailToUser(ticket, analystComment, reportFile)}
-                title={`Compose email to ${ticket.userEmail}`}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold text-purple-300 hover:text-white bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition-all"
-              >
-                <Mail className="w-3.5 h-3.5" /> Email User
-              </button>
-            )}
+            <button
+              onClick={() => sendEmailToUser(ticket, analystComment, reportFile)}
+              title={`Compose email to ${ticket.userEmail}`}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold text-purple-300 hover:text-white bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition-all"
+            >
+              <Mail className="w-3.5 h-3.5" /> Launch Gmail
+            </button>
             <button
               onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-all"
@@ -242,7 +277,7 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
         <div className="overflow-y-auto scrollbar-thin flex-1 px-6 py-5 space-y-5">
           {/* Submission metadata */}
           <div
-            className="grid grid-cols-2 gap-3 p-4 rounded-2xl"
+            className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-2xl"
             style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}
           >
             {[
@@ -261,11 +296,11 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
             ))}
           </div>
 
-          {/* User comment */}
+          {/* User Notes */}
           {ticket.userComment && (
             <div className="space-y-1.5">
               <label className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                <MessageSquare className="w-3 h-3" /> User Notes
+                <MessageSquare className="w-3 h-3" /> User Provided Notes
               </label>
               <p
                 className="text-sm text-gray-300 leading-relaxed p-3 rounded-xl font-mono text-xs"
@@ -275,6 +310,24 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
               </p>
             </div>
           )}
+
+          {/* User Interaction Flags */}
+          {ticket.didInteract && (ticket.didInteract.clickedLink || ticket.didInteract.enteredCreds) && (
+            <div
+              className="p-3.5 rounded-xl flex items-center gap-3"
+              style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}
+            >
+              <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-red-300">High Risk Interaction Reported by User!</p>
+                <p className="text-xs text-red-200/80 mt-0.5">
+                  User indicated: {ticket.didInteract.clickedLink ? '• Clicked Embedded Link ' : ''}
+                  {ticket.didInteract.enteredCreds ? '• Submitted Credentials / Passwords' : ''}
+                </p>
+              </div>
+            </div>
+          )}
+
 
           {/* EML download */}
           {ticket.emlFile && (
@@ -310,13 +363,13 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
             {/* Comment textarea */}
             <div className="space-y-1.5">
               <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-wider">
-                Investigation Comment / Verdict
+                Forensic Analysis & Findings
               </label>
               <textarea
                 value={analystComment}
                 onChange={(e) => setAnalystComment(e.target.value)}
                 rows={4}
-                placeholder={`Provide your forensic findings, risk evaluation, and security advice for ${ticket.userEmail}...`}
+                placeholder={`Provide your forensic findings, header analysis, and security advice for ${ticket.userEmail}...`}
                 className="w-full text-xs rounded-xl p-3 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-violet-500 resize-none font-mono"
                 style={{
                   background: 'rgba(255,255,255,0.03)',
@@ -352,80 +405,173 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
                   </div>
                   <button
                     onClick={() => setReportFile(null)}
-                    className="text-gray-500 hover:text-red-400 transition-colors ml-2"
+                    className="text-gray-400 hover:text-red-400 ml-2"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ) : (
                 <button
+                  type="button"
                   onClick={() => reportFileRef.current?.click()}
-                  onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                  onDragLeave={() => setDragging(false)}
-                  onDrop={async (e) => {
-                    e.preventDefault();
-                    setDragging(false);
-                    const f = e.dataTransfer.files[0];
-                    if (f) await handleReportFile(f);
-                  }}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-mono text-gray-400 transition-all hover:text-gray-200"
-                  style={{
-                    border: dragging ? '2px dashed rgba(139,92,246,0.6)' : '2px dashed rgba(255,255,255,0.1)',
-                    background: dragging ? 'rgba(139,92,246,0.06)' : 'rgba(255,255,255,0.02)',
-                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-white/15 text-xs text-gray-400 hover:text-white hover:border-violet-500/50 transition-all font-mono"
                 >
-                  <Upload className="w-4 h-4" />
-                  Click or drag to attach investigation report
+                  <Upload className="w-3.5 h-3.5 text-gray-500" />
+                  Click to attach analysis dossier or PDF
                 </button>
               )}
             </div>
 
-            {/* Email send checkbox */}
-            <div
-              className="flex items-center justify-between p-3.5 rounded-xl cursor-pointer"
-              style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.25)' }}
-              onClick={() => setSendEmail(!sendEmail)}
-            >
-              <div className="flex items-center gap-3">
+            {/* Status progression buttons */}
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider">Set Ticket Status:</p>
+              <div className="flex gap-2 flex-wrap">
+                {(['in_review', 'analyzed', 'resolved'] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      setStatus(s);
+                      setError('');
+                    }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all capitalize"
+                    style={
+                      status === s
+                        ? s === 'analyzed'
+                          ? { background: 'rgba(34,197,94,0.2)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.4)' }
+                          : s === 'resolved'
+                            ? { background: 'rgba(168,85,247,0.25)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.45)' }
+                            : { background: 'rgba(6,182,212,0.2)', color: '#22d3ee', border: '1px solid rgba(6,182,212,0.4)' }
+                        : { background: 'rgba(255,255,255,0.05)', color: '#6b7280', border: '1px solid rgba(255,255,255,0.08)' }
+                    }
+                  >
+                    {s === 'resolved' && (ticket.status === 'resolved' || ticket.userAcknowledged) ? '✓ Resolved' : s.replace('_', ' ')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Threaded Discussion (Shown while In Review / Pending) OR Review (Shown once Analyzed / Resolved) */}
+            {status !== 'analyzed' && status !== 'resolved' && ticket.status !== 'analyzed' && ticket.status !== 'resolved' ? (
+              <div className="pt-2 border-t border-white/5 space-y-2">
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <MessageSquare className="w-3 h-3" /> Live Ticket Messages
+                </p>
+                {ticket.threadMessages && ticket.threadMessages.length > 0 && (
+                  <div className="flex flex-col space-y-2 max-h-40 overflow-y-auto pr-1">
+                    {ticket.threadMessages.map((msg) => {
+                      const isAnalyst = msg.sender === 'analyst';
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`p-2.5 rounded-xl text-xs w-[40%] min-w-[220px] ${
+                            isAnalyst
+                              ? 'ml-auto bg-purple-950/40 border border-purple-500/25 text-purple-100'
+                              : 'mr-auto bg-white/[0.04] border border-white/10 text-gray-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2 text-[10px] text-gray-400 font-mono mb-1">
+                            <span className="font-semibold truncate" title={isAnalyst ? '🛡️ You (Analyst)' : `👤 User (${ticket.userEmail})`}>
+                              {isAnalyst ? '🛡️ You (Analyst)' : `👤 User (${ticket.userEmail})`}
+                            </span>
+                            <span className="text-gray-500 shrink-0 text-[9px]">{formatDate(msg.timestamp)}</span>
+                          </div>
+                          <p className="whitespace-pre-wrap break-words">{msg.message}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()}
+                    placeholder="Post quick update in user's ticket thread..."
+                    className="flex-1 text-xs rounded-xl px-3 py-2 text-gray-100 placeholder-gray-500 font-mono"
+                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendChatMessage}
+                    disabled={!chatMessage.trim()}
+                    className="px-3 py-2 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 disabled:opacity-40 font-mono"
+                  >
+                    Post
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* User Review Section (Matching user side) */
+              <div className="pt-2 border-t border-white/5">
+                {ticket.userAcknowledged || ticket.status === 'resolved' ? (
+                  <div
+                    className="p-4 rounded-2xl flex items-center justify-between"
+                    style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.25)' }}
+                  >
+                    <div>
+                      <p className="text-xs font-bold text-purple-300 font-mono flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" /> Case Resolved by User
+                      </p>
+                      {ticket.userFeedback ? (
+                        <p className="text-xs text-gray-200 mt-1 italic">"{ticket.userFeedback}"</p>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-1 italic">User acknowledged resolution and marked case complete.</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          className={`w-3.5 h-3.5 ${s <= (ticket.userRating || 5) ? 'text-amber-400 fill-amber-400' : 'text-gray-700'}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="p-4 rounded-2xl flex items-center justify-between"
+                    style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)' }}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Clock className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <div>
+                        <p className="text-xs font-bold text-emerald-300 font-mono">Analysis Published — Awaiting User Review</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">
+                          User review and resolution feedback will appear here once submitted.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Dispatch Gmail / Portal Notification Checkbox */}
+            {status === 'analyzed' && (
+              <label className="flex items-center gap-3 p-3 rounded-xl cursor-pointer select-none transition-all duration-150 border bg-white/[0.02] border-white/10 hover:bg-white/[0.04] hover:border-purple-500/30">
                 <input
                   type="checkbox"
                   checked={sendEmail}
                   onChange={(e) => setSendEmail(e.target.checked)}
-                  className="w-4 h-4 rounded text-purple-600 focus:ring-0 cursor-pointer"
-                  onClick={(e) => e.stopPropagation()}
+                  className="w-4 h-4 rounded border-gray-600 text-purple-600 focus:ring-purple-500 bg-black/40 accent-purple-600 cursor-pointer"
                 />
-                <div>
-                  <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
                     <Mail className="w-3.5 h-3.5 text-purple-400" />
-                    Dispatch findings email to {ticket.userEmail}
-                  </p>
-                  <p className="text-[11px] text-gray-400">
-                    Sends an email with comments & report details directly to the requester.
+                    <span className="text-xs font-bold text-gray-200 font-mono">
+                      Dispatch findings via Gmail to {ticket.userEmail}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-0.5 font-mono">
+                    {sendEmail
+                      ? 'Pre-composes forensic report in Gmail draft & updates user portal'
+                      : 'Saves findings directly to user portal without dispatching email'}
                   </p>
                 </div>
-              </div>
-            </div>
-
-            {/* Status toggle */}
-            <div className="flex items-center gap-3">
-              <p className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider">Set Ticket Status:</p>
-              {(['pending', 'analyzed'] as const).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setStatus(s)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all capitalize"
-                  style={
-                    status === s
-                      ? s === 'analyzed'
-                        ? { background: 'rgba(34,197,94,0.2)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.4)' }
-                        : { background: 'rgba(245,158,11,0.2)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.4)' }
-                      : { background: 'rgba(255,255,255,0.05)', color: '#6b7280', border: '1px solid rgba(255,255,255,0.08)' }
-                  }
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+              </label>
+            )}
 
             {error && (
               <div className="flex items-center gap-2 text-sm text-red-400">
@@ -438,20 +584,30 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
             <button
               onClick={handleSend}
               disabled={sending || sent}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-50 font-mono"
               style={{
                 background: sent
                   ? 'linear-gradient(135deg, #059669, #047857)'
-                  : 'linear-gradient(135deg, #7c3aed, #6d28d9)',
-                boxShadow: '0 4px 20px rgba(124,58,237,0.35)',
+                  : status === 'in_review'
+                    ? 'linear-gradient(135deg, #0284c7, #0369a1)'
+                    : status === 'resolved'
+                      ? 'linear-gradient(135deg, #7c3aed, #6d28d9)'
+                      : 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                boxShadow: status === 'in_review'
+                  ? '0 4px 20px rgba(2,132,199,0.35)'
+                  : '0 4px 20px rgba(124,58,237,0.35)',
               }}
             >
               {sent ? (
-                <><CheckCircle2 className="w-4 h-4" /> Response Saved & Dispatched to {ticket.userEmail}!</>
+                <><CheckCircle2 className="w-4 h-4" /> {status === 'in_review' ? 'Case Moved to In Review!' : status === 'resolved' ? 'Ticket Closed & Saved!' : 'Findings Saved & Synced!'}</>
               ) : sending ? (
-                <><span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Dispatching…</>
+                <><span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Updating…</>
+              ) : status === 'in_review' ? (
+                <><Clock className="w-4 h-4" /> Update Status to In Review</>
+              ) : status === 'resolved' ? (
+                <><CheckCircle2 className="w-4 h-4" /> Save Ticket Changes</>
               ) : (
-                <><Send className="w-4 h-4" /> {sendEmail ? `Send Response & Email to ${ticket.userEmail}` : 'Save & Send to User Portal'}</>
+                <><Send className="w-4 h-4" /> {sendEmail ? `Save Findings & Dispatch Email` : 'Save Findings to User Portal'}</>
               )}
             </button>
           </div>
@@ -465,34 +621,57 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
 export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPageProps) {
   const { tickets, respondToTicket } = useTickets();
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'analyzed'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in_review' | 'analyzed' | 'resolved'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Auto-open ticket if directed from notification click
+  useEffect(() => {
+    const activeId = sessionStorage.getItem('sentinel_active_ticket_id');
+    if (activeId && tickets.length > 0) {
+      sessionStorage.removeItem('sentinel_active_ticket_id');
+      const found = tickets.find((t) => t.id === activeId);
+      if (found) {
+        setSelectedTicket(found);
+      }
+    }
+  }, [tickets]);
+
+  // Keep modal ticket state updated when new messages or updates arrive
+  useEffect(() => {
+    if (selectedTicket) {
+      const refreshed = tickets.find((t) => t.id === selectedTicket.id);
+      if (refreshed && (
+        refreshed.status !== selectedTicket.status ||
+        (refreshed.threadMessages?.length || 0) !== (selectedTicket.threadMessages?.length || 0) ||
+        refreshed.respondedAt !== selectedTicket.respondedAt ||
+        refreshed.userAcknowledged !== selectedTicket.userAcknowledged ||
+        refreshed.userFeedback !== selectedTicket.userFeedback ||
+        refreshed.userRating !== selectedTicket.userRating
+      )) {
+        setSelectedTicket(refreshed);
+      }
+    }
+  }, [tickets, selectedTicket]);
+
   const filtered = tickets.filter((t) => {
-    const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
+    const matchesStatus = filterStatus === 'all'
+      || t.status === filterStatus
+      || (filterStatus === 'resolved' && (t.status === 'resolved' || t.status === 'closed'));
     const q = searchQuery.toLowerCase().trim();
     const matchesSearch = !q
       || t.id.toLowerCase().includes(q)
       || t.userEmail.toLowerCase().includes(q)
       || (t.emlFile?.name && t.emlFile.name.toLowerCase().includes(q))
-      || t.userComment.toLowerCase().includes(q);
+      || t.userComment.toLowerCase().includes(q)
+      || (t.verdict && t.verdict.toLowerCase().includes(q));
     return matchesStatus && matchesSearch;
   });
 
   const pending = tickets.filter((t) => t.status === 'pending').length;
+  const inReview = tickets.filter((t) => t.status === 'in_review').length;
   const analyzed = tickets.filter((t) => t.status === 'analyzed').length;
-
-  const handleQuickEmail = (ticket: Ticket) => {
-    sendEmailToUser(ticket);
-    const hasReport = !!ticket.analystReport;
-    setToastMessage(
-      hasReport
-        ? `Gmail opened & ${ticket.analystReport!.name} saved to Downloads for ${ticket.userEmail}!`
-        : `Gmail composer opened for ${ticket.userEmail}!`
-    );
-    setTimeout(() => setToastMessage(null), 4500);
-  };
+  const resolved = tickets.filter((t) => t.status === 'resolved' || t.status === 'closed').length;
 
   return (
     <div className="space-y-6 pb-10 animate-fade-in">
@@ -520,10 +699,10 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
             >
               <Inbox className="w-4.5 h-4.5 text-violet-400" />
             </div>
-            <h1 className="text-2xl font-black text-white">User Requests</h1>
+            <h1 className="text-2xl font-black text-white">User Requests & Triage</h1>
             {pending > 0 && (
               <span
-                className="px-2 py-0.5 rounded-full text-xs font-bold font-mono text-amber-300"
+                className="px-2 py-0.5 rounded-full text-xs font-bold text-amber-300 font-mono"
                 style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}
               >
                 {pending} pending
@@ -531,206 +710,170 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
             )}
           </div>
           <p className="text-gray-400 text-sm">
-            Review user-submitted report tickets, respond in-portal, and directly email forensic findings to users.
+            Investigate suspicious emails reported by end-users, publish forensic verdicts, and provide mitigation instructions.
           </p>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 max-w-md">
+      {/* Stats row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl">
         {[
-          { label: 'Total', value: tickets.length, color: 'text-violet-400', bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.2)' },
-          { label: 'Pending', value: pending, color: 'text-amber-400', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)' },
-          { label: 'Analyzed', value: analyzed, color: 'text-green-400', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.2)' },
+          { label: 'Total In Queue', value: tickets.length, color: 'text-violet-400', bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.2)' },
+          { label: 'Pending Review', value: pending, color: 'text-amber-400', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)' },
+          { label: 'In Investigation', value: inReview, color: 'text-cyan-400', bg: 'rgba(6,182,212,0.08)', border: 'rgba(6,182,212,0.2)' },
+          { label: 'Resolved / Closed', value: resolved, color: 'text-purple-400', bg: 'rgba(168,85,247,0.08)', border: 'rgba(168,85,247,0.2)' },
         ].map((s) => (
           <div key={s.label} className="rounded-xl px-4 py-3 text-center" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
             <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
-            <p className="text-[11px] text-gray-400 font-mono mt-0.5">{s.label}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{s.label}</p>
           </div>
         ))}
       </div>
 
-      {/* Filters & Search Toolbar */}
+      {/* Filter and Search */}
       <div className="flex items-center gap-3 flex-wrap">
-        {/* Status filter tabs */}
         <div
           className="h-10 flex items-center gap-1 p-1 rounded-xl"
           style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           <Filter className="w-3.5 h-3.5 text-gray-500 ml-2 mr-1" />
-          {(['all', 'pending', 'analyzed'] as const).map((s) => (
+          {(['all', 'pending', 'in_review', 'analyzed', 'resolved'] as const).map((s) => (
             <button
               key={s}
               onClick={() => setFilterStatus(s)}
-              className="h-8 px-3.5 rounded-lg text-xs font-bold font-mono capitalize transition-all flex items-center justify-center"
+              className="h-8 px-3.5 rounded-lg text-xs font-bold capitalize transition-all font-mono"
               style={
                 filterStatus === s
                   ? { background: 'rgba(139,92,246,0.25)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.4)' }
                   : { color: '#6b7280', border: '1px solid transparent' }
               }
             >
-              {s}
+              {s.replace('_', ' ')}
             </button>
           ))}
         </div>
 
-        {/* Search bar */}
         <div
-          className="h-10 flex items-center gap-2.5 px-3.5 rounded-xl flex-1 min-w-48 max-w-md"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          className="h-10 flex-1 min-w-[200px] flex items-center gap-2.5 px-3.5 rounded-xl"
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
-          <Search className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+          <Search className="w-4 h-4 text-gray-500 shrink-0" />
           <input
             type="text"
+            placeholder="Search by case ID, user email, filename, or verdict..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by email, case ID, file name, or notes…"
-            className="bg-transparent text-xs text-gray-200 placeholder-gray-500 focus:outline-none w-full font-mono"
+            className="w-full text-xs text-white bg-transparent placeholder-gray-500 focus:outline-none"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="text-gray-500 hover:text-gray-300">
+            <button onClick={() => setSearchQuery('')} className="text-gray-500 hover:text-white">
               <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Table */}
-      {tickets.length === 0 ? (
+      {/* Ticket List */}
+      {filtered.length === 0 ? (
         <div
-          className="flex flex-col items-center justify-center py-24 gap-4 rounded-2xl"
-          style={{ border: '1px dashed rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.01)' }}
+          className="rounded-2xl p-12 text-center"
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
         >
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-          >
-            <Inbox className="w-7 h-7 text-gray-600" />
-          </div>
-          <div className="text-center">
-            <p className="text-white font-semibold">No user requests submitted yet</p>
-            <p className="text-gray-500 text-sm mt-1">Incoming user report submissions will appear here.</p>
-          </div>
+          <Inbox className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+          <p className="text-sm font-bold text-gray-400">No requests found</p>
+          <p className="text-xs text-gray-600 mt-1">No user requests match the active filter.</p>
         </div>
       ) : (
-        <div
-          className="rounded-2xl overflow-x-auto scrollbar-thin"
-          style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.015)' }}
-        >
-          <div className="min-w-[820px]">
-            {/* Table header */}
+        <div className="space-y-3">
+          {filtered.map((ticket) => (
             <div
-              className="grid gap-4 px-6 py-3.5 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider items-center"
+              key={ticket.id}
+              onClick={() => setSelectedTicket(ticket)}
+              className="rounded-2xl p-4 transition-all duration-200 hover:scale-[1.005] cursor-pointer group"
               style={{
-                gridTemplateColumns: '150px minmax(180px, 1fr) 180px 110px 110px',
-                borderBottom: '1px solid rgba(255,255,255,0.07)',
-                background: 'rgba(255,255,255,0.02)',
+                background: 'linear-gradient(145deg, #0d1118, #0a0c14)',
+                border: ticket.status === 'analyzed'
+                  ? '1px solid rgba(34,197,94,0.25)'
+                  : ticket.status === 'resolved'
+                    ? '1px solid rgba(168,85,247,0.25)'
+                    : '1px solid rgba(255,255,255,0.07)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
               }}
             >
-              <span>Case ID</span>
-              <span>User Email</span>
-              <span>Submitted</span>
-              <span>Status</span>
-              <span className="text-right">Actions</span>
-            </div>
-
-            {/* Rows */}
-            {filtered.length === 0 ? (
-              <div className="py-12 text-center text-sm text-gray-500 font-mono">No results match your filter.</div>
-            ) : (
-              filtered.map((ticket) => (
-                <div
-                  key={ticket.id}
-                  className="grid gap-4 px-6 py-4 items-center transition-all hover:bg-white/[0.03] border-b border-white/[0.05] last:border-0 cursor-pointer group"
-                  style={{ gridTemplateColumns: '150px minmax(180px, 1fr) 180px 110px 110px' }}
-                  onClick={() => setSelectedTicket(ticket)}
-                >
-                  {/* Case ID */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-white font-mono tracking-wide">{ticket.id}</span>
-                  </div>
-
-                  {/* User email */}
-                  <div className="min-w-0 pr-2">
-                    <p className="text-xs text-gray-200 truncate font-medium">{ticket.userEmail}</p>
-                    {ticket.userComment ? (
-                      <p className="text-[11px] text-gray-500 truncate mt-0.5 italic font-mono">
-                        "{ticket.userComment}"
-                      </p>
-                    ) : ticket.emlFile ? (
-                      <p className="text-[11px] text-gray-500 truncate mt-0.5 font-mono">
-                        File: {ticket.emlFile.name}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  {/* Submitted */}
-                  <span className="text-xs text-gray-400 font-mono whitespace-nowrap">
-                    {formatDate(ticket.submittedAt)}
-                  </span>
-
-                  {/* Status */}
-                  <div className="flex items-center">
-                    <StatusBadge status={ticket.status} />
-                  </div>
-
-                  {/* Actions */}
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
                   <div
-                    className="flex items-center justify-end gap-2"
-                    onClick={(e) => e.stopPropagation()}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                    style={{
+                      background: ticket.status === 'resolved'
+                        ? 'rgba(168,85,247,0.12)'
+                        : ticket.status === 'analyzed'
+                          ? 'rgba(34,197,94,0.12)'
+                          : 'rgba(245,158,11,0.12)',
+                      border: ticket.status === 'resolved'
+                        ? '1px solid rgba(168,85,247,0.25)'
+                        : ticket.status === 'analyzed'
+                          ? '1px solid rgba(34,197,94,0.25)'
+                          : '1px solid rgba(245,158,11,0.25)',
+                    }}
                   >
-                    {/* Direct Email to User Button (Analyzed tickets only) */}
-                    {ticket.status === 'analyzed' && (
-                      <button
-                        onClick={() => handleQuickEmail(ticket)}
-                        title={`Direct Email to ${ticket.userEmail}`}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-purple-400 hover:text-white hover:bg-purple-500/20 transition-all border border-purple-500/20 hover:border-purple-500/40 shrink-0"
-                        style={{ background: 'rgba(168,85,247,0.08)' }}
-                      >
-                        <Mail className="w-3.5 h-3.5" />
-                      </button>
+                    {ticket.status === 'resolved' ? (
+                      <CheckCircle2 className="w-5 h-5 text-purple-400" />
+                    ) : ticket.status === 'analyzed' ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-400" />
+                    ) : (
+                      <Clock className="w-5 h-5 text-amber-400 animate-pulse" />
                     )}
+                  </div>
 
-                    {/* Download attached EML */}
-                    {ticket.emlFile && (
-                      <button
-                        onClick={() => downloadAttachment(ticket.emlFile!.data, ticket.emlFile!.name)}
-                        title={`Download original file: ${ticket.emlFile.name}`}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-blue-400 hover:text-white hover:bg-blue-500/20 transition-all border border-blue-500/20 hover:border-blue-500/40 shrink-0"
-                        style={{ background: 'rgba(59,130,246,0.08)' }}
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-mono font-bold text-white">{ticket.id}</span>
+                      <StatusBadge status={ticket.status} />
+                      <span className="text-[11px] font-mono text-gray-400 font-bold">
+                        {ticket.userEmail}
+                      </span>
+                      {ticket.verdict && (
+                        <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-white/5 text-gray-300">
+                          {ticket.verdict}
+                        </span>
+                      )}
+                    </div>
 
-                    {/* Open details / triage modal */}
-                    <button
-                      onClick={() => setSelectedTicket(ticket)}
-                      title="Open ticket investigation modal"
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-violet-400 hover:text-white hover:bg-violet-500/20 transition-all border border-violet-500/20 hover:border-violet-500/40 shrink-0"
-                      style={{ background: 'rgba(139,92,246,0.08)' }}
-                    >
-                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
+                    <p className="text-xs text-gray-300 mt-1 truncate">
+                      {ticket.userComment || (ticket.emlFile ? `Attachment: ${ticket.emlFile.name}` : 'No comment')}
+                    </p>
+
+                    <div className="flex items-center gap-4 mt-2 text-[11px] text-gray-500 flex-wrap font-mono">
+                      <span>Submitted: {formatDate(ticket.submittedAt)}</span>
+                      {ticket.emlFile && <span>• {ticket.emlFile.name}</span>}
+                      {ticket.threadMessages && ticket.threadMessages.length > 0 && (
+                        <span>• {ticket.threadMessages.length} message(s)</span>
+                      )}
+                      {ticket.userAcknowledged && (
+                        <span className="text-purple-400 font-bold">• User Confirmed Resolved</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+
+                <div className="flex items-center gap-2 shrink-0 self-center">
+                  <span className="text-xs text-violet-400 group-hover:text-violet-300 transition-colors font-mono">
+                    Investigate →
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Modal */}
+      {/* Detail Modal */}
       {selectedTicket && (
         <TicketModal
           ticket={selectedTicket}
           onClose={() => setSelectedTicket(null)}
-          onRespond={(id, data) => {
-            respondToTicket(id, data);
-            setSelectedTicket(null);
-            setToastMessage(`Response recorded & dispatched to ${selectedTicket.userEmail}`);
-            setTimeout(() => setToastMessage(null), 3500);
-          }}
+          onRespond={(id, data) => respondToTicket(id, data)}
         />
       )}
     </div>
