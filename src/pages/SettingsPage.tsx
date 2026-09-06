@@ -14,12 +14,14 @@ import {
   Eye,
   EyeOff,
   Cpu,
+  Trash2,
   type LucideIcon,
 } from 'lucide-react';
 import { CLAUDE_KEY_STORAGE } from '@/services/claudeService';
 import { clearEphemeralStorage } from '@/utils/storageKeys';
 import { useAnalysis } from '@/contexts/AnalysisContext';
 import { useAuth, deriveInitials, getSavedDisplayName } from '@/contexts/AuthContext';
+import { useTickets } from '@/contexts/TicketContext';
 import { SupabaseDataService } from '@/services/supabaseDataService';
 import analystAvatar from '@/analyst.png';
 
@@ -127,8 +129,10 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
   const [claudeKeyTesting, setClaudeKeyTesting] = useState(false);
   const [claudeKeyTestResult, setClaudeKeyTestResult] = useState<'ok' | 'fail' | null>(null);
 
+  const { clearAllTickets } = useTickets();
   /* Cache reset states */
   const [sessionCleared, setSessionCleared] = useState(false);
+  const [ticketsCleared, setTicketsCleared] = useState(false);
 
   // Sync settings (theme, toggles, keys) from Supabase in the background
   useEffect(() => {
@@ -696,6 +700,39 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                         style={{ background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.25)' }}
                       >
                         <RefreshCw className="w-3.5 h-3.5" /> Reload
+                      </button>
+                    </div>
+
+                    {/* ── Purge User Requests & Tickets ── */}
+                    <div
+                      className="rounded-xl p-4 flex items-center justify-between"
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                    >
+                      <div>
+                        <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <Trash2 className="w-3.5 h-3.5 text-rose-400" /> Purge User Requests & Tickets
+                        </h4>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Wipes all user-submitted tickets and investigation requests from local cache and remote database
+                        </p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (window.confirm('Purge all user requests and tickets? This action cannot be undone.')) {
+                            await clearAllTickets();
+                            setTicketsCleared(true);
+                            setTimeout(() => setTicketsCleared(false), 2500);
+                          }
+                        }}
+                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-colors cursor-pointer"
+                        style={{
+                          background: ticketsCleared ? 'rgba(34,197,94,0.12)' : 'rgba(244,63,94,0.1)',
+                          border: ticketsCleared ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(244,63,94,0.25)',
+                          color: ticketsCleared ? '#4ade80' : '#f43f5e',
+                        }}
+                      >
+                        {ticketsCleared ? <Check className="w-3.5 h-3.5" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        {ticketsCleared ? 'Purged!' : 'Purge Requests'}
                       </button>
                     </div>
                   </div>

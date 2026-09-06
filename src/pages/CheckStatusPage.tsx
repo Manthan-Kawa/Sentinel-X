@@ -3,7 +3,7 @@ import {
   ClipboardList, Clock, CheckCircle2, Download, X,
   FileText, MessageSquare, AlertCircle, Filter, Search,
   Calendar, Hash, Send, ShieldCheck, ShieldAlert, Star,
-  CornerDownRight, User, AlertTriangle, ArrowRight,
+  CornerDownRight, User, AlertTriangle, ArrowRight, Trash2,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTickets, type Ticket, type TicketAttachment, type TicketStatus } from '@/contexts/TicketContext';
@@ -575,7 +575,7 @@ function CaseDetailModal({
 /* ══════════════════════════════════════════════════════════════════ */
 export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
   const { currentUser } = useAuth();
-  const { getTicketsForUser } = useTickets();
+  const { getTicketsForUser, deleteTicket } = useTickets();
 
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in_review' | 'analyzed' | 'resolved'>('all');
@@ -654,16 +654,35 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
           </p>
         </div>
 
-        <button
-          onClick={() => onNavigate('submit-report')}
-          className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-lg hover:opacity-90 flex items-center gap-2"
-          style={{
-            background: 'linear-gradient(135deg, #059669, #047857)',
-            boxShadow: '0 4px 16px rgba(5,150,105,0.25)',
-          }}
-        >
-          + Submit New Report
-        </button>
+        <div className="flex items-center gap-2">
+          {tickets.length > 0 && (
+            <button
+              onClick={async () => {
+                if (window.confirm('Are you sure you want to clear your submitted report history?')) {
+                  for (const t of tickets) {
+                    await deleteTicket(t.id);
+                  }
+                }
+              }}
+              className="px-3 py-2 rounded-xl text-xs font-mono font-bold text-gray-400 hover:text-rose-400 bg-white/[0.03] hover:bg-rose-500/10 border border-white/10 hover:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Clear all your submitted reports"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Clear History
+            </button>
+          )}
+
+          <button
+            onClick={() => onNavigate('submit-report')}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-lg hover:opacity-90 flex items-center gap-2"
+            style={{
+              background: 'linear-gradient(135deg, #059669, #047857)',
+              boxShadow: '0 4px 16px rgba(5,150,105,0.25)',
+            }}
+          >
+            + Submit New Report
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -826,6 +845,18 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0 self-center">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Delete report ${ticket.id}?`)) {
+                        deleteTicket(ticket.id);
+                      }
+                    }}
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                    title="Delete report"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                   <span className="text-xs text-gray-400 group-hover:text-white transition-colors">
                     View Details →
                   </span>

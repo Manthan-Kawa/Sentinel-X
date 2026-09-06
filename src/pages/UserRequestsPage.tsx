@@ -3,7 +3,7 @@ import {
   Inbox, Clock, CheckCircle2, Download, Upload, X, ChevronRight,
   MessageSquare, FileText, User, Calendar, Hash, Send, AlertTriangle,
   Filter, Search, Mail, ShieldCheck, Star, ArrowRight, ShieldAlert,
-  Lock,
+  Lock, Trash2,
 } from 'lucide-react';
 import { useTickets, type Ticket, type TicketAttachment, type TicketStatus } from '@/contexts/TicketContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -655,7 +655,7 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
 
 /* ══════════════════════════════════════════════════════════════════ */
 export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPageProps) {
-  const { tickets, respondToTicket } = useTickets();
+  const { tickets, respondToTicket, clearAllTickets, deleteTicket } = useTickets();
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in_review' | 'analyzed' | 'resolved'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -749,6 +749,22 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
             Investigate suspicious emails reported by end-users, publish forensic verdicts, and provide mitigation instructions.
           </p>
         </div>
+
+        {tickets.length > 0 && (
+          <button
+            onClick={async () => {
+              if (window.confirm('Are you sure you want to clear all requests from the queue? This will wipe all tickets from local cache and the database.')) {
+                await clearAllTickets();
+                setToastMessage('All user requests have been purged from the database and local cache.');
+              }
+            }}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition-all cursor-pointer shadow-sm"
+            title="Purge all user requests from local cache and remote database"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Clear All Requests
+          </button>
+        )}
       </div>
 
       {/* Stats row */}
@@ -902,6 +918,19 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0 self-center">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Delete ticket ${ticket.id}?`)) {
+                        deleteTicket(ticket.id);
+                        setToastMessage(`Deleted ticket ${ticket.id}.`);
+                      }
+                    }}
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                    title="Delete ticket"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                   <span className="text-xs text-violet-400 group-hover:text-violet-300 transition-colors font-mono">
                     Investigate →
                   </span>

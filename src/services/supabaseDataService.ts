@@ -524,6 +524,47 @@ export class SupabaseDataService {
     }
   }
 
+  /**
+   * Clears all user tickets from local storage and Supabase.
+   */
+  static async clearAllTickets(): Promise<void> {
+    try {
+      localStorage.removeItem(KEY_TICKETS);
+    } catch { /* ignore */ }
+
+    const client = getSupabaseClient();
+    if (isSupabaseConfigured() && client) {
+      try {
+        await client.from('user_tickets').delete().neq('id', '___NEVER_MATCH___');
+      } catch (err) {
+        console.warn('Supabase clearAllTickets error:', err);
+      }
+    }
+  }
+
+  /**
+   * Deletes a specific ticket by ID from Supabase and local storage.
+   */
+  static async deleteTicket(ticketId: string): Promise<void> {
+    try {
+      const stored = localStorage.getItem(KEY_TICKETS);
+      if (stored) {
+        const list: DbTicket[] = JSON.parse(stored);
+        const filtered = list.filter((t) => t.id !== ticketId);
+        localStorage.setItem(KEY_TICKETS, JSON.stringify(filtered));
+      }
+    } catch { /* ignore */ }
+
+    const client = getSupabaseClient();
+    if (isSupabaseConfigured() && client) {
+      try {
+        await client.from('user_tickets').delete().eq('id', ticketId);
+      } catch (err) {
+        console.warn('Supabase deleteTicket error:', err);
+      }
+    }
+  }
+
   /* ═════════════════════════════════════════════════════════════════════════
      5. ANALYST SIDE: REPORTS (Analyzed Forensic Reports)
   ═════════════════════════════════════════════════════════════════════════ */

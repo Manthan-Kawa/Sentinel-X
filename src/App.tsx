@@ -21,7 +21,7 @@ import { AnalysisProvider, useAnalysis } from '@/contexts/AnalysisContext';
 import { CampaignProvider, useCampaigns } from '@/contexts/CampaignContext';
 import { EvidenceProvider, useEvidence } from '@/contexts/EvidenceContext';
 import { AuthProvider, useAuth, buildUser, deriveRoleFromEmail, type UserRole } from '@/contexts/AuthContext';
-import { TicketProvider } from '@/contexts/TicketContext';
+import { TicketProvider, useTickets } from '@/contexts/TicketContext';
 import { EmailIngestionProvider } from '@/contexts/EmailIngestionContext';
 import { clearAllSentinelStorage, clearEphemeralStorage, KEY_AUTH, KEY_USER, KEY_USER_ROLE, KEY_ACTIVE_CASE } from '@/utils/storageKeys';
 
@@ -138,6 +138,7 @@ function AppShell() {
   const { clearCases, resetActiveAnalysis } = useAnalysis();
   const { clearCampaigns } = useCampaigns();
   const { clearVault } = useEvidence();
+  const { clearAllTickets } = useTickets();
 
   /**
    * Logout: preserves all persistent data.
@@ -156,10 +157,11 @@ function AppShell() {
   /**
    * Reset Cache (Settings → Data): wipes EVERYTHING including persistent tier.
    */
-  function handleResetCache() {
+  async function handleResetCache() {
     clearCases();
     clearCampaigns();
     clearVault();
+    try { await clearAllTickets(); } catch { /* ignore */ }
     clearAllSentinelStorage();
     window.location.reload();
   }

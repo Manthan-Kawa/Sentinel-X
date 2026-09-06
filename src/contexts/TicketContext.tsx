@@ -146,6 +146,10 @@ interface TicketContextType {
   updateTicketStatus: (id: string, status: TicketStatus) => void;
   /** Get tickets belonging to a specific user */
   getTicketsForUser: (email: string) => Ticket[];
+  /** Clear all tickets from local cache and remote database */
+  clearAllTickets: () => Promise<void>;
+  /** Delete a specific ticket */
+  deleteTicket: (id: string) => Promise<void>;
 }
 
 const TicketContext = createContext<TicketContextType | null>(null);
@@ -157,8 +161,16 @@ function generateCaseId(tickets: Ticket[]): string {
   return `CASE-USER-${n}`;
 }
 
+const KEY_TICKETS_PURGED = 'sentinel_tickets_purged_v2';
+
 function loadTickets(): Ticket[] {
   try {
+    // If not yet purged of legacy demo tickets, purge local cache immediately
+    if (localStorage.getItem(KEY_TICKETS_PURGED) !== 'true') {
+      localStorage.removeItem(KEY_TICKETS);
+      localStorage.setItem(KEY_TICKETS_PURGED, 'true');
+      return [];
+    }
     const raw = localStorage.getItem(KEY_TICKETS);
     if (raw) return JSON.parse(raw) as Ticket[];
   } catch { /* ignore */ }
@@ -197,7 +209,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true;
     SupabaseDataService.fetchTickets().then((dbTickets) => {
-      if (isMounted && dbTickets.length > 0) {
+      if (isMounted) {
         setTickets(dbTickets as unknown as Ticket[]);
         ticketsRef.current = dbTickets as unknown as Ticket[];
       }
@@ -232,13 +244,14 @@ export function TicketProvider({ children }: { children: ReactNode }) {
 
       try {
         const remote = await SupabaseDataService.fetchTickets();
-        if (isMounted && remote && remote.length > 0) {
+        if (isMounted) {
           setTickets((prev) => {
+            const remoteTickets = (remote || []) as unknown as Ticket[];
             const prevSig = prev.map((t) => `${t.id}:${t.status}:${t.respondedAt}:${t.threadMessages?.length || 0}`).join('|');
-            const remoteSig = remote.map((t: any) => `${t.id}:${t.status}:${t.respondedAt}:${t.threadMessages?.length || 0}`).join('|');
+            const remoteSig = remoteTickets.map((t) => `${t.id}:${t.status}:${t.respondedAt}:${t.threadMessages?.length || 0}`).join('|');
             if (prevSig !== remoteSig) {
-              ticketsRef.current = remote as unknown as Ticket[];
-              return remote as unknown as Ticket[];
+              ticketsRef.current = remoteTickets;
+              return remoteTickets;
             }
             return prev;
           });
@@ -480,15 +493,31 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const clearAllTickets = useCallback(async () => {
+    setTickets([]);
+    ticketsRef.current = [];
+    lastMutationRef.current = Date.now();
+    try {
+      localStorage.removeItem(KEY_TICKETS);
+      localStorage.setItem(KEY_TICKETS_PURGED, 'true');
+    } catch { /* ignore */ }
+    await SupabaseDataService.clearAllTickets();
+  }, []);
+
+  const deleteTicket = useCallback(async (id: string) => {
+    const nextTickets = ticketsRef.current.filter((t) => t.id !== id);
+    lastMutationRef.current = Date.now();
+    ticketsRef.current = nextTickets;
+    setTickets(nextTickets);
+    saveTickets(nextTickets);
+    await SupabaseDataService.deleteTicket(id);
+  }, []);
+
   const getTicketsForUser = useCallback(
     (email: string) => {
-      if (!email) return tickets;
+      if (!email) return [];
       const clean = email.toLowerCase().trim();
-      const matched = tickets.filter((t) => t.userEmail.toLowerCase().trim() === clean);
-      if (matched.length === 0 && tickets.length > 0) {
-        return tickets;
-      }
-      return matched;
+      return tickets.filter((t) => t.userEmail.toLowerCase().trim() === clean);
     },
     [tickets]
   );
@@ -503,6 +532,8 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         addTicketMessage,
         updateTicketStatus,
         getTicketsForUser,
+        clearAllTickets,
+        deleteTicket,
       }}
     >
       {children}
