@@ -429,7 +429,7 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
             className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-mono font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 transition-all active:scale-98 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>+ Create Campaign</span>
+            <span>Create Campaign</span>
           </button>
         </div>
 
