@@ -716,8 +716,14 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
       <div className="flex items-center gap-3 flex-wrap">
         {/* Status filter tabs */}
         <div
-          className="h-10 flex items-center gap-1 p-1 rounded-xl overflow-x-auto scrollbar-none max-w-full touch-scroll"
-          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+          className="h-10 flex items-center gap-1 p-1 rounded-xl overflow-x-auto overflow-y-hidden scrollbar-none max-w-full touch-scroll touch-pan-x overscroll-x-contain"
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            touchAction: 'pan-x',
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehaviorY: 'none',
+          }}
         >
           <Filter className="w-3.5 h-3.5 text-gray-500 ml-2 mr-1 shrink-0" />
           {(['all', 'pending', 'in_review', 'analyzed', 'resolved'] as const).map((s) => (
