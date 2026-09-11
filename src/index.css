@@ -9,15 +9,6 @@ html {
   -webkit-text-size-adjust: 100%;
   -moz-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  touch-action: pan-x pan-y;
-  width: 100%;
-  overflow-x: hidden;
-}
-
-body {
-  touch-action: pan-x pan-y;
-  width: 100%;
-  overflow-x: hidden;
 }
 
 html, body, #root {
@@ -35,15 +26,6 @@ html, body, #root {
   input, select, textarea {
     font-size: 16px !important;
   }
-}
-
-/* Horizontal scroll containers: lock panning strictly to X-axis and prevent vertical page scroll/jump */
-.touch-scroll {
-  touch-action: pan-x !important;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  overscroll-behavior-y: none;
-  overflow-y: hidden !important;
 }
 
 /* ── Leaflet dark-theme overrides ── */
