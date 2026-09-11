@@ -937,16 +937,63 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
 
       {/* Stats row */}
       <SlideIn delay={60} direction="up" className="-mt-1.5 sm:mt-0 -mb-1.5 sm:mb-0">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4 max-w-2xl">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[
-            { label: 'Total In Queue', value: tickets.length, color: 'text-violet-400', bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.2)' },
-            { label: 'Pending Review', value: pending, color: 'text-amber-400', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)' },
-            { label: 'In Investigation', value: inReview, color: 'text-cyan-400', bg: 'rgba(6,182,212,0.08)', border: 'rgba(6,182,212,0.2)' },
-            { label: 'Resolved / Closed', value: resolved, color: 'text-purple-400', bg: 'rgba(168,85,247,0.08)', border: 'rgba(168,85,247,0.2)' },
-          ].map((s) => (
-            <div key={s.label} className="rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-center" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
-              <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
-              <p className="text-[11px] text-gray-400 mt-0.5">{s.label}</p>
+            {
+              label: 'Total In Queue',
+              value: tickets.length,
+              dotColor: 'bg-[#f87171] shadow-sm shadow-rose-500/50',
+              numColor: 'text-[#f87171]',
+              filter: 'all' as const,
+              activeBorder: 'border-rose-500/50',
+              glow: 'shadow-rose-500/10',
+            },
+            {
+              label: 'Pending Review',
+              value: pending,
+              dotColor: 'bg-[#fbbf24] shadow-sm shadow-amber-400/50',
+              numColor: 'text-[#fbbf24]',
+              filter: 'pending' as const,
+              activeBorder: 'border-amber-500/50',
+              glow: 'shadow-amber-500/10',
+            },
+            {
+              label: 'In Investigation',
+              value: inReview,
+              dotColor: 'bg-[#fb923c] shadow-sm shadow-orange-400/50',
+              numColor: 'text-[#fb923c]',
+              filter: 'in_review' as const,
+              activeBorder: 'border-orange-500/50',
+              glow: 'shadow-orange-500/10',
+            },
+            {
+              label: 'Resolved / Closed',
+              value: resolved,
+              dotColor: 'bg-[#4ade80] shadow-sm shadow-emerald-400/50',
+              numColor: 'text-[#4ade80]',
+              filter: 'resolved' as const,
+              activeBorder: 'border-emerald-500/50',
+              glow: 'shadow-emerald-500/10',
+            },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              onClick={() => setFilterStatus(stat.filter)}
+              className={`p-3.5 sm:p-4 rounded-2xl bg-[#0c0e18] border transition-all cursor-pointer flex flex-col justify-between min-h-[82px] sm:min-h-[92px] group ${
+                filterStatus === stat.filter
+                  ? `${stat.activeBorder} shadow-lg ${stat.glow}`
+                  : 'border-white/[0.08] hover:border-white/20'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-mono text-[11px] sm:text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  {stat.label}
+                </span>
+                <span className={`w-2 h-2 rounded-full ${stat.dotColor}`} />
+              </div>
+              <div className={`text-2xl sm:text-3xl font-bold font-mono tracking-tight ${stat.numColor}`}>
+                {stat.value}
+              </div>
             </div>
           ))}
         </div>
