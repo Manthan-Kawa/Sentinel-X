@@ -1392,32 +1392,26 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
         {/* Divider (desktop/tablet only, hidden on mobile) */}
         <div className="hidden sm:block w-px h-5" style={{ background: 'rgba(255,255,255,0.08)' }} />
 
-        {/* User profile avatar (clickable to open profile update in settings on mobile responsive devices, not PC) */}
+        {/* User profile for Mobile (compact avatar only, tap to open profile in settings) */}
         <button
           onClick={() => {
-            if (typeof window !== 'undefined' && window.innerWidth < 640) {
+            try {
+              sessionStorage.setItem('settings_active_tab', 'profile');
+            } catch { /* ignore */ }
+            try {
+              let evt: any;
               try {
-                sessionStorage.setItem('settings_active_tab', 'profile');
-              } catch { /* ignore */ }
-              try {
-                let evt: any;
-                try {
-                  evt = new CustomEvent('sentinel_open_settings_tab', { detail: 'profile' });
-                } catch {
-                  evt = document.createEvent('CustomEvent');
-                  evt.initCustomEvent('sentinel_open_settings_tab', false, false, 'profile');
-                }
-                window.dispatchEvent(evt);
-              } catch { /* ignore */ }
-              onNavigate('settings');
-            }
+                evt = new CustomEvent('sentinel_open_settings_tab', { detail: 'profile' });
+              } catch {
+                evt = document.createEvent('CustomEvent');
+                evt.initCustomEvent('sentinel_open_settings_tab', false, false, 'profile');
+              }
+              window.dispatchEvent(evt);
+            } catch { /* ignore */ }
+            onNavigate('settings');
           }}
-          title={
-            typeof window !== 'undefined' && window.innerWidth < 640
-              ? 'Update Profile'
-              : `${currentUser?.displayName ?? 'User'} (${isAnalyst ? 'Cybersecurity Analyst' : 'Standard User'})`
-          }
-          className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-150 cursor-pointer sm:cursor-default sm:pointer-events-none hover:opacity-85 sm:hover:opacity-100 focus:outline-none"
+          title="Update Profile"
+          className="sm:hidden w-8 h-8 flex items-center justify-center rounded-full transition-all duration-150 cursor-pointer hover:opacity-85 focus:outline-none"
         >
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 overflow-hidden"
@@ -1448,6 +1442,68 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
             )}
           </div>
         </button>
+
+        {/* User chip for Laptop / PC view (avatar on left, name & role on right like old) */}
+        <div
+          onClick={() => {
+            try {
+              sessionStorage.setItem('settings_active_tab', 'profile');
+            } catch { /* ignore */ }
+            try {
+              let evt: any;
+              try {
+                evt = new CustomEvent('sentinel_open_settings_tab', { detail: 'profile' });
+              } catch {
+                evt = document.createEvent('CustomEvent');
+                evt.initCustomEvent('sentinel_open_settings_tab', false, false, 'profile');
+              }
+              window.dispatchEvent(evt);
+            } catch { /* ignore */ }
+            onNavigate('settings');
+          }}
+          title={`${currentUser?.displayName ?? 'User'} (${isAnalyst ? 'Cybersecurity Analyst' : 'Standard User'}) — Click to edit profile`}
+          className="hidden sm:flex items-center gap-2.5 cursor-pointer px-2 py-1 rounded-lg transition-all duration-150 hover:bg-white/[0.05]"
+        >
+          <div
+            className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 overflow-hidden"
+            style={{
+              background: isAnalyst
+                ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)'
+                : 'linear-gradient(135deg, #0f2318 0%, #071a0f 100%)',
+              border: isAnalyst
+                ? '1px solid rgba(255,255,255,0.12)'
+                : '1px solid rgba(34,197,94,0.25)',
+            }}
+          >
+            {isAnalyst ? (
+              <img
+                src={analystAvatar}
+                alt="Analyst"
+                className="w-full h-full object-cover rounded-full"
+              />
+            ) : currentUser?.avatarUrl ? (
+              <img
+                src={currentUser.avatarUrl}
+                alt={currentUser.displayName}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover rounded-full"
+              />
+            ) : (
+              currentUser?.initials ?? 'U'
+            )}
+          </div>
+          <div className="flex flex-col justify-center">
+            <p className="text-[12px] font-semibold text-white whitespace-nowrap leading-tight">
+              {currentUser?.displayName ?? 'User'}
+            </p>
+            <p
+              className="text-[10px] mt-0.5 whitespace-nowrap leading-none font-medium tracking-wide"
+              style={{ color: isAnalyst ? '#9ca3af' : '#4ade80' }}
+            >
+              {isAnalyst ? 'Cybersecurity Analyst' : 'Standard User'}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* ── Slide Down / Slide Out Toast Banner ── */}
