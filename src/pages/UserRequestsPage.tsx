@@ -945,8 +945,7 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
               dotColor: 'bg-[#f87171] shadow-sm shadow-rose-500/50',
               numColor: 'text-[#f87171]',
               filter: 'all' as const,
-              activeBorder: 'border-rose-500/50',
-              glow: 'shadow-rose-500/10',
+              glow: 'shadow-[0_0_20px_rgba(248,113,113,0.2)]',
             },
             {
               label: 'Pending Review',
@@ -954,8 +953,7 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
               dotColor: 'bg-[#fbbf24] shadow-sm shadow-amber-400/50',
               numColor: 'text-[#fbbf24]',
               filter: 'pending' as const,
-              activeBorder: 'border-amber-500/50',
-              glow: 'shadow-amber-500/10',
+              glow: 'shadow-[0_0_20px_rgba(251,191,36,0.2)]',
             },
             {
               label: 'In Investigation',
@@ -963,8 +961,7 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
               dotColor: 'bg-[#fb923c] shadow-sm shadow-orange-400/50',
               numColor: 'text-[#fb923c]',
               filter: 'in_review' as const,
-              activeBorder: 'border-orange-500/50',
-              glow: 'shadow-orange-500/10',
+              glow: 'shadow-[0_0_20px_rgba(251,146,60,0.2)]',
             },
             {
               label: 'Resolved / Closed',
@@ -972,17 +969,16 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
               dotColor: 'bg-[#4ade80] shadow-sm shadow-emerald-400/50',
               numColor: 'text-[#4ade80]',
               filter: 'resolved' as const,
-              activeBorder: 'border-emerald-500/50',
-              glow: 'shadow-emerald-500/10',
+              glow: 'shadow-[0_0_20px_rgba(74,222,128,0.2)]',
             },
           ].map((stat) => (
             <div
               key={stat.label}
               onClick={() => setFilterStatus(stat.filter)}
-              className={`p-3.5 sm:p-4 rounded-2xl bg-[#0c0e18] border transition-all cursor-pointer flex flex-col justify-between min-h-[82px] sm:min-h-[92px] group ${
+              className={`p-3.5 sm:p-4 rounded-2xl bg-[#0c0e18] border border-white/[0.08] hover:border-white/20 transition-all cursor-pointer flex flex-col justify-between min-h-[82px] sm:min-h-[92px] group ${
                 filterStatus === stat.filter
-                  ? `${stat.activeBorder} shadow-lg ${stat.glow}`
-                  : 'border-white/[0.08] hover:border-white/20'
+                  ? `${stat.glow} border-white/20`
+                  : ''
               }`}
             >
               <div className="flex items-center justify-between mb-2">
