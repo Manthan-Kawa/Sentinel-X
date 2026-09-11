@@ -74,17 +74,17 @@ export const NODE_CFG: Record<GraphNodeType, {
   icon: LucideIcon; iconColor: string;
   border: string; glow: string; headerBg: string; label: string;
 }> = {
-  email:      { icon: Mail,         iconColor: '#f43f5e', border: '#f43f5e', glow: 'rgba(244,63,94,0.3)',   headerBg: 'rgba(244,63,94,0.15)',  label: 'EMAIL'       },
-  sender:     { icon: User,         iconColor: '#f97316', border: '#f97316', glow: 'rgba(249,115,22,0.3)',  headerBg: 'rgba(249,115,22,0.15)', label: 'SENDER'      },
-  domain:     { icon: Globe,        iconColor: '#3b82f6', border: '#3b82f6', glow: 'rgba(59,130,246,0.3)',  headerBg: 'rgba(59,130,246,0.15)', label: 'DOMAIN'      },
-  ip:         { icon: Server,       iconColor: '#eab308', border: '#eab308', glow: 'rgba(234,179,8,0.3)',   headerBg: 'rgba(234,179,8,0.15)',  label: 'IP'          },
-  url:        { icon: Link2,        iconColor: '#ea580c', border: '#ea580c', glow: 'rgba(234,88,12,0.3)',   headerBg: 'rgba(234,88,12,0.15)', label: 'URL'          },
-  attachment: { icon: FileText,     iconColor: '#14b8a6', border: '#14b8a6', glow: 'rgba(20,184,166,0.3)', headerBg: 'rgba(20,184,166,0.15)', label: 'ATTACHMENT'  },
-  hash:       { icon: Hash,         iconColor: '#2563eb', border: '#2563eb', glow: 'rgba(37,99,235,0.3)',   headerBg: 'rgba(37,99,235,0.15)', label: 'HASH'         },
-  mailserver: { icon: Server,       iconColor: '#8b5cf6', border: '#8b5cf6', glow: 'rgba(139,92,246,0.3)', headerBg: 'rgba(139,92,246,0.15)', label: 'MAIL SERVER' },
-  asn:        { icon: Network,      iconColor: '#6366f1', border: '#6366f1', glow: 'rgba(99,102,241,0.3)',  headerBg: 'rgba(99,102,241,0.15)', label: 'ASN'         },
-  campaign:   { icon: FolderSearch, iconColor: '#ec4899', border: '#ec4899', glow: 'rgba(236,72,153,0.3)', headerBg: 'rgba(236,72,153,0.15)', label: 'CAMPAIGN'    },
-  case:       { icon: Shield,       iconColor: '#8b5cf6', border: '#8b5cf6', glow: 'rgba(139,92,246,0.3)', headerBg: 'rgba(139,92,246,0.15)', label: 'CASE'        },
+  email: { icon: Mail, iconColor: '#f43f5e', border: '#f43f5e', glow: 'rgba(244,63,94,0.3)', headerBg: 'rgba(244,63,94,0.15)', label: 'EMAIL' },
+  sender: { icon: User, iconColor: '#f97316', border: '#f97316', glow: 'rgba(249,115,22,0.3)', headerBg: 'rgba(249,115,22,0.15)', label: 'SENDER' },
+  domain: { icon: Globe, iconColor: '#3b82f6', border: '#3b82f6', glow: 'rgba(59,130,246,0.3)', headerBg: 'rgba(59,130,246,0.15)', label: 'DOMAIN' },
+  ip: { icon: Server, iconColor: '#eab308', border: '#eab308', glow: 'rgba(234,179,8,0.3)', headerBg: 'rgba(234,179,8,0.15)', label: 'IP' },
+  url: { icon: Link2, iconColor: '#ea580c', border: '#ea580c', glow: 'rgba(234,88,12,0.3)', headerBg: 'rgba(234,88,12,0.15)', label: 'URL' },
+  attachment: { icon: FileText, iconColor: '#14b8a6', border: '#14b8a6', glow: 'rgba(20,184,166,0.3)', headerBg: 'rgba(20,184,166,0.15)', label: 'ATTACHMENT' },
+  hash: { icon: Hash, iconColor: '#2563eb', border: '#2563eb', glow: 'rgba(37,99,235,0.3)', headerBg: 'rgba(37,99,235,0.15)', label: 'HASH' },
+  mailserver: { icon: Server, iconColor: '#8b5cf6', border: '#8b5cf6', glow: 'rgba(139,92,246,0.3)', headerBg: 'rgba(139,92,246,0.15)', label: 'MAIL SERVER' },
+  asn: { icon: Network, iconColor: '#6366f1', border: '#6366f1', glow: 'rgba(99,102,241,0.3)', headerBg: 'rgba(99,102,241,0.15)', label: 'ASN' },
+  campaign: { icon: FolderSearch, iconColor: '#ec4899', border: '#ec4899', glow: 'rgba(236,72,153,0.3)', headerBg: 'rgba(236,72,153,0.15)', label: 'CAMPAIGN' },
+  case: { icon: Shield, iconColor: '#8b5cf6', border: '#8b5cf6', glow: 'rgba(139,92,246,0.3)', headerBg: 'rgba(139,92,246,0.15)', label: 'CASE' },
 };
 
 // ── Custom Node Renderer ─────────────────────────────────────────────────────
@@ -109,9 +109,9 @@ function AttackNode({ data, selected }: NodeProps) {
         transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
       }}
     >
-      <Handle type="target" position={Position.Left}   id="left"   style={{ background: cfg.border, width: 8, height: 8, left: -4 }} />
-      <Handle type="source" position={Position.Right}  id="right"  style={{ background: cfg.border, width: 8, height: 8, right: -4 }} />
-      <Handle type="target" position={Position.Top}    id="top"    style={{ background: cfg.border, width: 8, height: 8, top: -4 }} />
+      <Handle type="target" position={Position.Left} id="left" style={{ background: cfg.border, width: 8, height: 8, left: -4 }} />
+      <Handle type="source" position={Position.Right} id="right" style={{ background: cfg.border, width: 8, height: 8, right: -4 }} />
+      <Handle type="target" position={Position.Top} id="top" style={{ background: cfg.border, width: 8, height: 8, top: -4 }} />
       <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: cfg.border, width: 8, height: 8, bottom: -4 }} />
 
       {/* Header Bar */}
@@ -150,56 +150,56 @@ export const LAYOUT_STYLES: LayoutStyle[] = ['horizontal', 'vertical', 'radial',
 
 const NODE_LAYOUTS: Record<LayoutStyle, Record<string, { x: number; y: number }>> = {
   horizontal: {
-    'n-email':      { x:   40, y:  60 },
-    'n-hash':       { x:   40, y: 260 },
-    'n-sender':     { x:  330, y:  60 },
-    'n-mailserver': { x:  330, y: 260 },
-    'n-domain':     { x:  620, y: 160 },
-    'n-ip':         { x:  910, y:  60 },
-    'n-url-1':      { x:  910, y: 260 },
-    'n-url-2':      { x:  910, y: 440 },
-    'n-asn':        { x: 1200, y:  60 },
-    'n-campaign':   { x: 1200, y: 260 },
-    'n-case':       { x: 1490, y: 160 },
+    'n-email': { x: 40, y: 60 },
+    'n-hash': { x: 40, y: 260 },
+    'n-sender': { x: 330, y: 60 },
+    'n-mailserver': { x: 330, y: 260 },
+    'n-domain': { x: 620, y: 160 },
+    'n-ip': { x: 910, y: 60 },
+    'n-url-1': { x: 910, y: 260 },
+    'n-url-2': { x: 910, y: 440 },
+    'n-asn': { x: 1200, y: 60 },
+    'n-campaign': { x: 1200, y: 260 },
+    'n-case': { x: 1490, y: 160 },
   },
   vertical: {
-    'n-email':      { x:  80,  y:   40 },
-    'n-hash':       { x: 420,  y:   40 },
-    'n-sender':     { x:  80,  y:  230 },
-    'n-mailserver': { x: 420,  y:  230 },
-    'n-domain':     { x: 250,  y:  420 },
-    'n-ip':         { x:  80,  y:  610 },
-    'n-url-1':      { x: 420,  y:  610 },
-    'n-url-2':      { x: 740,  y:  610 },
-    'n-asn':        { x:  80,  y:  800 },
-    'n-campaign':   { x: 420,  y:  800 },
-    'n-case':       { x: 250,  y:  990 },
+    'n-email': { x: 80, y: 40 },
+    'n-hash': { x: 420, y: 40 },
+    'n-sender': { x: 80, y: 230 },
+    'n-mailserver': { x: 420, y: 230 },
+    'n-domain': { x: 250, y: 420 },
+    'n-ip': { x: 80, y: 610 },
+    'n-url-1': { x: 420, y: 610 },
+    'n-url-2': { x: 740, y: 610 },
+    'n-asn': { x: 80, y: 800 },
+    'n-campaign': { x: 420, y: 800 },
+    'n-case': { x: 250, y: 990 },
   },
   radial: {
-    'n-domain':     { x:  480, y:  340 },
-    'n-email':      { x:  480, y:   60 },
-    'n-sender':     { x:  780, y:  140 },
-    'n-ip':         { x:  880, y:  340 },
-    'n-asn':        { x:  780, y:  540 },
-    'n-campaign':   { x:  480, y:  620 },
-    'n-case':       { x:  180, y:  540 },
-    'n-url-1':      { x:   80, y:  340 },
-    'n-mailserver': { x:  180, y:  140 },
-    'n-hash':       { x:  180, y:   60 },
-    'n-url-2':      { x:  880, y:  540 },
+    'n-domain': { x: 480, y: 340 },
+    'n-email': { x: 480, y: 60 },
+    'n-sender': { x: 780, y: 140 },
+    'n-ip': { x: 880, y: 340 },
+    'n-asn': { x: 780, y: 540 },
+    'n-campaign': { x: 480, y: 620 },
+    'n-case': { x: 180, y: 540 },
+    'n-url-1': { x: 80, y: 340 },
+    'n-mailserver': { x: 180, y: 140 },
+    'n-hash': { x: 180, y: 60 },
+    'n-url-2': { x: 880, y: 540 },
   },
   cascade: {
-    'n-email':      { x:   40, y:   40 },
-    'n-sender':     { x:  330, y:   40 },
-    'n-domain':     { x:  620, y:   40 },
-    'n-ip':         { x:  910, y:   40 },
-    'n-asn':        { x: 1200, y:   40 },
-    'n-hash':       { x:   40, y:  230 },
-    'n-mailserver': { x:  330, y:  230 },
-    'n-url-1':      { x:  620, y:  230 },
-    'n-url-2':      { x:  910, y:  230 },
-    'n-campaign':   { x: 1200, y:  230 },
-    'n-case':       { x:  620, y:  420 },
+    'n-email': { x: 40, y: 40 },
+    'n-sender': { x: 330, y: 40 },
+    'n-domain': { x: 620, y: 40 },
+    'n-ip': { x: 910, y: 40 },
+    'n-asn': { x: 1200, y: 40 },
+    'n-hash': { x: 40, y: 230 },
+    'n-mailserver': { x: 330, y: 230 },
+    'n-url-1': { x: 620, y: 230 },
+    'n-url-2': { x: 910, y: 230 },
+    'n-campaign': { x: 1200, y: 230 },
+    'n-case': { x: 620, y: 420 },
   },
 };
 
@@ -213,21 +213,21 @@ export function buildDynamicAttackGraph(
   }
 
   const subjectHdr = result.headers?.find((h) => h.key.toLowerCase() === 'subject')?.value || 'Suspicious Email';
-  const fromHdr    = result.headers?.find((h) => h.key.toLowerCase() === 'from')?.value    || 'Sender';
-  const toHdr      = result.headers?.find((h) => h.key.toLowerCase() === 'to')?.value      || 'target@corp.example';
-  const dateHdr    = result.headers?.find((h) => h.key.toLowerCase() === 'date')?.value    || new Date().toISOString().slice(0, 10);
-  const mailerHdr  = result.headers?.find((h) => h.key.toLowerCase() === 'x-mailer')?.value || 'PHPMailer / Automated Agent';
+  const fromHdr = result.headers?.find((h) => h.key.toLowerCase() === 'from')?.value || 'Sender';
+  const toHdr = result.headers?.find((h) => h.key.toLowerCase() === 'to')?.value || 'target@corp.example';
+  const dateHdr = result.headers?.find((h) => h.key.toLowerCase() === 'date')?.value || new Date().toISOString().slice(0, 10);
+  const mailerHdr = result.headers?.find((h) => h.key.toLowerCase() === 'x-mailer')?.value || 'PHPMailer / Automated Agent';
 
-  const domain    = result.threat_intel?.domain || 'unknown-domain.example';
-  const sendingIp = result.origin?.sending_ip   || result.threat_intel?.sending_ip || '185.220.101.47';
-  const geo       = resolveGeoLocation({
-    country:    result.origin?.country,
-    city:       result.origin?.city,
+  const domain = result.threat_intel?.domain || 'unknown-domain.example';
+  const sendingIp = result.origin?.sending_ip || result.threat_intel?.sending_ip || '185.220.101.47';
+  const geo = resolveGeoLocation({
+    country: result.origin?.country,
+    city: result.origin?.city,
     sending_ip: sendingIp,
-    latitude:   result.origin?.latitude,
-    longitude:  result.origin?.longitude,
+    latitude: result.origin?.latitude,
+    longitude: result.origin?.longitude,
   });
-  const asn     = result.origin?.asn     || geo.asn     || 'AS200651';
+  const asn = result.origin?.asn || geo.asn || 'AS200651';
   const hosting = result.origin?.hosting || geo.hosting || 'Bulletproof VPS';
   const campaign = result.campaign_id && result.campaign_id !== 'UNKNOWN'
     ? result.campaign_id : 'WIRE-FAUD-247';
@@ -240,166 +240,188 @@ export function buildDynamicAttackGraph(
   const edges: typeof ATTACK_GRAPH_EDGES = [];
 
   // Col 0 — Email & Hash
-  nodes.push({ id: 'n-email', type: 'email',
+  nodes.push({
+    id: 'n-email', type: 'email',
     label: subjectHdr.length > 22 ? `${subjectHdr.slice(0, 22)}...` : subjectHdr,
     sublabel: `Target: ${toHdr.slice(0, 20)} • Score: ${result.threat_score}/100`,
     details: [
-      { key: 'Subject',     value: subjectHdr },
-      { key: 'Recipient',   value: toHdr },
-      { key: 'Date',        value: dateHdr },
-      { key: 'Threat Score',value: `${result.threat_score}/100` },
+      { key: 'Subject', value: subjectHdr },
+      { key: 'Recipient', value: toHdr },
+      { key: 'Date', value: dateHdr },
+      { key: 'Threat Score', value: `${result.threat_score}/100` },
       { key: 'Alert Level', value: result.alert_level.toUpperCase() },
-    ], x: layout['n-email'].x, y: layout['n-email'].y });
+    ], x: layout['n-email'].x, y: layout['n-email'].y
+  });
 
-  nodes.push({ id: 'n-hash', type: 'hash',
+  nodes.push({
+    id: 'n-hash', type: 'hash',
     label: `SHA-256: ${evidenceHash.slice(0, 8)}…`,
     sublabel: 'Cryptographic payload ledger hash',
     details: [
       { key: 'Algorithm', value: 'SHA-256' },
-      { key: 'Digest',    value: `${evidenceHash.slice(0, 22)}...` },
-      { key: 'Ledger Ref',value: `BLOCK-${result.case_id.slice(-6)}` },
+      { key: 'Digest', value: `${evidenceHash.slice(0, 22)}...` },
+      { key: 'Ledger Ref', value: `BLOCK-${result.case_id.slice(-6)}` },
       { key: 'Integrity', value: 'Verified' },
-    ], x: layout['n-hash'].x, y: layout['n-hash'].y });
+    ], x: layout['n-hash'].x, y: layout['n-hash'].y
+  });
 
   edges.push({ id: 'e-email-hash', source: 'n-email', target: 'n-hash', label: 'HASHLINK', color: '#6366f1', animated: true });
 
   // Col 1 — Sender & Mail Server
-  nodes.push({ id: 'n-sender', type: 'sender',
+  nodes.push({
+    id: 'n-sender', type: 'sender',
     label: fromHdr.length > 22 ? `${fromHdr.slice(0, 22)}...` : fromHdr,
     sublabel: fromHdr,
     details: [
-      { key: 'Address',  value: fromHdr },
-      { key: 'SPF Auth', value: result.threat_intel?.spf  || 'FAIL' },
-      { key: 'DKIM Auth',value: result.threat_intel?.dkim || 'FAIL' },
-      { key: 'Status',   value: result.threat_score > 60 ? 'Untrusted Origin' : 'Verified' },
-    ], x: layout['n-sender'].x, y: layout['n-sender'].y });
+      { key: 'Address', value: fromHdr },
+      { key: 'SPF Auth', value: result.threat_intel?.spf || 'FAIL' },
+      { key: 'DKIM Auth', value: result.threat_intel?.dkim || 'FAIL' },
+      { key: 'Status', value: result.threat_score > 60 ? 'Untrusted Origin' : 'Verified' },
+    ], x: layout['n-sender'].x, y: layout['n-sender'].y
+  });
 
   edges.push({ id: 'e-email-sender', source: 'n-email', target: 'n-sender', label: 'RECEIVES', color: '#f97316', animated: true });
 
-  nodes.push({ id: 'n-mailserver', type: 'mailserver',
+  nodes.push({
+    id: 'n-mailserver', type: 'mailserver',
     label: `mx1.${domain.length > 16 ? domain.slice(0, 16) + '...' : domain}`,
     sublabel: `mailer: ${mailerHdr}`,
     details: [
-      { key: 'Host',     value: `mx1.${domain}` },
-      { key: 'Mailer',   value: mailerHdr },
-      { key: 'IP',       value: sendingIp },
+      { key: 'Host', value: `mx1.${domain}` },
+      { key: 'Mailer', value: mailerHdr },
+      { key: 'IP', value: sendingIp },
       { key: 'Protocol', value: 'SMTP / TLS' },
-    ], x: layout['n-mailserver'].x, y: layout['n-mailserver'].y });
+    ], x: layout['n-mailserver'].x, y: layout['n-mailserver'].y
+  });
 
   // Col 2 — Domain
-  nodes.push({ id: 'n-domain', type: 'domain',
+  nodes.push({
+    id: 'n-domain', type: 'domain',
     label: domain.length > 20 ? `${domain.slice(0, 20)}...` : domain,
     sublabel: `age: ${result.threat_intel?.domain_age_days ?? 3}d • DMARC: ${result.threat_intel?.dmarc || 'FAIL'}`,
     details: [
       { key: 'Domain', value: domain },
-      { key: 'Age',    value: `${result.threat_intel?.domain_age_days ?? 3} days` },
-      { key: 'SPF',    value: result.threat_intel?.spf   || 'FAIL' },
-      { key: 'DMARC',  value: result.threat_intel?.dmarc || 'FAIL' },
+      { key: 'Age', value: `${result.threat_intel?.domain_age_days ?? 3} days` },
+      { key: 'SPF', value: result.threat_intel?.spf || 'FAIL' },
+      { key: 'DMARC', value: result.threat_intel?.dmarc || 'FAIL' },
       { key: 'Intent', value: 'Sender Root Entity' },
-    ], x: layout['n-domain'].x, y: layout['n-domain'].y });
+    ], x: layout['n-domain'].x, y: layout['n-domain'].y
+  });
 
-  edges.push({ id: 'e-sender-domain',   source: 'n-sender',     target: 'n-domain',     label: 'RESOLVES',  color: '#3b82f6', animated: true });
-  edges.push({ id: 'e-domain-mailserver',source: 'n-domain',    target: 'n-mailserver', label: 'MX RECORD', color: '#8b5cf6', animated: true });
+  edges.push({ id: 'e-sender-domain', source: 'n-sender', target: 'n-domain', label: 'RESOLVES', color: '#3b82f6', animated: true });
+  edges.push({ id: 'e-domain-mailserver', source: 'n-domain', target: 'n-mailserver', label: 'MX RECORD', color: '#8b5cf6', animated: true });
 
   // Col 3 — IP & URLs
-  nodes.push({ id: 'n-ip', type: 'ip',
+  nodes.push({
+    id: 'n-ip', type: 'ip',
     label: sendingIp,
     sublabel: `location: ${geo.city}, ${geo.country}`,
     details: [
-      { key: 'IP',          value: sendingIp },
+      { key: 'IP', value: sendingIp },
       { key: 'Geolocation', value: `${geo.city}, ${geo.country}` },
-      { key: 'Reputation',  value: result.threat_intel?.ip_reputation || 'malicious' },
-      { key: 'Blocklists',  value: `${result.threat_intel?.blocklists?.length || 3} active listings` },
-    ], x: layout['n-ip'].x, y: layout['n-ip'].y });
+      { key: 'Reputation', value: result.threat_intel?.ip_reputation || 'malicious' },
+      { key: 'Blocklists', value: `${result.threat_intel?.blocklists?.length || 3} active listings` },
+    ], x: layout['n-ip'].x, y: layout['n-ip'].y
+  });
 
-  edges.push({ id: 'e-domain-ip',     source: 'n-domain',     target: 'n-ip', label: 'A-RECORD',  color: '#eab308', animated: true });
+  edges.push({ id: 'e-domain-ip', source: 'n-domain', target: 'n-ip', label: 'A-RECORD', color: '#eab308', animated: true });
   edges.push({ id: 'e-mailserver-ip', source: 'n-mailserver', target: 'n-ip', label: 'HOSTED AT', color: '#eab308', animated: true });
 
   if (urls.length > 0) {
     urls.slice(0, 2).forEach((url, idx) => {
-      const urlId   = `n-url-${idx + 1}`;
+      const urlId = `n-url-${idx + 1}`;
       const urlClean = url.replace(/^https?:\/\//, '');
-      nodes.push({ id: urlId, type: 'url',
+      nodes.push({
+        id: urlId, type: 'url',
         label: urlClean.length > 20 ? `${urlClean.slice(0, 20)}...` : urlClean,
         sublabel: `intent: Credential Capture • risk: ${result.threat_score}/100`,
         details: [
-          { key: 'URL',        value: url },
-          { key: 'Intent',     value: 'Credential Theft / Phishing' },
+          { key: 'URL', value: url },
+          { key: 'Intent', value: 'Credential Theft / Phishing' },
           { key: 'Risk Score', value: `${result.threat_score}/100` },
-          { key: 'Hops',       value: '3 redirects' },
-        ], x: layout[`n-url-${idx + 1}`]?.x ?? (1040 + idx * 200), y: layout[`n-url-${idx + 1}`]?.y ?? (280 + idx * 160) });
+          { key: 'Hops', value: '3 redirects' },
+        ], x: layout[`n-url-${idx + 1}`]?.x ?? (1040 + idx * 200), y: layout[`n-url-${idx + 1}`]?.y ?? (280 + idx * 160)
+      });
       edges.push({ id: `e-domain-url-${idx + 1}`, source: 'n-domain', target: urlId, label: 'SERVES', color: '#ef4444', animated: true });
     });
   } else {
-    nodes.push({ id: 'n-url-1', type: 'url',
+    nodes.push({
+      id: 'n-url-1', type: 'url',
       label: `${domain}/auth-verify`,
       sublabel: `intent: Phishing Lure • risk: ${result.threat_score}/100`,
       details: [
-        { key: 'URL',        value: `https://${domain}/auth-verify` },
-        { key: 'Intent',     value: 'Phishing Landing Page' },
+        { key: 'URL', value: `https://${domain}/auth-verify` },
+        { key: 'Intent', value: 'Phishing Landing Page' },
         { key: 'Risk Score', value: `${result.threat_score}/100` },
-      ], x: layout['n-url-1'].x, y: layout['n-url-1'].y });
+      ], x: layout['n-url-1'].x, y: layout['n-url-1'].y
+    });
     edges.push({ id: 'e-domain-url-1', source: 'n-domain', target: 'n-url-1', label: 'SERVES', color: '#ef4444', animated: true });
   }
 
   // Col 4 — ASN & Campaign
-  nodes.push({ id: 'n-asn', type: 'asn',
+  nodes.push({
+    id: 'n-asn', type: 'asn',
     label: `${asn} — ${hosting.length > 14 ? hosting.slice(0, 14) + '...' : hosting}`,
     sublabel: `provider: ${hosting}`,
     details: [
-      { key: 'ASN',          value: asn },
-      { key: 'Provider',     value: hosting },
+      { key: 'ASN', value: asn },
+      { key: 'Provider', value: hosting },
       { key: 'Abuse Rating', value: 'High' },
-      { key: 'Type',         value: 'Hosting Infrastructure' },
-    ], x: layout['n-asn'].x, y: layout['n-asn'].y });
+      { key: 'Type', value: 'Hosting Infrastructure' },
+    ], x: layout['n-asn'].x, y: layout['n-asn'].y
+  });
 
   edges.push({ id: 'e-ip-asn', source: 'n-ip', target: 'n-asn', label: 'BELONGS TO', color: '#a855f7', animated: true });
 
-  nodes.push({ id: 'n-campaign', type: 'campaign',
+  nodes.push({
+    id: 'n-campaign', type: 'campaign',
     label: campaign,
     sublabel: `confidence: ${result.confidence}% • cluster`,
     details: [
-      { key: 'Cluster ID',    value: campaign },
-      { key: 'Confidence',    value: `${result.confidence}%` },
-      { key: 'Threat Pattern',value: result.verdict },
-      { key: 'Status',        value: 'Active SOC Tracking' },
-    ], x: layout['n-campaign'].x, y: layout['n-campaign'].y });
+      { key: 'Cluster ID', value: campaign },
+      { key: 'Confidence', value: `${result.confidence}%` },
+      { key: 'Threat Pattern', value: result.verdict },
+      { key: 'Status', value: 'Active SOC Tracking' },
+    ], x: layout['n-campaign'].x, y: layout['n-campaign'].y
+  });
 
-  edges.push({ id: 'e-asn-campaign',  source: 'n-asn',     target: 'n-campaign', label: 'HOSTS',   color: '#f59e0b', animated: true });
-  edges.push({ id: 'e-url-campaign',  source: 'n-url-1',   target: 'n-campaign', label: 'PART OF', color: '#f59e0b', animated: true });
+  edges.push({ id: 'e-asn-campaign', source: 'n-asn', target: 'n-campaign', label: 'HOSTS', color: '#f59e0b', animated: true });
+  edges.push({ id: 'e-url-campaign', source: 'n-url-1', target: 'n-campaign', label: 'PART OF', color: '#f59e0b', animated: true });
 
   // Col 5 — Case
-  nodes.push({ id: 'n-case', type: 'case',
+  nodes.push({
+    id: 'n-case', type: 'case',
     label: result.case_id,
     sublabel: `Status: Investigating • ${result.alert_level.toUpperCase()}`,
     details: [
-      { key: 'Case ID',     value: result.case_id },
-      { key: 'Status',      value: 'Under Active Investigation' },
-      { key: 'Verdict',     value: result.verdict },
-      { key: 'Severity',    value: result.alert_level.toUpperCase() },
-      { key: 'Threat Score',value: `${result.threat_score}/100` },
-      { key: 'Confidence',  value: `${result.confidence}%` },
-    ], x: layout['n-case'].x, y: layout['n-case'].y });
+      { key: 'Case ID', value: result.case_id },
+      { key: 'Status', value: 'Under Active Investigation' },
+      { key: 'Verdict', value: result.verdict },
+      { key: 'Severity', value: result.alert_level.toUpperCase() },
+      { key: 'Threat Score', value: `${result.threat_score}/100` },
+      { key: 'Confidence', value: `${result.confidence}%` },
+    ], x: layout['n-case'].x, y: layout['n-case'].y
+  });
 
-  edges.push({ id: 'e-campaign-case', source: 'n-campaign', target: 'n-case', label: 'LINKED TO',      color: '#22c55e', animated: true });
-  edges.push({ id: 'e-hash-case',     source: 'n-hash',     target: 'n-case', label: 'EVIDENCE RECORD',color: '#22c55e', animated: true });
+  edges.push({ id: 'e-campaign-case', source: 'n-campaign', target: 'n-case', label: 'LINKED TO', color: '#22c55e', animated: true });
+  edges.push({ id: 'e-hash-case', source: 'n-hash', target: 'n-case', label: 'EVIDENCE RECORD', color: '#22c55e', animated: true });
 
   return { nodes, edges };
 }
 
 // ── Legend node types ─────────────────────────────────────────────────────────
 const legendTypes: { type: GraphNodeType; label: string }[] = [
-  { type: 'email',      label: 'Email' },
-  { type: 'sender',     label: 'Sender' },
-  { type: 'domain',     label: 'Domain' },
-  { type: 'ip',         label: 'IP' },
-  { type: 'url',        label: 'URL' },
+  { type: 'email', label: 'Email' },
+  { type: 'sender', label: 'Sender' },
+  { type: 'domain', label: 'Domain' },
+  { type: 'ip', label: 'IP' },
+  { type: 'url', label: 'URL' },
   { type: 'attachment', label: 'Attachment' },
-  { type: 'hash',       label: 'Hash' },
+  { type: 'hash', label: 'Hash' },
   { type: 'mailserver', label: 'Mail Server' },
-  { type: 'asn',        label: 'ASN' },
-  { type: 'campaign',   label: 'Campaign' },
-  { type: 'case',       label: 'Case' },
+  { type: 'asn', label: 'ASN' },
+  { type: 'campaign', label: 'Campaign' },
+  { type: 'case', label: 'Case' },
 ];
 
 /**
@@ -605,8 +627,9 @@ function AttackGraphCanvasInner({
           >
             <Background color="rgba(255,255,255,0.06)" gap={20} size={1} style={{ backgroundColor: '#07080e' }} />
             <Controls
+              position="top-left"
               showInteractive={false}
-              style={{ background: 'rgba(12,14,24,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', overflow: 'hidden', left: '16px', bottom: '70px' }}
+              style={{ left: '8px', top: '8px', bottom: 'auto' }}
             />
             <div className="hidden sm:block">
               <MiniMap
@@ -696,7 +719,7 @@ function AttackGraphCanvasInner({
           <div className="rounded-xl p-3 flex items-center gap-2 mt-auto" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
             <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
             <span className="text-[10px] text-gray-400 font-mono">
-              {selectedNode ? 'Click pane to deselect' : '13 entities mapped in cluster'}
+              {selectedNode ? 'Click pane to deselect' : `${liveNodes.length} entities mapped in cluster`}
             </span>
           </div>
         </div>

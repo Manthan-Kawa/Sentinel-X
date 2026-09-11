@@ -199,8 +199,8 @@ export function ReportsPage({ onNavigate }: { onNavigate?: (route: string) => vo
 
       {/* ── Header ── */}
       <SlideIn delay={0} direction="down">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex-1 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1.5 sm:px-0">
+          <div className="flex-1 min-w-0 -ml-1 sm:ml-0">
             <div className="flex items-center gap-2.5 sm:gap-3 flex-nowrap w-full">
               <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight whitespace-nowrap">
                 Reports &amp; Export
@@ -1799,27 +1799,28 @@ function SentinelAI({ currentResult }: { currentResult: EmailAnalysisResult }) {
       </div>
 
       {/* Input */}
-      <div className="flex gap-2 mt-3">
+      <div className="relative flex items-center mt-3 w-full">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder={`Ask SENTINEL AI anything about case ${currentResult.case_id}...`}
-          className="flex-1 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none font-mono"
+          className="w-full rounded-xl pl-3.5 pr-20 sm:pr-24 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none font-mono transition-all focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/30"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
         />
         <button
           onClick={handleSend}
           disabled={thinking || !input.trim()}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all font-mono hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+          className="absolute right-1.5 top-1.5 bottom-1.5 flex items-center justify-center gap-1.5 px-3 sm:px-3.5 rounded-lg text-xs font-bold text-white transition-all font-mono hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
           style={{
-            background: 'linear-gradient(135deg, rgba(168,85,247,0.4), rgba(124,58,237,0.4))',
-            border: '1px solid rgba(168,85,247,0.5)',
+            background: 'linear-gradient(135deg, rgba(168,85,247,0.5), rgba(124,58,237,0.5))',
+            border: '1px solid rgba(168,85,247,0.6)',
+            boxShadow: '0 2px 8px rgba(147,51,234,0.25)',
           }}
         >
           <Send className="w-3.5 h-3.5" />
-          Ask
+          <span>Ask</span>
         </button>
       </div>
     </div>

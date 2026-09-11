@@ -121,6 +121,11 @@ export function DarkCyberMap({
   const displayedMarkers = singlePointerMode && markers.length > 0 ? [markers[0]] : markers;
   const primaryMarker    = displayedMarkers[0];
 
+  const primaryMarkerRef = useRef<MapMarker | undefined>(primaryMarker);
+  primaryMarkerRef.current = primaryMarker;
+  const displayedMarkersRef = useRef<MapMarker[]>(displayedMarkers);
+  displayedMarkersRef.current = displayedMarkers;
+
   /* ── Init map once ── */
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -141,6 +146,52 @@ export function DarkCyberMap({
       subdomains: 'abcd',
       maxZoom: 19,
     }).addTo(map);
+
+    // ── Add [ ] Re-center / Focus View button below '-' in Leaflet zoom controls ──
+    const zoomContainer = map.zoomControl?.getContainer();
+    if (zoomContainer) {
+      const resetBtn = L.DomUtil.create('a', 'leaflet-control-zoom-reset', zoomContainer);
+      resetBtn.href = '#';
+      resetBtn.title = 'Re-center to exact origin location [ ]';
+      resetBtn.setAttribute('role', 'button');
+      resetBtn.setAttribute('aria-label', 'Re-center to exact origin location');
+      resetBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none; display: block;">
+          <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+          <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+          <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+          <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+          <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+        </svg>
+      `;
+
+      L.DomEvent.disableClickPropagation(resetBtn);
+      L.DomEvent.disableScrollPropagation(resetBtn);
+      L.DomEvent.on(resetBtn, 'click', (e) => {
+        L.DomEvent.preventDefault(e);
+        L.DomEvent.stopPropagation(e);
+        const currentPrimary = primaryMarkerRef.current;
+        if (currentPrimary) {
+          map.flyTo([currentPrimary.lat, currentPrimary.lng], 5, {
+            duration: 1.2,
+            easeLinearity: 0.25,
+          });
+          const markerObj = markersRef.current.get(currentPrimary.id);
+          if (markerObj) {
+            setTimeout(() => {
+              markerObj.openPopup();
+            }, 600);
+          }
+        } else if (displayedMarkersRef.current.length > 0) {
+          const group = L.featureGroup(Array.from(markersRef.current.values()));
+          if (group.getLayers().length > 0) {
+            map.fitBounds(group.getBounds().pad(0.2), { duration: 1.2 });
+          }
+        } else {
+          map.flyTo([20.5937, 78.9629], 2, { duration: 1.2 });
+        }
+      });
+    }
 
     mapRef.current = map;
 
@@ -240,9 +291,9 @@ export function DarkCyberMap({
       {/* ── Real Leaflet map fills the entire card ── */}
       <div ref={mapContainerRef} className="w-full h-full" style={{ minHeight: '400px' }} />
 
-      {/* ── Top Right Origin Status Badge ── */}
+      {/* ── Top Right Origin Status Badge (Hidden on mobile, visible on tablet & PC) ── */}
       {primaryMarker && (
-        <div className="absolute top-4 right-4 z-[1000] flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0c0f1a]/90 backdrop-blur-md border border-red-500/30 text-xs font-mono text-white pointer-events-none">
+        <div className="hidden sm:flex absolute top-4 right-4 z-[1000] items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0c0f1a]/90 backdrop-blur-md border border-red-500/30 text-xs font-mono text-white pointer-events-none">
           <span className="relative flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
