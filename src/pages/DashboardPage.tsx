@@ -450,15 +450,15 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
 
       {/* ── Header ── */}
       <SlideIn delay={0} direction="down">
-        <div className="relative rounded-2xl overflow-hidden px-6 py-5"
+        <div className="relative rounded-2xl overflow-hidden px-4 sm:px-6 py-4 sm:py-5"
           style={{ background:'linear-gradient(135deg,#0a0c14,#0f1520 60%,#0c0e18)', border:'1px solid rgba(255,255,255,0.07)', boxShadow:'0 4px 40px rgba(0,0,0,0.6)' }}>
           <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage:'linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px)', backgroundSize:'48px 48px' }} />
           <div className="absolute -top-10 right-24 w-44 h-44 rounded-full pointer-events-none" style={{ background:'radial-gradient(circle,rgba(59,130,246,0.07),transparent 70%)' }} />
 
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-black text-white tracking-tight">Threat Operations Center</h2>
-              <p className="text-sm text-gray-400 mt-0.5">Real-time visibility into email threats, investigations, campaigns, and forensic activity.</p>
+              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">Threat Operations Center</h2>
+              <p className="text-xs sm:text-sm text-gray-400 mt-0.5">Real-time visibility into email threats, investigations, campaigns, and forensic activity.</p>
               <div className="flex items-center gap-2 mt-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                 <span className="text-[11px] text-gray-500 font-mono">
@@ -467,7 +467,7 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
               </div>
             </div>
             {/* LIVE MONITORING */}
-            <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl shrink-0 self-start"
+            <div className="flex items-center gap-3 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl shrink-0 self-start"
               style={{ background:'linear-gradient(135deg,rgba(34,197,94,0.2),rgba(21,128,61,0.1))', border:'1px solid rgba(34,197,94,0.35)', boxShadow:'0 0 20px rgba(34,197,94,0.12)' }}>
               <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" style={{ boxShadow:'0 0 8px rgba(34,197,94,0.9)' }} />
               <div>
@@ -480,7 +480,7 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
       </SlideIn>
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-3">
         {KPI_DEFS.map((kpi, i) => {
           const Icon = ICON_MAP[kpi.icon];
           const ac   = ACCENT[kpi.accent] ?? ACCENT.blue;
@@ -488,8 +488,8 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
           return (
             <SlideIn key={kpi.label} delay={100 + i * 65} direction="up">
               <TiltCard
-                className="relative rounded-2xl overflow-hidden p-4 cursor-pointer group"
-                style={{ background:`linear-gradient(145deg,${i%2===0?'#0e1525':'#0c1020'},#070a12)`, border:'1px solid rgba(255,255,255,0.07)', boxShadow:ac.glow, minHeight:160 }}>
+                className="relative rounded-2xl overflow-hidden p-3 sm:p-4 cursor-pointer group"
+                style={{ background:`linear-gradient(145deg,${i%2===0?'#0e1525':'#0c1020'},#070a12)`, border:'1px solid rgba(255,255,255,0.07)', boxShadow:ac.glow, minHeight: 145 }}>
                 {/* top accent line */}
                 <div className="absolute top-0 left-4 right-4 h-[1.5px] rounded-full" style={{ background:`linear-gradient(90deg,transparent,${ac.hex},transparent)`, opacity:.7 }} />
                 {/* bg orb */}
@@ -497,24 +497,24 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
 
                 {/* icon + delta */}
                 <div className="flex items-start justify-between mb-2">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:`${ac.hex}22`, border:`1px solid ${ac.hex}35`, boxShadow:`0 0 12px ${ac.hex}25` }}>
-                    {Icon && <Icon className={`w-4 h-4 ${ac.text}`} />}
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center" style={{ background:`${ac.hex}22`, border:`1px solid ${ac.hex}35`, boxShadow:`0 0 12px ${ac.hex}25` }}>
+                    {Icon && <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${ac.text}`} />}
                   </div>
-                  <span className={`flex items-center gap-0.5 text-[11px] font-bold ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className={`flex items-center gap-0.5 text-[10px] sm:text-[11px] font-bold ${isUp ? 'text-green-400' : 'text-red-400'}`}>
                     {isUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                     {i === 4 ? `+${kpi.delta}%` : `+${kpi.delta}`}
                   </span>
                 </div>
 
                 {/* live value */}
-                <p className="text-2xl font-black text-white tracking-tight mt-1">
+                <p className="text-xl sm:text-2xl font-black text-white tracking-tight mt-1">
                   <LiveNumber value={typeof kpi.val === 'number' ? kpi.val : 0} fmt={kpi.fmt} />
                 </p>
-                <p className="text-[11px] text-gray-500 font-medium mt-0.5">{kpi.label}</p>
+                <p className="text-[10px] sm:text-[11px] text-gray-500 font-medium mt-0.5 truncate">{kpi.label}</p>
 
                 {/* live sparkline */}
                 <div className="mt-2 -mx-1">
-                  <ResponsiveContainer width="100%" height={40}>
+                  <ResponsiveContainer width="100%" height={38}>
                     <LineChart data={sparks[i]} margin={{ top:3, right:2, left:2, bottom:0 }}>
                       <Line type="monotoneX" dataKey="v" stroke={ac.spark} strokeWidth={2} dot={false}
                         isAnimationActive animationDuration={1200} animationEasing="ease-in-out" />
@@ -810,7 +810,7 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
           </div>
 
           <div className="overflow-x-auto scrollbar-thin">
-            <table className="w-full">
+            <table className="w-full min-w-[540px] md:min-w-0">
               <thead>
                 <tr style={{ borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                   {['Threat ID','Sender','Type','Severity','Risk Score','Status'].map(h => (

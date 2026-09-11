@@ -12,6 +12,7 @@ html, body, #root {
   margin: 0;
   padding: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ── Leaflet dark-theme overrides ── */
@@ -280,6 +281,23 @@ html, body, #root {
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background-color: theme('colors.base.400');
+  }
+
+  .scrollbar-none,
+  .no-scrollbar {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+  .scrollbar-none::-webkit-scrollbar,
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+
+  .touch-scroll {
+    -webkit-overflow-scrolling: touch;
   }
 
   .text-gradient-blue {

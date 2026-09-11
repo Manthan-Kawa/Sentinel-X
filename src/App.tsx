@@ -175,13 +175,13 @@ function AppShell() {
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
       />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 relative z-0">
         <TopBar
           onMenuClick={() => setMobileOpen(true)}
           activeLabel={route.includes('/forensics') ? 'Deep Forensics Report' : (activeNav?.label ?? 'Dashboard')}
           onNavigate={(id) => handleNavigate(id)}
         />
-        <main className="flex-1 overflow-y-auto scrollbar-thin p-4 lg:p-5" style={{ background: '#08090e' }}>
+        <main className="flex-1 overflow-y-auto scrollbar-thin touch-scroll p-3 sm:p-4 lg:p-5" style={{ background: '#08090e' }}>
           <div className="max-w-[1600px] mx-auto animate-fade-in" key={route}>
             {renderPage()}
           </div>
@@ -219,6 +219,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   handleReset = () => {
     this.setState({ hasError: false, error: null });
     try {
+      sessionStorage.removeItem('settings_active_tab');
       localStorage.removeItem(KEY_ACTIVE_CASE);
     } catch { /* ignore */ }
     window.location.hash = '#/dashboard';

@@ -294,42 +294,44 @@ export function AlertsPage({ onNavigate }: { onNavigate?: (id: string) => void }
               <Search className="w-4 h-4 text-gray-500 shrink-0" />
               <input type="text" placeholder="Search by alert ID, type, or source..." value={search} onChange={(e) => setSearch(e.target.value)} className="bg-transparent text-sm text-white placeholder-gray-600 focus:outline-none w-full font-mono" />
             </div>
-            {/* Severity Dropdown */}
-            <div className="relative shrink-0">
-              <select
-                value={severityFilter}
-                onChange={(e) => setSeverityFilter(e.target.value as any)}
-                className="appearance-none px-3.5 py-2.5 pr-8 rounded-xl text-xs font-mono font-bold text-gray-200 bg-white/5 border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all shrink-0"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.04)',
-                }}
-              >
-                <option value="all" className="bg-[#0b0e17] text-gray-300">All Severity</option>
-                <option value="critical" className="bg-[#0b0e17] text-red-400">Critical</option>
-                <option value="high" className="bg-[#0b0e17] text-orange-400">High</option>
-                <option value="medium" className="bg-[#0b0e17] text-amber-400">Medium</option>
-                <option value="low" className="bg-[#0b0e17] text-green-400">Low</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+              {/* Severity Dropdown */}
+              <div className="relative flex-1 sm:flex-none">
+                <select
+                  value={severityFilter}
+                  onChange={(e) => setSeverityFilter(e.target.value as any)}
+                  className="w-full sm:w-auto appearance-none px-3.5 py-2.5 pr-8 rounded-xl text-xs font-mono font-bold text-gray-200 bg-white/5 border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all shrink-0"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                  }}
+                >
+                  <option value="all" className="bg-[#0b0e17] text-gray-300">All Severity</option>
+                  <option value="critical" className="bg-[#0b0e17] text-red-400">Critical</option>
+                  <option value="high" className="bg-[#0b0e17] text-orange-400">High</option>
+                  <option value="medium" className="bg-[#0b0e17] text-amber-400">Medium</option>
+                  <option value="low" className="bg-[#0b0e17] text-green-400">Low</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
 
-            {/* Status Dropdown */}
-            <div className="relative shrink-0">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="appearance-none px-3.5 py-2.5 pr-8 rounded-xl text-xs font-mono font-bold text-gray-200 bg-white/5 border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all shrink-0"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.04)',
-                }}
-              >
-                <option value="all" className="bg-[#0b0e17] text-gray-300">All Status</option>
-                <option value="new" className="bg-[#0b0e17] text-red-400">New</option>
-                <option value="acknowledged" className="bg-[#0b0e17] text-amber-400">Acknowledged</option>
-                <option value="investigating" className="bg-[#0b0e17] text-blue-400">Investigating</option>
-                <option value="resolved" className="bg-[#0b0e17] text-green-400">Resolved</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              {/* Status Dropdown */}
+              <div className="relative flex-1 sm:flex-none">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  className="w-full sm:w-auto appearance-none px-3.5 py-2.5 pr-8 rounded-xl text-xs font-mono font-bold text-gray-200 bg-white/5 border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all shrink-0"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                  }}
+                >
+                  <option value="all" className="bg-[#0b0e17] text-gray-300">All Status</option>
+                  <option value="new" className="bg-[#0b0e17] text-red-400">New</option>
+                  <option value="acknowledged" className="bg-[#0b0e17] text-amber-400">Acknowledged</option>
+                  <option value="investigating" className="bg-[#0b0e17] text-blue-400">Investigating</option>
+                  <option value="resolved" className="bg-[#0b0e17] text-green-400">Resolved</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
           </div>
         </div>
@@ -339,26 +341,26 @@ export function AlertsPage({ onNavigate }: { onNavigate?: (id: string) => void }
       <SlideIn delay={180} direction="up">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div className="lg:col-span-2 rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(145deg,#090b12,#0c0f1a)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
-            <div className="grid grid-cols-12 gap-2 px-5 py-3 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
+            <div className="grid grid-cols-12 gap-2 px-3.5 sm:px-5 py-3 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
               <div className="col-span-4">Alert ID</div>
               <div className="col-span-3 hidden md:block">Type</div>
-              <div className="col-span-2">Severity</div>
-              <div className="col-span-3 text-right md:text-left">Status</div>
+              <div className="col-span-4 md:col-span-2">Severity</div>
+              <div className="col-span-4 md:col-span-3 text-right md:text-left">Status</div>
             </div>
             <div className="divide-y divide-white/5">
               {filtered.map((a) => {
                 const TypeIcon = ALERT_TYPE_ICONS[a.type];
                 const isSel = selected?.id === a.id;
                 return (
-                  <div key={a.id} onClick={() => setSelected(a)} className={`grid grid-cols-12 gap-2 px-5 py-3.5 cursor-pointer transition-all items-center ${isSel ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]'}`}>
-                    <div className="col-span-4 flex items-center gap-2">
+                  <div key={a.id} onClick={() => setSelected(a)} className={`grid grid-cols-12 gap-2 px-3.5 sm:px-5 py-3.5 cursor-pointer transition-all items-center ${isSel ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]'}`}>
+                    <div className="col-span-4 flex items-center gap-1.5 sm:gap-2">
                       <Crosshair className={`w-3 h-3 ${isSel ? 'text-red-400 opacity-100' : 'text-gray-600 opacity-0'} transition-opacity shrink-0`} />
                       <TypeIcon className="w-3.5 h-3.5 text-gray-500 shrink-0" />
                       <span className="text-xs font-mono font-bold text-cyan-400 truncate">{a.id}</span>
                     </div>
                     <div className="col-span-3 hidden md:flex items-center"><span className="text-xs text-gray-300 truncate">{a.type}</span></div>
-                    <div className="col-span-2 flex items-center"><SeverityPill severity={a.severity} /></div>
-                    <div className="col-span-3 flex items-center justify-end md:justify-between">
+                    <div className="col-span-4 md:col-span-2 flex items-center"><SeverityPill severity={a.severity} /></div>
+                    <div className="col-span-4 md:col-span-3 flex items-center justify-end md:justify-between">
                       <StatusPill status={a.status} />
                       <ChevronRight className="w-3.5 h-3.5 text-gray-600 shrink-0 hidden md:block" />
                     </div>

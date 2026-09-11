@@ -234,8 +234,8 @@ export function DarkCyberMap({
 
   return (
     <div
-      className={`relative w-full ${height} bg-[#06070a] rounded-2xl border border-white/10 overflow-hidden select-none shadow-2xl`}
-      style={{ minHeight: '400px' }}
+      className={`relative w-full ${height} bg-[#06070a] rounded-2xl border border-white/10 overflow-hidden select-none shadow-2xl isolate`}
+      style={{ minHeight: '400px', isolation: 'isolate' }}
     >
       {/* ── Real Leaflet map fills the entire card ── */}
       <div ref={mapContainerRef} className="w-full h-full" style={{ minHeight: '400px' }} />

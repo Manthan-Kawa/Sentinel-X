@@ -208,7 +208,7 @@ function AuthModal({ initialMode = 'login', onClose, onSuccess, onGoogleSignIn, 
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-[390px] mx-4 rounded-3xl p-7 animate-slide-up"
+        className="relative w-full max-w-[390px] mx-4 rounded-3xl p-6 sm:p-7 max-h-[92vh] overflow-y-auto scrollbar-thin animate-slide-up"
         style={{
           background: 'rgba(18,18,26,0.97)',
           border: '1px solid rgba(255,255,255,0.08)',
@@ -506,38 +506,38 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
       />
 
       {/* ══ LAYER 1 — SENTINEL-X UI ══ */}
-      <div className="absolute inset-0 z-10 flex flex-col" style={{ pointerEvents: 'none' }}>
+      <div className="absolute inset-0 z-10 flex flex-col overflow-y-auto md:overflow-hidden touch-scroll" style={{ pointerEvents: 'none' }}>
 
         {/* ─ Top bar ─ */}
-        <div className="flex items-center gap-3 px-7 pt-6" style={{ pointerEvents: 'auto' }}>
-          <TransparentLogo src="/Logo-SentinelX.png" alt="SENTINEL-X" className="h-12 md:h-14 w-auto object-contain drop-shadow-xl" />
+        <div className="flex items-center gap-3 px-4 sm:px-7 pt-4 sm:pt-6" style={{ pointerEvents: 'auto' }}>
+          <TransparentLogo src="/Logo-SentinelX.png" alt="SENTINEL-X" className="h-9 sm:h-12 md:h-14 w-auto object-contain drop-shadow-xl" />
 
           {/* Auth controls — only shown when NOT logged in */}
           {!isLoggedIn && (
             <div className="ml-auto flex items-center gap-2">
               <button
                 onClick={() => setAuthModal('login')}
-                className="text-xs text-gray-300 hover:text-white font-medium px-4 py-2 rounded-full hover:bg-white/8 transition-all"
+                className="text-xs text-gray-300 hover:text-white font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-full hover:bg-white/8 transition-all"
               >
                 Log In
               </button>
               <button
                 onClick={() => setAuthModal('signup')}
-                className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm text-white text-xs font-semibold px-4 py-2 rounded-full border border-white/20 hover:bg-white/18 hover:border-white/35 transition-all"
+                className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm text-white text-xs font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-white/20 hover:bg-white/18 hover:border-white/35 transition-all"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                Sign Up
+                <span>Sign Up</span>
               </button>
             </div>
           )}
         </div>
 
-        <div className="flex-1" />
+        <div className="flex-1 min-h-[20px]" />
 
         {/* ─ Hero ─ */}
-        <div className="flex flex-col items-center text-center px-6 pb-10" style={{ pointerEvents: 'auto' }}>
+        <div className="flex flex-col items-center text-center px-4 sm:px-6 pt-4 sm:pt-0 pb-6 md:pb-10" style={{ pointerEvents: 'auto' }}>
           <h1
-            className="text-5xl md:text-7xl font-black text-white leading-[1.05] tracking-tight mb-5 animate-slide-up"
+            className="text-3xl sm:text-5xl md:text-7xl font-black text-white leading-[1.1] tracking-tight mb-3 sm:mb-5 animate-slide-up"
             style={{ textShadow: '0 4px 48px rgba(0,0,0,0.6)' }}
           >
             AI-Powered
@@ -548,7 +548,7 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
           </h1>
 
           <p
-            className="text-base md:text-lg text-gray-300 max-w-lg mb-10 leading-relaxed animate-fade-in"
+            className="text-xs sm:text-base md:text-lg text-gray-300 max-w-lg mb-6 sm:mb-10 leading-relaxed animate-fade-in"
             style={{ animationDelay: '0.15s', textShadow: '0 2px 16px rgba(0,0,0,0.8)' }}
           >
             Detect BEC, phishing &amp; advanced email threats with military-grade forensic analysis.
@@ -564,7 +564,7 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
             <button
               id="analyze-email-btn"
               onClick={handleAnalyzeEmailClick}
-              className="glow-btn group relative flex items-center gap-2 text-white font-semibold text-sm px-8 py-4 rounded-full transition-all duration-200 hover:scale-105 active:scale-100"
+              className="glow-btn group relative flex items-center gap-2 text-white font-semibold text-sm px-7 sm:px-8 py-3.5 sm:py-4 rounded-full transition-all duration-200 hover:scale-105 active:scale-100"
               style={{
                 background: 'linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(5,5,14,0.98) 100%)',
                 boxShadow: '0 0 32px rgba(96,165,250,0.08)',
@@ -578,18 +578,18 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
         </div>
 
         {/* ─ Feature cards ─ */}
-        <div className="px-5 pb-7" style={{ pointerEvents: 'auto' }}>
-          <div className="max-w-3xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-2.5">
+        <div className="px-4 sm:px-5 pb-6 sm:pb-7" style={{ pointerEvents: 'auto' }}>
+          <div className="max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">
             {FEATURES.map(({ icon: Icon, label, desc }) => (
               <div
                 key={label}
-                className="group text-left bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-3.5 hover:bg-white/8 hover:border-white/25 transition-all duration-200 cursor-default select-none"
+                className="group text-left bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-3 sm:p-3.5 hover:bg-white/8 hover:border-white/25 transition-all duration-200 cursor-default select-none"
               >
-                <div className="w-7 h-7 rounded-lg bg-white/8 flex items-center justify-center mb-2.5 group-hover:bg-white/15 transition-colors">
+                <div className="w-7 h-7 rounded-lg bg-white/8 flex items-center justify-center mb-2 sm:mb-2.5 group-hover:bg-white/15 transition-colors">
                   <Icon className="w-3.5 h-3.5 text-gray-400" />
                 </div>
                 <p className="text-gray-200 text-xs font-medium mb-0.5">{label}</p>
-                <p className="text-gray-600 text-[11px] leading-snug">{desc}</p>
+                <p className="text-gray-400 text-[11px] leading-snug">{desc}</p>
               </div>
             ))}
           </div>

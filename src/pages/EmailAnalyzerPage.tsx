@@ -288,14 +288,14 @@ export function EmailAnalyzerPage({ onNavigate }: { onNavigate?: (route: string)
               boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
             }}
           >
-            <div className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-thin pb-1">
+            <div className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-none no-scrollbar touch-scroll pb-1">
               {ANALYSIS_STAGES.map((stage, i) => {
                 const isActive = stage === activeStage;
                 const isDone = state === 'results' || (state === 'analyzing' && ANALYSIS_STAGES.indexOf(activeStage) > i);
                 return (
                   <div key={stage} className="flex items-center shrink-0">
                     <div
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-300 ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-300 ${
                         isActive ? 'text-purple-300' : isDone ? 'text-green-400' : 'text-gray-500'
                       }`}
                       style={
@@ -385,7 +385,7 @@ function IdleView({
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className="relative rounded-2xl py-14 px-6 text-center cursor-pointer transition-all duration-300 group"
+          className="relative rounded-2xl py-8 sm:py-14 px-4 sm:px-6 text-center cursor-pointer transition-all duration-300 group"
           style={{
             background: dragOver
               ? 'linear-gradient(145deg, rgba(139,92,246,0.1), rgba(124,58,237,0.05))'
@@ -406,26 +406,26 @@ function IdleView({
             onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
           />
           <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 transition-all duration-300 group-hover:scale-110"
+            className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 transition-all duration-300 group-hover:scale-110"
             style={{
               background: 'linear-gradient(135deg, rgba(124,58,237,0.25) 0%, rgba(91,33,182,0.15) 100%)',
               border: '1px solid rgba(139,92,246,0.4)',
               boxShadow: '0 0 20px rgba(124,58,237,0.25)',
             }}
           >
-            <Upload className="w-7 h-7 text-purple-400" />
+            <Upload className="w-6 h-6 sm:w-7 sm:h-7 text-purple-400" />
           </div>
-          <h3 className="text-base font-bold text-white mb-1">Drag & drop .EML file here</h3>
+          <h3 className="text-sm sm:text-base font-bold text-white mb-1">Drag & drop .EML file here</h3>
           <p className="text-xs text-gray-500 font-medium">or click to browse — or paste raw email below</p>
         </div>
       </SlideIn>
 
       {/* ── Action Buttons Row ── */}
       <SlideIn delay={180} direction="up">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <button
             onClick={onDemo}
-            className="flex items-center gap-2.5 px-5 py-3 rounded-xl text-xs font-bold text-purple-200 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
+            className="flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl text-xs font-bold text-purple-200 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
             style={{
               background: 'linear-gradient(135deg, rgba(124,58,237,0.3) 0%, rgba(91,33,182,0.2) 100%)',
               border: '1px solid rgba(139,92,246,0.45)',
@@ -439,7 +439,7 @@ function IdleView({
           <button
             onClick={onAnalyzePasted}
             disabled={!pastedEmail.trim()}
-            className="flex items-center gap-2.5 px-5 py-3 rounded-xl text-xs font-bold text-gray-300 transition-all duration-300 hover:text-white hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl text-xs font-bold text-gray-300 transition-all duration-300 hover:text-white hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
               background: 'rgba(255,255,255,0.05)',
               border: '1px solid rgba(255,255,255,0.1)',
@@ -923,7 +923,7 @@ function ResultsView({
             boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
           }}
         >
-          <div className="flex items-center gap-1 border-b border-white/10 mb-5 overflow-x-auto scrollbar-thin">
+          <div className="flex items-center gap-1 border-b border-white/10 mb-5 overflow-x-auto scrollbar-none touch-scroll">
             {[
               { id: 'facts',     label: 'Observed Facts', icon: Eye },
               { id: 'inference', label: 'AI Inference',   icon: Brain },

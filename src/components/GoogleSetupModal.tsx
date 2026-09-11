@@ -47,7 +47,7 @@ export function GoogleSetupModal({ isOpen, onClose, onSuccessConnect }: GoogleSe
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-lg rounded-3xl overflow-hidden animate-slide-up flex flex-col"
+        className="relative w-full max-w-lg rounded-3xl overflow-hidden animate-slide-up flex flex-col max-h-[92vh] overflow-y-auto scrollbar-thin"
         style={{
           background: 'linear-gradient(145deg, #10121d, #0b0c14)',
           border: '1px solid rgba(255,255,255,0.12)',

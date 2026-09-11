@@ -578,11 +578,14 @@ function AttackGraphCanvasInner({
       )}
 
       {/* ── 80% Graph Canvas / 20% Node Details Panel Split ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4" style={{ height }}>
+      <div
+        className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:h-[var(--graph-height)]"
+        style={{ '--graph-height': `${height}px` } as React.CSSProperties}
+      >
         {/* ── Graph Canvas (80%) ── */}
         <div
-          className="lg:col-span-4 rounded-2xl overflow-hidden relative select-none"
-          style={{ background: '#07080e', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 40px rgba(0,0,0,0.6)', height: '100%' }}
+          className="lg:col-span-4 rounded-2xl overflow-hidden relative select-none h-[400px] sm:h-[480px] lg:h-full"
+          style={{ background: '#07080e', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 40px rgba(0,0,0,0.6)' }}
         >
           <ReactFlow
             nodes={nodes}
@@ -605,32 +608,26 @@ function AttackGraphCanvasInner({
               showInteractive={false}
               style={{ background: 'rgba(12,14,24,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', overflow: 'hidden', left: '16px', bottom: '70px' }}
             />
-            <MiniMap
-              nodeColor={(node) => {
-                const nd = node.data?.nodeData as AGNode | undefined;
-                return nd ? (NODE_CFG[nd.type]?.border ?? '#3b82f6') : '#3b82f6';
-              }}
-              maskColor="rgba(7, 8, 14, 0.75)"
-              style={{ background: '#0a0c16', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', width: 160, height: 100, right: '16px', bottom: '16px' }}
-            />
+            <div className="hidden sm:block">
+              <MiniMap
+                nodeColor={(node) => {
+                  const nd = node.data?.nodeData as AGNode | undefined;
+                  return nd ? (NODE_CFG[nd.type]?.border ?? '#3b82f6') : '#3b82f6';
+                }}
+                maskColor="rgba(7, 8, 14, 0.75)"
+                style={{ background: '#0a0c16', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', width: 160, height: 100, right: '16px', bottom: '16px' }}
+              />
+            </div>
           </ReactFlow>
 
-          {/* Reset button */}
-          <button
-            onClick={reset}
-            className="absolute z-20 px-3 py-1 rounded-md text-xs font-mono font-semibold transition-all hover:bg-white/15 hover:text-white"
-            style={{ right: '16px', bottom: '124px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#9ca3af', backdropFilter: 'blur(4px)' }}
-          >
-            Reset Flow
-          </button>
 
           {/* Legend */}
           <div
-            className="absolute bottom-4 left-4 z-20 flex items-center gap-2 px-3.5 py-2 rounded-xl backdrop-blur-md"
+            className="absolute bottom-3 left-3 right-3 sm:right-auto sm:bottom-4 sm:left-4 z-20 flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl backdrop-blur-md overflow-x-auto scrollbar-none max-w-[calc(100%-24px)]"
             style={{ background: 'rgba(10,12,22,0.92)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}
           >
-            <span className="text-[9px] font-mono font-bold text-gray-500 uppercase tracking-widest mr-1">NODE TYPES</span>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[9px] font-mono font-bold text-gray-500 uppercase tracking-widest mr-1 shrink-0">NODE TYPES</span>
+            <div className="flex items-center gap-1.5 shrink-0">
               {legendTypes.map((item) => {
                 const cfg = NODE_CFG[item.type];
                 const Icon = cfg.icon;

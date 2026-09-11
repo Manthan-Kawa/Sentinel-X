@@ -452,14 +452,14 @@ export function EvidenceVaultPage({ onNavigate }: { onNavigate?: (route: string)
         >
           {/* Table Header */}
           <div
-            className="grid grid-cols-12 gap-2 px-4 py-2.5 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider"
+            className="grid grid-cols-12 gap-2 px-3.5 sm:px-4 py-2.5 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider"
             style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}
           >
-            <div className="col-span-2">Evidence ID</div>
-            <div className="col-span-4">Artifact / Filename</div>
+            <div className="col-span-3 sm:col-span-2">Evidence ID</div>
+            <div className="col-span-6 sm:col-span-4">Artifact / Filename</div>
             <div className="col-span-2 hidden md:block">Source Module</div>
             <div className="col-span-2 hidden lg:block">SHA-256</div>
-            <div className="col-span-2 text-right">Status</div>
+            <div className="col-span-3 sm:col-span-2 text-right">Status</div>
           </div>
 
           {/* Table Rows */}
@@ -468,17 +468,17 @@ export function EvidenceVaultPage({ onNavigate }: { onNavigate?: (route: string)
               <div
                 key={e.id}
                 onClick={() => setSelected(e)}
-                className="grid grid-cols-12 gap-2 px-4 py-3 cursor-pointer transition-all duration-150 hover:bg-white/[0.03] group items-center"
+                className="grid grid-cols-12 gap-2 px-3.5 sm:px-4 py-3 cursor-pointer transition-all duration-150 hover:bg-white/[0.03] group items-center"
               >
                 {/* ID */}
-                <div className="col-span-2 min-w-0">
+                <div className="col-span-3 sm:col-span-2 min-w-0">
                   <span className="text-xs font-mono font-bold text-cyan-400 truncate block group-hover:text-cyan-300">
                     {e.id}
                   </span>
                 </div>
 
                 {/* Filename & Case */}
-                <div className="col-span-4 min-w-0">
+                <div className="col-span-6 sm:col-span-4 min-w-0">
                   <span className="text-xs text-white font-medium truncate block">
                     {e.filename}
                   </span>
@@ -500,7 +500,7 @@ export function EvidenceVaultPage({ onNavigate }: { onNavigate?: (route: string)
                 </div>
 
                 {/* Status */}
-                <div className="col-span-2 flex items-center justify-end gap-1.5">
+                <div className="col-span-3 sm:col-span-2 flex items-center justify-end gap-1.5">
                   <IntegrityPill status={e.integrityStatus} />
                   <ChevronRight className="w-3.5 h-3.5 text-gray-600 group-hover:text-cyan-400 transition-colors shrink-0" />
                 </div>

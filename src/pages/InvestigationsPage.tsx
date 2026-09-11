@@ -282,42 +282,44 @@ export function InvestigationsPage() {
               />
             </div>
 
-            {/* Severity Dropdown */}
-            <div className="relative shrink-0">
-              <select
-                value={severityFilter}
-                onChange={(e) => setSeverityFilter(e.target.value as any)}
-                className="appearance-none px-3.5 py-2.5 pr-8 rounded-xl text-xs font-mono font-bold text-gray-200 bg-white/5 border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all shrink-0"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.04)',
-                }}
-              >
-                <option value="all" className="bg-[#0b0e17] text-gray-300">All Severity</option>
-                <option value="critical" className="bg-[#0b0e17] text-red-400">Critical</option>
-                <option value="high" className="bg-[#0b0e17] text-orange-400">High</option>
-                <option value="medium" className="bg-[#0b0e17] text-amber-400">Medium</option>
-                <option value="low" className="bg-[#0b0e17] text-green-400">Low</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+              {/* Severity Dropdown */}
+              <div className="relative flex-1 sm:flex-none">
+                <select
+                  value={severityFilter}
+                  onChange={(e) => setSeverityFilter(e.target.value as any)}
+                  className="w-full sm:w-auto appearance-none px-3.5 py-2.5 pr-8 rounded-xl text-xs font-mono font-bold text-gray-200 bg-white/5 border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all shrink-0"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                  }}
+                >
+                  <option value="all" className="bg-[#0b0e17] text-gray-300">All Severity</option>
+                  <option value="critical" className="bg-[#0b0e17] text-red-400">Critical</option>
+                  <option value="high" className="bg-[#0b0e17] text-orange-400">High</option>
+                  <option value="medium" className="bg-[#0b0e17] text-amber-400">Medium</option>
+                  <option value="low" className="bg-[#0b0e17] text-green-400">Low</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
 
-            {/* Status Dropdown */}
-            <div className="relative shrink-0">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="appearance-none px-3.5 py-2.5 pr-8 rounded-xl text-xs font-mono font-bold text-gray-200 bg-white/5 border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all shrink-0"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.04)',
-                }}
-              >
-                <option value="all" className="bg-[#0b0e17] text-gray-300">All Status</option>
-                <option value="open" className="bg-[#0b0e17] text-red-400">Open</option>
-                <option value="investigating" className="bg-[#0b0e17] text-blue-400">Investigating</option>
-                <option value="contained" className="bg-[#0b0e17] text-amber-400">Contained</option>
-                <option value="resolved" className="bg-[#0b0e17] text-green-400">Resolved</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              {/* Status Dropdown */}
+              <div className="relative flex-1 sm:flex-none">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  className="w-full sm:w-auto appearance-none px-3.5 py-2.5 pr-8 rounded-xl text-xs font-mono font-bold text-gray-200 bg-white/5 border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all shrink-0"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                  }}
+                >
+                  <option value="all" className="bg-[#0b0e17] text-gray-300">All Status</option>
+                  <option value="open" className="bg-[#0b0e17] text-red-400">Open</option>
+                  <option value="investigating" className="bg-[#0b0e17] text-blue-400">Investigating</option>
+                  <option value="contained" className="bg-[#0b0e17] text-amber-400">Contained</option>
+                  <option value="resolved" className="bg-[#0b0e17] text-green-400">Resolved</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
           </div>
         </div>

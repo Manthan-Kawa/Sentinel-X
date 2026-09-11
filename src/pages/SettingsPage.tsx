@@ -9,7 +9,6 @@ import {
   Key,
   Shield,
   RefreshCw,
-  Copy,
   Save,
   Eye,
   EyeOff,
@@ -64,7 +63,7 @@ function SlideIn({
   );
 }
 
-type TabType = 'profile' | 'appearance' | 'notifications' | 'privacy' | 'data' | 'ai-engine';
+type TabType = 'profile' | 'appearance' | 'notifications' | 'data' | 'ai-engine';
 
 interface SettingsTabConfig {
   id: TabType;
@@ -77,7 +76,6 @@ const TABS: SettingsTabConfig[] = [
   { id: 'profile',       label: 'Profile',       icon: User },
   { id: 'appearance',    label: 'Appearance',    icon: Palette },
   { id: 'notifications', label: 'Notifications', icon: Bell,      analystOnly: true },
-  { id: 'privacy',       label: 'Privacy',       icon: Lock,      analystOnly: true },
   { id: 'data',          label: 'Data Cache',    icon: RefreshCw, analystOnly: true },
   { id: 'ai-engine',     label: 'AI Engine',     icon: Cpu,       analystOnly: true },
 ];
@@ -89,7 +87,25 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
 
   const visibleTabs = isUser ? TABS.filter((t) => !t.analystOnly) : TABS;
 
-  const [activeTab, setActiveTab] = useState<TabType>('profile');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const savedTab = typeof sessionStorage !== 'undefined' ? (sessionStorage.getItem('settings_active_tab') as TabType) : null;
+    if (savedTab && TABS.some((t) => t.id === savedTab)) {
+      sessionStorage.removeItem('settings_active_tab');
+      return savedTab;
+    }
+    return 'profile';
+  });
+
+  useEffect(() => {
+    const handleOpenTab = (e: any) => {
+      const tab = e?.detail;
+      if (tab && TABS.some((t) => t.id === tab)) {
+        setActiveTab(tab);
+      }
+    };
+    window.addEventListener('sentinel_open_settings_tab', handleOpenTab);
+    return () => window.removeEventListener('sentinel_open_settings_tab', handleOpenTab);
+  }, []);
 
   /* Profile state */
   const [displayName, setDisplayName] = useState(() => {
@@ -121,7 +137,6 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
   const [weeklyDigest, setWeeklyDigest] = useState(false);
   const [animationsEnabled, setAnimationsEnabled] = useState(true);
   const [glowEffects, setGlowEffects] = useState(true);
-  const [apiTokenCopied, setApiTokenCopied] = useState(false);
 
   /* AI Engine (Gemini) state */
   const [claudeKey, setClaudeKey] = useState(() => localStorage.getItem(CLAUDE_KEY_STORAGE) ?? '');
@@ -228,11 +243,6 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
     }).catch((e) => console.warn('Supabase settings sync error:', e));
   };
 
-  const handleCopyApiToken = () => {
-    navigator.clipboard.writeText('stxl_live_8f92a1b4c7d2e5f8a3b6c9d1e4f7a2b5');
-    setApiTokenCopied(true);
-    setTimeout(() => setApiTokenCopied(false), 2000);
-  };
 
   const handleSaveClaudeKey = () => {
     localStorage.setItem(CLAUDE_KEY_STORAGE, claudeKey.trim());
@@ -299,7 +309,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
           {/* ── Left Sidebar Navigation ── */}
           <div className="lg:col-span-1">
             <div
-              className="rounded-2xl p-3 space-y-1.5"
+              className="rounded-2xl p-2 lg:p-3 flex lg:flex-col overflow-x-auto lg:overflow-visible scrollbar-none gap-1.5 touch-scroll"
               style={{
                 background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
                 border: '1px solid rgba(255,255,255,0.08)',
@@ -313,7 +323,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group text-left"
+                    className="shrink-0 lg:w-full flex items-center justify-between gap-3 px-3.5 py-2.5 lg:px-4 lg:py-3 rounded-xl transition-all duration-200 group text-left whitespace-nowrap"
                     style={
                       active
                         ? {
@@ -352,7 +362,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
           {/* ── Right Content Area ── */}
           <div className="lg:col-span-3">
             <div
-              className="rounded-2xl p-7 min-h-[500px]"
+              className="rounded-2xl p-4 sm:p-7 min-h-[500px]"
               style={{
                 background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
                 border: '1px solid rgba(255,255,255,0.08)',
@@ -592,57 +602,6 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                 </div>
               )}
 
-              {/* ── 4. Privacy Tab ── */}
-              {activeTab === 'privacy' && (
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-bold text-white tracking-tight">Privacy & Security</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Manage API keys and authentication tokens</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div
-                      className="rounded-xl p-4"
-                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-                    >
-                      <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest font-bold block mb-1">
-                        SENTINEL API Key
-                      </span>
-                      <div className="flex items-center gap-2 mt-2">
-                        <input
-                          type="password"
-                          readOnly
-                          value="stxl_live_8f92a1b4c7d2e5f8a3b6c9d1e4f7a2b5"
-                          className="flex-1 bg-black/40 rounded-xl px-3.5 py-2 text-xs font-mono text-gray-300 border border-white/10 focus:outline-none"
-                        />
-                        <button
-                          onClick={handleCopyApiToken}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-purple-300 font-mono transition-colors"
-                          style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.3)' }}
-                        >
-                          {apiTokenCopied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
-                          {apiTokenCopied ? 'Copied' : 'Copy'}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div
-                      className="rounded-xl p-4 flex items-center justify-between"
-                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-                    >
-                      <div>
-                        <div className="text-xs font-bold text-white flex items-center gap-2">
-                          <Shield className="w-4 h-4 text-green-400" /> Two-Factor Authentication (2FA)
-                        </div>
-                        <p className="text-xs text-gray-400 mt-0.5">Hardware token or TOTP app enabled</p>
-                      </div>
-                      <span className="px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold text-green-400 bg-green-500/15 border border-green-500/30">
-                        ENABLED
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* ── 5. Data Tab ── */}
               {activeTab === 'data' && (
@@ -655,7 +614,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                   <div className="space-y-3">
                     {/* ── Clear Analysis Session (ephemeral tier only) ── */}
                     <div
-                      className="rounded-xl p-4 flex items-start justify-between gap-4"
+                      className="rounded-xl p-4 flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4"
                       style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
                     >
                       <div>
@@ -673,7 +632,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                           setSessionCleared(true);
                           setTimeout(() => setSessionCleared(false), 2500);
                         }}
-                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-colors"
+                        className="self-start sm:self-auto shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-colors"
                         style={{
                           background: sessionCleared ? 'rgba(34,197,94,0.12)' : 'rgba(251,191,36,0.1)',
                           border: sessionCleared ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(251,191,36,0.25)',
@@ -687,7 +646,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
 
                     {/* ── Reload Synthetic Dataset ── */}
                     <div
-                      className="rounded-xl p-4 flex items-center justify-between"
+                      className="rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4"
                       style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
                     >
                       <div>
@@ -696,7 +655,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                       </div>
                       <button
                         onClick={() => window.location.reload()}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-cyan-400 transition-colors"
+                        className="self-start sm:self-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-cyan-400 transition-colors"
                         style={{ background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.25)' }}
                       >
                         <RefreshCw className="w-3.5 h-3.5" /> Reload
@@ -705,7 +664,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
 
                     {/* ── Purge User Requests & Tickets ── */}
                     <div
-                      className="rounded-xl p-4 flex items-center justify-between"
+                      className="rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4"
                       style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
                     >
                       <div>
@@ -724,7 +683,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                             setTimeout(() => setTicketsCleared(false), 2500);
                           }
                         }}
-                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-colors cursor-pointer"
+                        className="self-start sm:self-auto shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-colors cursor-pointer"
                         style={{
                           background: ticketsCleared ? 'rgba(34,197,94,0.12)' : 'rgba(244,63,94,0.1)',
                           border: ticketsCleared ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(244,63,94,0.25)',

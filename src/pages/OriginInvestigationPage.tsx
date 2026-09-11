@@ -42,7 +42,7 @@ import { CopyButton } from '@/components/CopyButton';
 import { DarkCyberMap } from '@/components/DarkCyberMap';
 import { useAnalysis } from '@/contexts/AnalysisContext';
 import { useEvidence } from '@/contexts/EvidenceContext';
-import { ArrowRight, Link } from 'lucide-react';
+import { ArrowLeft, Link } from 'lucide-react';
 import type { EmailAnalysisResult } from '@/services/claudeService';
 import { liveGeoLookup } from '@/services/claudeService';
 import { resolveGeoLocation, extractOriginatingSenderTelemetry } from '@/utils/geoUtils';
@@ -229,41 +229,40 @@ export function OriginInvestigationPage({ onNavigate }: { onNavigate?: (route: s
       {/* ── Page Header ── */}
       <SlideIn delay={0} direction="down">
         <div className="space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-2xl font-black text-white tracking-tight">Origin Investigation</h2>
-              <p className="text-sm text-gray-400 mt-0.5">
+          <div className="flex items-start gap-2.5 sm:gap-3">
+            {onNavigate && (
+              <button
+                onClick={() => onNavigate('threat-intelligence')}
+                className="mt-0.5 w-8 h-8 rounded-xl flex items-center justify-center text-blue-400 hover:text-blue-300 transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0"
+                style={{
+                  background: 'rgba(59, 130, 246, 0.05)',
+                  border: '1px solid rgba(59, 130, 246, 0.45)',
+                  boxShadow: '0 0 10px rgba(59, 130, 246, 0.15)',
+                }}
+                title="Back to Threat Intelligence"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug">Origin Investigation</h2>
+              <p className="text-xs sm:text-sm text-gray-400 mt-0.5 leading-relaxed">
                 Geographic infrastructure triangulation and origin relay location telemetry
               </p>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {onNavigate && (
-                <button
-                  onClick={() => onNavigate('threat-intelligence')}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 shadow-md font-mono cursor-pointer"
-                  style={{
-                    background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-                    border: '1px solid rgba(99,102,241,0.4)',
-                  }}
-                >
-                  <ArrowRight className="w-3.5 h-3.5" />
-                  <span>Back to Threat Intelligence</span>
-                </button>
-              )}
             </div>
           </div>
 
           {/* ── Synced Analysis Banner ── */}
           {hasLive && currentResult && (
             <div
-              className="rounded-2xl p-4"
+              className="rounded-2xl p-3.5 sm:p-4 overflow-hidden max-w-full"
               style={{
                 background: lc.bg,
                 border: `1px solid ${lc.border}`,
                 boxShadow: lc.glow,
               }}
             >
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
@@ -273,32 +272,32 @@ export function OriginInvestigationPage({ onNavigate }: { onNavigate?: (route: s
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[10px] font-mono uppercase tracking-widest text-gray-500 font-bold leading-none mb-0.5">Synced from Email Analysis</p>
-                    <p className="text-xs font-bold text-white font-mono truncate" title={`${currentResult.case_id || 'ANALYSIS-ACTIVE'}${subjectHeader ? ` — ${subjectHeader}` : ''}`}>
+                    <p className="text-xs font-bold text-white font-mono truncate block" title={`${currentResult.case_id || 'ANALYSIS-ACTIVE'}${subjectHeader ? ` — ${subjectHeader}` : ''}`}>
                       <span>{currentResult.case_id || 'ANALYSIS-ACTIVE'}</span>
                       {subjectHeader && <span className="text-gray-300 font-normal"> — {subjectHeader}</span>}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 flex-wrap ml-auto shrink-0">
+                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                   <span
-                    className={`px-2.5 py-0.5 rounded text-[11px] font-bold uppercase ${lc.text}`}
+                    className={`px-2.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold uppercase shrink-0 whitespace-nowrap ${lc.text}`}
                     style={{ background: lc.bg, border: `1px solid ${lc.border}` }}
                   >
                     {currentResult.alert_level || 'INFO'}
                   </span>
                   {typeof currentResult.threat_score === 'number' && (
-                    <span className="px-2.5 py-0.5 rounded text-[11px] font-bold text-purple-300 bg-purple-500/20 border border-purple-500/30">
+                    <span className="px-2.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold text-purple-300 bg-purple-500/20 border border-purple-500/30 shrink-0 whitespace-nowrap">
                       Score: {currentResult.threat_score}/100
                     </span>
                   )}
                   {(currentResult.origin?.sending_ip || currentResult.threat_intel?.sending_ip) && (
-                    <span className="px-2.5 py-0.5 rounded text-[11px] font-mono font-bold text-cyan-300 bg-cyan-500/15 border border-cyan-500/25">
+                    <span className="px-2.5 py-0.5 rounded text-[10px] sm:text-[11px] font-mono font-bold text-cyan-300 bg-cyan-500/15 border border-cyan-500/25 shrink-0 truncate max-w-[170px] whitespace-nowrap">
                       IP: {currentResult.origin?.sending_ip || currentResult.threat_intel?.sending_ip}
                     </span>
                   )}
                   {currentResult.origin?.country && (
-                    <span className="px-2.5 py-0.5 rounded text-[11px] font-mono font-bold text-green-300 bg-green-500/15 border border-green-500/25">
+                    <span className="px-2.5 py-0.5 rounded text-[10px] sm:text-[11px] font-mono font-bold text-green-300 bg-green-500/15 border border-green-500/25 shrink-0 truncate max-w-[140px] whitespace-nowrap">
                       {currentResult.origin.country}
                     </span>
                   )}
@@ -392,7 +391,7 @@ export function OriginInvestigationPage({ onNavigate }: { onNavigate?: (route: s
                     const found = liveMarkers.find((loc) => loc.id === m.id);
                     if (found) setSelected(found);
                   }}
-                  height="h-[420px]"
+                  height="h-[300px] sm:h-[420px]"
                 />
               </div>
             </SlideIn>
@@ -635,26 +634,29 @@ export function AttackGraphPage({ onNavigate }: { onNavigate?: (route: string) =
       <SlideIn delay={0} direction="down">
         <div className="space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-2xl font-black text-white tracking-tight">Attack Graph</h2>
-              <p className="text-sm text-gray-400 mt-0.5">
-                Interactive entity correlation network — click any node to inspect details
-              </p>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
               {onNavigate && (
                 <button
                   onClick={() => onNavigate('origin-investigation')}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 shadow-md font-mono cursor-pointer"
+                  className="mt-0.5 w-8 h-8 rounded-xl flex items-center justify-center text-blue-400 hover:text-blue-300 transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0"
                   style={{
-                    background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-                    border: '1px solid rgba(99,102,241,0.4)',
+                    background: 'rgba(59, 130, 246, 0.05)',
+                    border: '1px solid rgba(59, 130, 246, 0.45)',
+                    boxShadow: '0 0 10px rgba(59, 130, 246, 0.15)',
                   }}
+                  title="Back to Origin Investigation"
                 >
-                  <ArrowRight className="w-3.5 h-3.5" />
-                  <span>Back to Origin Investigation</span>
+                  <ArrowLeft className="w-4 h-4" />
                 </button>
               )}
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug">Attack Graph</h2>
+                <p className="text-xs sm:text-sm text-gray-400 mt-0.5 leading-relaxed">
+                  Interactive entity correlation network — click any node to inspect details
+                </p>
+              </div>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 shrink-0 self-start sm:self-center">
               <div
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
                 style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)' }}
@@ -671,14 +673,14 @@ export function AttackGraphPage({ onNavigate }: { onNavigate?: (route: string) =
           {/* ── Synced Analysis Banner ── */}
           {hasLive && currentResult && (
             <div
-              className="rounded-2xl p-4"
+              className="rounded-2xl p-3.5 sm:p-4 overflow-hidden max-w-full"
               style={{
                 background: lc.bg,
                 border: `1px solid ${lc.border}`,
                 boxShadow: lc.glow,
               }}
             >
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
@@ -695,15 +697,15 @@ export function AttackGraphPage({ onNavigate }: { onNavigate?: (route: string) =
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 flex-wrap ml-auto shrink-0">
+                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                   <span
-                    className={`px-2.5 py-0.5 rounded text-[11px] font-bold uppercase ${lc.text}`}
+                    className={`px-2.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold uppercase shrink-0 whitespace-nowrap ${lc.text}`}
                     style={{ background: lc.bg, border: `1px solid ${lc.border}` }}
                   >
                     {currentResult.alert_level || 'INFO'}
                   </span>
                   {typeof currentResult.threat_score === 'number' && (
-                    <span className="px-2.5 py-0.5 rounded text-[11px] font-bold text-purple-300 bg-purple-500/20 border border-purple-500/30">
+                    <span className="px-2.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold text-purple-300 bg-purple-500/20 border border-purple-500/30 shrink-0 whitespace-nowrap">
                       Score: {currentResult.threat_score}/100
                     </span>
                   )}

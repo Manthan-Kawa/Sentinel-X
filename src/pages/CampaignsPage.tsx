@@ -62,10 +62,10 @@ function SlideIn({
     direction === 'left'
       ? 'translateX(-36px)'
       : direction === 'right'
-      ? 'translateX(36px)'
-      : direction === 'down'
-      ? 'translateY(-20px)'
-      : 'translateY(24px)';
+        ? 'translateX(36px)'
+        : direction === 'down'
+          ? 'translateY(-20px)'
+          : 'translateY(24px)';
   return (
     <div
       className={className}
@@ -119,8 +119,8 @@ function buildCaseFromAnalysis(r: EmailAnalysisResult): InvestigationCase {
     r.alert_level === 'critical'
       ? 'investigating'
       : r.alert_level === 'high' || r.alert_level === 'medium'
-      ? 'open'
-      : 'resolved';
+        ? 'open'
+        : 'resolved';
 
   return {
     id: r.case_id,
@@ -136,10 +136,10 @@ function buildCaseFromAnalysis(r: EmailAnalysisResult): InvestigationCase {
     timeline:
       r.recommended_actions?.length > 0
         ? r.recommended_actions.map((a) => ({
-            time: now,
-            event: `[${a.priority.toUpperCase()}] ${a.action}: ${a.detail}`,
-            actor: 'SENTINEL-X Engine',
-          }))
+          time: now,
+          event: `[${a.priority.toUpperCase()}] ${a.action}: ${a.detail}`,
+          actor: 'SENTINEL-X Engine',
+        }))
         : [{ time: now, event: `Analysis completed — threat score ${r.threat_score}/100`, actor: 'SENTINEL-X Engine' }],
     analystNotes: r.ai_inferences.slice(0, 3).map((inf) => ({
       author: 'AI Engine',
@@ -291,6 +291,30 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
 
   const activeCount = activeCampaignsCount;
 
+  const targetClusters = useMemo(() => {
+    const actives = allCampaigns.filter((c) => c.status === 'active');
+    return actives.length > 0 ? actives : allCampaigns;
+  }, [allCampaigns]);
+
+  // Rotate through target clusters if more than 1
+  const [clusterIdx, setClusterIdx] = useState(0);
+  const [clusterFade, setClusterFade] = useState<'in' | 'out'>('in');
+
+  useEffect(() => {
+    if (targetClusters.length <= 1) return;
+    const interval = setInterval(() => {
+      setClusterFade('out');
+      setTimeout(() => {
+        setClusterIdx((prev) => (prev + 1) % targetClusters.length);
+        setClusterFade('in');
+      }, 250);
+    }, 4500);
+
+    return () => clearInterval(interval);
+  }, [targetClusters.length]);
+
+  const currentCluster = targetClusters[clusterIdx % (targetClusters.length || 1)] || targetClusters[0];
+
   const STAT_CARDS = [
     { label: 'Emails Observed', value: stats.emailsObserved, icon: Mail, color: '#f87171', glow: 'rgba(239,68,68,0.15)' },
     { label: 'Unique Domains', value: stats.uniqueDomains, icon: Globe, color: '#2dd4bf', glow: 'rgba(45,212,191,0.15)' },
@@ -301,31 +325,140 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
 
   return (
     <div className="space-y-6" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
-      {/* ── Header ── */}
+      {/* ── Page Header (Single top-level SlideIn eliminates extra top margin on PC) ── */}
       <SlideIn delay={0} direction="down">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Mobile Card Header (Phone only: block md:hidden) Matching User Screenshot */}
+        <div className="block md:hidden rounded-2xl sm:rounded-3xl p-4 sm:p-5 bg-[#0e101a] border border-white/10 shadow-2xl space-y-4">
+          {/* Row 1: Icon + Eyebrow + Title + Active Count Pill */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-400 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/10">
+                <Crosshair className="w-5 h-5 text-purple-400" />
+              </div>
+              <div className="min-w-0">
+                {/* <div className="text-[10px] font-mono tracking-widest text-purple-400 font-bold uppercase">
+                  THREAT INTEL FEED
+                </div> */}
+                <h1 className="text-xl font-bold tracking-tight text-white leading-tight">
+                  Campaign Intelligence
+                </h1>
+              </div>
+            </div>
+
+            <div
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full shrink-0"
+              style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.35)' }}
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <span className="text-xs font-bold text-amber-300 font-mono">{activeCount}</span>
+            </div>
+          </div>
+
+          {/* Row 2: Subtitle Description */}
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Correlated threat clusters — multi-vector attack tracking, case intelligence &amp; real-time indicator grouping.
+          </p>
+
+          {/* Row 3: Live refresh + Active Clusters pills */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <LiveRefreshBadge lastRefreshed={lastRefreshed} />
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg shrink-0 whitespace-nowrap"
+              style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.3)' }}
+            >
+              <Sparkles className="w-3 h-3 text-purple-400" />
+              <span className="text-xs font-semibold text-purple-300 font-mono">
+                {activeCount} ACTIVE CLUSTERS
+              </span>
+            </div>
+          </div>
+
+          {/* Row 4: Subheader (TARGET CLUSTERS | HIGH PRIORITY) */}
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <span className="text-[11px] font-mono tracking-wider text-gray-400 uppercase font-semibold">
+              TARGET CLUSTERS
+            </span>
+            <span className="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/25 text-[10px] font-mono font-bold text-rose-400 tracking-wider uppercase">
+              HIGH PRIORITY
+            </span>
+          </div>
+
+          {/* Row 5: Single Target Cluster Card with Live Loop Switcher */}
+          {currentCluster && (
+            <div
+              onClick={() => setSelected(currentCluster)}
+              className="rounded-xl p-3 bg-[#131625] hover:bg-[#161a2e] border border-white/10 hover:border-purple-500/40 flex items-center justify-between gap-3 transition-all cursor-pointer active:scale-[0.99] group shadow-inner"
+            >
+              <div className={`min-w-0 flex-1 space-y-1 transition-opacity duration-200 ${clusterFade === 'in' ? 'opacity-100' : 'opacity-0'}`}>
+                <div className="flex items-center gap-2 flex-wrap font-mono text-xs">
+                  <span className={clusterIdx % 2 === 0 ? 'text-amber-400 font-bold' : 'text-purple-400 font-bold'}>
+                    #{currentCluster.id.replace(/^#/, '')}
+                  </span>
+                  <span className="text-gray-500">•</span>
+                  <span className="text-gray-400">
+                    {clusterIdx % 2 === 0 ? '3m ago' : '11m ago'}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm font-semibold text-white truncate">
+                  {currentCluster.name}
+                </p>
+                <div className="flex items-center gap-2 text-[11px] flex-wrap">
+                  <span className="inline-flex items-center gap-1 text-emerald-400 font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    {currentCluster.indicators || 14} IOCs detected
+                  </span>
+                  <span className="text-gray-500">·</span>
+                  <span className="text-gray-400 truncate">
+                    {currentCluster.threatType || 'Tor Exit Node'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-gray-400 group-hover:text-white flex items-center justify-center shrink-0">
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </div>
+          )}
+
+          {/* Row 6: Divider */}
+          <div className="border-t border-white/10 pt-1" />
+
+          {/* Row 7: Create Campaign button */}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-mono font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 transition-all active:scale-98 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ Create Campaign</span>
+          </button>
+        </div>
+
+        {/* Desktop Header (PC only: hidden md:flex) */}
+        <div className="hidden md:flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-2xl font-black text-white tracking-tight">Campaign Intelligence</h2>
             <p className="text-sm text-gray-400 mt-0.5">
               Correlated threat clusters — multi-vector attack tracking, case intelligence &amp; real-time indicator grouping
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
-            {/* Real-time refresh badge */}
-            <LiveRefreshBadge lastRefreshed={lastRefreshed} />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 shrink-0 w-full sm:w-auto">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              {/* Real-time refresh badge */}
+              <LiveRefreshBadge lastRefreshed={lastRefreshed} />
 
-            <div
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg shrink-0 whitespace-nowrap"
-              style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.25)' }}
-            >
-              <Sparkles className="w-3 h-3 text-purple-400" />
-              <span className="text-[11px] font-semibold text-purple-300 font-mono">
-                {activeCount} ACTIVE CLUSTER{activeCount !== 1 ? 'S' : ''}
-              </span>
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg shrink-0 whitespace-nowrap"
+                style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.25)' }}
+              >
+                <Sparkles className="w-3 h-3 text-purple-400" />
+                <span className="text-[11px] font-semibold text-purple-300 font-mono">
+                  {activeCount} ACTIVE CLUSTER{activeCount !== 1 ? 'S' : ''}
+                </span>
+              </div>
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold text-white transition-all font-mono shadow-md shrink-0 whitespace-nowrap hover:scale-105"
+              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1 rounded-lg text-xs font-bold text-white transition-all font-mono shadow-md shrink-0 whitespace-nowrap hover:scale-[1.01] sm:hover:scale-105 cursor-pointer"
               style={{
                 background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
                 boxShadow: '0 0 12px rgba(168,85,247,0.3)',
@@ -340,13 +473,15 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
 
       {/* ── Stat Cards ── */}
       <SlideIn delay={60} direction="up">
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {STAT_CARDS.map((stat) => {
             const Icon = stat.icon;
+            const isFullWidthMobile = stat.label === 'Emails Observed';
             return (
               <div
                 key={stat.label}
-                className="rounded-2xl p-4 transition-all duration-200 hover:scale-[1.02]"
+                className={`rounded-2xl p-4 transition-all duration-200 hover:scale-[1.02] ${isFullWidthMobile ? 'col-span-2 lg:col-span-1' : 'col-span-1'
+                  }`}
                 style={{
                   background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
                   border: '1px solid rgba(255,255,255,0.07)',
@@ -376,9 +511,9 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
             boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
           }}
         >
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
             <div
-              className="flex items-center gap-2 flex-1 rounded-xl px-3 py-2.5"
+              className="flex items-center gap-2 flex-1 rounded-xl px-3 py-2.5 min-w-0"
               style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
               <Search className="w-4 h-4 text-gray-500 shrink-0" />
@@ -387,45 +522,49 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
                 placeholder="Search by campaign ID, cluster name, case ID, or threat type..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="bg-transparent text-sm text-white placeholder-gray-600 focus:outline-none w-full font-mono"
+                className="bg-transparent text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none w-full font-mono"
               />
             </div>
-            {/* Severity Dropdown */}
-            <div className="relative shrink-0">
-              <select
-                value={severityFilter}
-                onChange={(e) => setSeverityFilter(e.target.value as any)}
-                className="appearance-none px-3.5 py-2.5 pr-8 rounded-xl text-xs font-mono font-bold text-gray-200 bg-white/5 border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all shrink-0"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.04)',
-                }}
-              >
-                <option value="all" className="bg-[#0b0e17] text-gray-300">All Severity</option>
-                <option value="critical" className="bg-[#0b0e17] text-red-400">Critical</option>
-                <option value="high" className="bg-[#0b0e17] text-orange-400">High</option>
-                <option value="medium" className="bg-[#0b0e17] text-amber-400">Medium</option>
-                <option value="low" className="bg-[#0b0e17] text-green-400">Low</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
 
-            {/* Status Dropdown */}
-            <div className="relative shrink-0">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="appearance-none px-3.5 py-2.5 pr-8 rounded-xl text-xs font-mono font-bold text-gray-200 bg-white/5 border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all shrink-0"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.04)',
-                }}
-              >
-                <option value="all" className="bg-[#0b0e17] text-gray-300">All Status</option>
-                <option value="active" className="bg-[#0b0e17] text-red-400">Active</option>
-                <option value="dormant" className="bg-[#0b0e17] text-gray-400">Dormant</option>
-                <option value="disrupted" className="bg-[#0b0e17] text-green-400">Disrupted</option>
-                <option value="monitoring" className="bg-[#0b0e17] text-cyan-400">Monitoring</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            {/* Mobile: Severity and Status on same line | Desktop: inline */}
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+              {/* Severity Dropdown */}
+              <div className="relative flex-1 sm:flex-none sm:shrink-0">
+                <select
+                  value={severityFilter}
+                  onChange={(e) => setSeverityFilter(e.target.value as any)}
+                  className="w-full sm:w-auto appearance-none px-3 sm:px-3.5 py-2.5 pr-7 sm:pr-8 rounded-xl text-xs font-mono font-bold text-gray-200 bg-white/5 border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                  }}
+                >
+                  <option value="all" className="bg-[#0b0e17] text-gray-300">All Severity</option>
+                  <option value="critical" className="bg-[#0b0e17] text-red-400">Critical</option>
+                  <option value="high" className="bg-[#0b0e17] text-orange-400">High</option>
+                  <option value="medium" className="bg-[#0b0e17] text-amber-400">Medium</option>
+                  <option value="low" className="bg-[#0b0e17] text-green-400">Low</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              {/* Status Dropdown */}
+              <div className="relative flex-1 sm:flex-none sm:shrink-0">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  className="w-full sm:w-auto appearance-none px-3 sm:px-3.5 py-2.5 pr-7 sm:pr-8 rounded-xl text-xs font-mono font-bold text-gray-200 bg-white/5 border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                  }}
+                >
+                  <option value="all" className="bg-[#0b0e17] text-gray-300">All Status</option>
+                  <option value="active" className="bg-[#0b0e17] text-red-400">Active</option>
+                  <option value="dormant" className="bg-[#0b0e17] text-gray-400">Dormant</option>
+                  <option value="disrupted" className="bg-[#0b0e17] text-green-400">Disrupted</option>
+                  <option value="monitoring" className="bg-[#0b0e17] text-cyan-400">Monitoring</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
           </div>
         </div>
@@ -441,22 +580,8 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
             boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
           }}
         >
-          {/* Table Header */}
-          <div
-            className="grid grid-cols-12 gap-2 px-5 py-3 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider"
-            style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}
-          >
-            <div className="col-span-2">Campaign ID</div>
-            <div className="col-span-2">Case ID</div>
-            <div className="col-span-3">Cluster Name</div>
-            <div className="col-span-1 hidden md:block">Threat Type</div>
-            <div className="col-span-1 hidden md:block">Severity</div>
-            <div className="col-span-2">Status</div>
-            <div className="col-span-1 hidden xl:block text-right">Confidence</div>
-          </div>
-
-          {/* Table Rows */}
-          <div className="divide-y divide-white/5">
+          {/* ── Mobile Campaign Cards View (< md) ── */}
+          <div className="md:hidden divide-y divide-white/5">
             {filtered.map((c) => {
               const primaryCaseId = c.relatedCases[0] ?? null;
               const casesForCampaign = allCases.filter((cs) => c.relatedCases.includes(cs.id));
@@ -468,104 +593,219 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
                 <div
                   key={c.id}
                   onClick={() => setSelected(c)}
-                  className="grid grid-cols-12 gap-2 px-5 py-3.5 cursor-pointer transition-all duration-150 hover:bg-white/[0.03] group items-center"
+                  className="p-3.5 space-y-2 cursor-pointer transition-all duration-150 hover:bg-white/[0.03] active:bg-white/[0.05]"
                 >
-                  {/* Campaign ID */}
-                  <div className="col-span-2 flex items-center gap-2">
-                    <Crosshair className="w-3 h-3 text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                    <span className="text-xs font-mono font-bold text-purple-400">{c.id}</span>
-                    {c.status === 'active' && (
-                      <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                    )}
-                  </div>
-
-                  {/* Exactly 1 Single Case ID per Campaign */}
-                  <div className="col-span-2 flex items-center">
-                    {primaryCaseId ? (
-                      <span
-                        className="inline-flex items-center gap-1.5 text-[11px] font-mono font-bold px-2.5 py-1 rounded transition-colors"
-                        style={{
-                          background: 'rgba(6,182,212,0.12)',
-                          border: '1px solid rgba(6,182,212,0.3)',
-                          color: '#22d3ee',
-                        }}
-                      >
-                        <Lock className="w-3 h-3 opacity-75" />
-                        {primaryCaseId}
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-gray-600 font-mono italic">None</span>
-                    )}
-                  </div>
-
-                  {/* Cluster Name */}
-                  <div className="col-span-3 flex items-center gap-1.5">
-                    <span className="text-xs text-white font-medium truncate block">{c.name}</span>
-                    {hasLiveCase && (
-                      <span
-                        className="shrink-0 w-2 h-2 rounded-full bg-green-400 animate-pulse"
-                        title="Live email analysis linked"
-                      />
-                    )}
-                  </div>
-
-                  {/* Threat Type */}
-                  <div className="col-span-1 hidden md:flex items-center">
-                    <span className="text-xs text-gray-300 font-mono truncate">{c.threatType}</span>
-                  </div>
-
-                  {/* Severity */}
-                  <div className="col-span-1 hidden md:flex items-center">
-                    <SeverityPill severity={c.severity} />
-                  </div>
-
-                  {/* Status */}
-                  <div className="col-span-2 flex items-center">
-                    <StatusPill status={c.status} />
-                  </div>
-
-                  {/* Confidence & Actions */}
-                  <div className="col-span-1 hidden xl:flex items-center justify-end gap-2">
-                    <div className="w-10 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${c.confidence}%`,
-                          background: c.confidence > 80 ? '#ef4444' : '#f97316',
-                          boxShadow: `0 0 6px ${
-                            c.confidence > 80 ? 'rgba(239,68,68,0.5)' : 'rgba(249,115,22,0.5)'
-                          }`,
-                        }}
-                      />
+                  {/* Row 1: Campaign ID + Live dot + Status pill */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-mono font-bold text-purple-400 whitespace-nowrap">{c.id}</span>
+                      {c.status === 'active' && (
+                        <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                      )}
+                      {hasLiveCase && (
+                        <span
+                          className="shrink-0 w-2 h-2 rounded-full bg-green-400 animate-pulse"
+                          title="Live email analysis linked"
+                        />
+                      )}
                     </div>
-                    <span className="text-xs font-mono text-white font-bold">{c.confidence}%</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingCampaign(c);
-                      }}
-                      className="p-1 rounded-lg text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 transition-colors cursor-pointer"
-                      title="Edit Campaign"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (window.confirm(`Are you sure you want to delete campaign ${c.id}?`)) {
-                          deleteCampaign(c.id);
-                        }
-                      }}
-                      className="p-1 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/15 transition-colors cursor-pointer"
-                      title="Delete Campaign"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                    </button>
-                    <ChevronRight className="w-3.5 h-3.5 text-gray-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+                    <div className="shrink-0">
+                      <StatusPill status={c.status} />
+                    </div>
+                  </div>
+
+                  {/* Row 2: Full Cluster Name */}
+                  <div className="text-xs text-white font-semibold leading-snug break-words">
+                    {c.name}
+                  </div>
+
+                  {/* Row 3: Linked Case ID badge, Threat Type, Severity, Confidence, & Actions */}
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/[0.04] text-xs">
+                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                      {primaryCaseId ? (
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded shrink-0"
+                          style={{
+                            background: 'rgba(6,182,212,0.12)',
+                            border: '1px solid rgba(6,182,212,0.3)',
+                            color: '#22d3ee',
+                          }}
+                        >
+                          <Lock className="w-2.5 h-2.5 opacity-75 shrink-0" />
+                          <span className="whitespace-nowrap">{primaryCaseId}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-gray-600 font-mono italic shrink-0">No Case</span>
+                      )}
+                      <span className="text-[10px] text-gray-400 font-mono px-2 py-0.5 rounded bg-white/[0.04] border border-white/5 shrink-0 whitespace-nowrap">
+                        {c.threatType}
+                      </span>
+                      <div className="shrink-0">
+                        <SeverityPill severity={c.severity} />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[10px] font-mono text-gray-400 font-bold">{c.confidence}%</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingCampaign(c);
+                        }}
+                        className="p-1 rounded text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 transition-colors cursor-pointer"
+                        title="Edit Campaign"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Are you sure you want to delete campaign ${c.id}?`)) {
+                            deleteCampaign(c.id);
+                          }
+                        }}
+                        className="p-1 rounded text-gray-400 hover:text-red-400 hover:bg-red-500/15 transition-colors cursor-pointer"
+                        title="Delete Campaign"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                      </button>
+                      <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
+                    </div>
                   </div>
                 </div>
               );
             })}
+          </div>
+
+          {/* ── Desktop & Tablet Campaigns Table (md+) ── */}
+          <div className="hidden md:block overflow-x-auto scrollbar-thin">
+            <div className="min-w-[700px] md:min-w-0">
+              {/* Table Header */}
+              <div
+                className="grid grid-cols-12 gap-2 px-5 py-3 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider"
+                style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}
+              >
+                <div className="col-span-2">Campaign ID</div>
+                <div className="col-span-2">Case ID</div>
+                <div className="col-span-3">Cluster Name</div>
+                <div className="col-span-1 hidden md:block">Threat Type</div>
+                <div className="col-span-1 hidden md:block">Severity</div>
+                <div className="col-span-2">Status</div>
+                <div className="col-span-1 hidden xl:block text-right">Confidence</div>
+              </div>
+
+              {/* Table Rows */}
+              <div className="divide-y divide-white/5">
+                {filtered.map((c) => {
+                  const primaryCaseId = c.relatedCases[0] ?? null;
+                  const casesForCampaign = allCases.filter((cs) => c.relatedCases.includes(cs.id));
+                  const hasLiveCase = casesForCampaign.some(
+                    (cs) => !INVESTIGATION_CASES.find((ic) => ic.id === cs.id)
+                  );
+
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => setSelected(c)}
+                      className="grid grid-cols-12 gap-2 px-5 py-3.5 cursor-pointer transition-all duration-150 hover:bg-white/[0.03] group items-center"
+                    >
+                      {/* Campaign ID */}
+                      <div className="col-span-2 flex items-center gap-2">
+                        <Crosshair className="w-3 h-3 text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                        <span className="text-xs font-mono font-bold text-purple-400">{c.id}</span>
+                        {c.status === 'active' && (
+                          <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                        )}
+                      </div>
+
+                      {/* Exactly 1 Single Case ID per Campaign */}
+                      <div className="col-span-2 flex items-center">
+                        {primaryCaseId ? (
+                          <span
+                            className="inline-flex items-center gap-1.5 text-[11px] font-mono font-bold px-2.5 py-1 rounded transition-colors"
+                            style={{
+                              background: 'rgba(6,182,212,0.12)',
+                              border: '1px solid rgba(6,182,212,0.3)',
+                              color: '#22d3ee',
+                            }}
+                          >
+                            <Lock className="w-3 h-3 opacity-75" />
+                            {primaryCaseId}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-gray-600 font-mono italic">None</span>
+                        )}
+                      </div>
+
+                      {/* Cluster Name */}
+                      <div className="col-span-3 flex items-center gap-1.5">
+                        <span className="text-xs text-white font-medium truncate block">{c.name}</span>
+                        {hasLiveCase && (
+                          <span
+                            className="shrink-0 w-2 h-2 rounded-full bg-green-400 animate-pulse"
+                            title="Live email analysis linked"
+                          />
+                        )}
+                      </div>
+
+                      {/* Threat Type */}
+                      <div className="col-span-1 hidden md:flex items-center">
+                        <span className="text-xs text-gray-300 font-mono truncate">{c.threatType}</span>
+                      </div>
+
+                      {/* Severity */}
+                      <div className="col-span-1 hidden md:flex items-center">
+                        <SeverityPill severity={c.severity} />
+                      </div>
+
+                      {/* Status */}
+                      <div className="col-span-2 flex items-center">
+                        <StatusPill status={c.status} />
+                      </div>
+
+                      {/* Confidence & Actions */}
+                      <div className="col-span-1 hidden xl:flex items-center justify-end gap-2">
+                        <div className="w-10 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${c.confidence}%`,
+                              background: c.confidence > 80 ? '#ef4444' : '#f97316',
+                              boxShadow: `0 0 6px ${c.confidence > 80 ? 'rgba(239,68,68,0.5)' : 'rgba(249,115,22,0.5)'
+                                }`,
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono text-white font-bold">{c.confidence}%</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCampaign(c);
+                          }}
+                          className="p-1 rounded-lg text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 transition-colors cursor-pointer"
+                          title="Edit Campaign"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Are you sure you want to delete campaign ${c.id}?`)) {
+                              deleteCampaign(c.id);
+                            }
+                          }}
+                          className="p-1 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/15 transition-colors cursor-pointer"
+                          title="Delete Campaign"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                        </button>
+                        <ChevronRight className="w-3.5 h-3.5 text-gray-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {filtered.length === 0 && (
@@ -931,46 +1171,78 @@ function CampaignDetail({
     <div className="space-y-6" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
       {/* Back button + Meta */}
       <SlideIn delay={0} direction="down">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 p-3 sm:p-0 rounded-2xl bg-gradient-to-b from-white/[0.04] to-white/[0.01] sm:bg-none border border-white/[0.08] sm:border-none shadow-md sm:shadow-none backdrop-blur-sm">
+          <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
             <button
               onClick={onBack}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-400 hover:text-white transition-all cursor-pointer"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-200 hover:text-white transition-all cursor-pointer shrink-0 bg-white/5 hover:bg-white/10 active:bg-white/15 active:scale-[0.98] border border-white/10 hover:border-white/20 shadow-sm"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Back to Campaigns
+              <ArrowLeft className="w-3.5 h-3.5 text-gray-400" />
+              <span className="hidden min-[380px]:inline">Back to Campaigns</span>
+              <span className="min-[380px]:hidden">Back</span>
             </button>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-purple-400 font-bold">{campaign.id}</span>
+            <div className="flex items-center gap-2 sm:hidden shrink-0">
+              <button
+                onClick={onEdit}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-purple-300 hover:text-purple-200 transition-all cursor-pointer bg-purple-500/15 hover:bg-purple-500/25 active:scale-[0.98] border border-purple-500/30 shadow-sm"
+              >
+                <Pencil className="w-3.5 h-3.5 text-purple-400" />
+                <span>Edit</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (window.confirm(`Are you sure you want to delete campaign cluster ${campaign.id}?`)) {
+                    deleteCampaign(campaign.id);
+                    onBack();
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-red-400 hover:text-red-300 transition-all bg-red-500/15 hover:bg-red-500/25 active:scale-[0.98] border border-red-500/30 shadow-sm cursor-pointer"
+                title="Delete Campaign"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                <span>Delete</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto pt-2.5 sm:pt-0 border-t border-white/[0.06] sm:border-t-0 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap shrink-0">
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider font-mono"
+                style={{ background: 'rgba(168,85,247,0.12)', border: '1px solid rgba(168,85,247,0.3)', color: '#d8b4fe' }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#c084fc' }} />
+                {campaign.id}
+              </span>
               <SeverityPill severity={campaign.severity} />
               <StatusPill status={campaign.status} />
             </div>
-          </div>
-          {/* Action buttons: Edit Campaign & Delete Campaign (Red) */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onEdit}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-300 hover:text-white transition-all cursor-pointer hover:bg-purple-500/20"
-              style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.25)' }}
-            >
-              <Pencil className="w-3.5 h-3.5 text-purple-400" />
-              Edit Campaign
-            </button>
-            <button
-              onClick={() => {
-                if (window.confirm(`Are you sure you want to delete campaign cluster ${campaign.id}?`)) {
-                  deleteCampaign(campaign.id);
-                  onBack();
-                }
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-red-400 hover:text-white transition-all hover:bg-red-500/25 border border-red-500/30 cursor-pointer"
-              style={{ background: 'rgba(239,68,68,0.12)' }}
-              title="Delete Campaign"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-red-400" />
-              Delete Campaign
-            </button>
+
+            {/* Desktop Action buttons: Edit Campaign & Delete Campaign (Red) */}
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <button
+                onClick={onEdit}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-300 hover:text-white transition-all cursor-pointer hover:bg-purple-500/20"
+                style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.25)' }}
+              >
+                <Pencil className="w-3.5 h-3.5 text-purple-400" />
+                Edit Campaign
+              </button>
+              <button
+                onClick={() => {
+                  if (window.confirm(`Are you sure you want to delete campaign cluster ${campaign.id}?`)) {
+                    deleteCampaign(campaign.id);
+                    onBack();
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-red-400 hover:text-white transition-all hover:bg-red-500/25 border border-red-500/30 cursor-pointer"
+                style={{ background: 'rgba(239,68,68,0.12)' }}
+                title="Delete Campaign"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                Delete Campaign
+              </button>
+            </div>
           </div>
         </div>
       </SlideIn>
@@ -1028,12 +1300,14 @@ function CampaignDetail({
             boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
           }}
         >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <FolderSearch className="w-4 h-4 text-purple-400" />
-              Linked Investigation Cases
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-4 mb-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <FolderSearch className="w-4 h-4 text-purple-400 shrink-0" />
+              <h3 className="text-sm font-bold text-white whitespace-nowrap">
+                Linked Investigation Cases
+              </h3>
               <span
-                className="text-[10px] font-mono px-2 py-0.5 rounded"
+                className="text-[10px] font-mono font-bold px-2 py-0.5 rounded shrink-0"
                 style={{
                   background: 'rgba(139,92,246,0.15)',
                   border: '1px solid rgba(139,92,246,0.3)',
@@ -1042,8 +1316,8 @@ function CampaignDetail({
               >
                 {casesForCampaign.length}
               </span>
-            </h3>
-            <span className="text-[11px] text-gray-500 font-mono">
+            </div>
+            <span className="text-[11px] text-gray-400 sm:text-gray-500 font-mono">
               Click any case to inspect timeline &amp; analyst notes
             </span>
           </div>
@@ -1058,64 +1332,124 @@ function CampaignDetail({
             </div>
           ) : (
             <>
-              {/* Table header */}
-              <div
-                className="grid grid-cols-12 gap-2 px-4 py-2.5 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider mb-1"
-                style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}
-              >
-                <div className="col-span-3">Case ID</div>
-                <div className="col-span-4">Title / Subject</div>
-                <div className="col-span-2">Severity</div>
-                <div className="col-span-2">Status</div>
-                <div className="col-span-1">Threat Type</div>
-              </div>
-
-              {/* Rows */}
-              <div className="space-y-1.5">
+              {/* Mobile Linked Cases Cards (< md) */}
+              <div className="md:hidden space-y-2">
                 {casesForCampaign.map((c) => {
                   const isStaticCase = !!INVESTIGATION_CASES.find((ic) => ic.id === c.id);
                   return (
                     <div
                       key={c.id}
                       onClick={() => setSelectedCase(c)}
-                      className="grid grid-cols-12 gap-2 px-4 py-3 rounded-xl cursor-pointer transition-all duration-150 hover:scale-[1.005] group items-center"
+                      className="p-3.5 rounded-xl cursor-pointer transition-all duration-150 active:bg-white/[0.05] space-y-2"
                       style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
                     >
-                      <div className="col-span-3 flex items-center gap-1.5">
-                        <Crosshair className="w-3 h-3 text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                        <span className="text-xs font-mono font-bold text-cyan-400">{c.id}</span>
-                        {!isStaticCase && (
-                          <span
-                            className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold"
-                            style={{
-                              background: 'rgba(34,197,94,0.15)',
-                              border: '1px solid rgba(34,197,94,0.3)',
-                              color: '#4ade80',
-                            }}
-                          >
-                            LIVE
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Crosshair className="w-3 h-3 text-cyan-500 shrink-0" />
+                          <span className="text-xs font-mono font-bold text-cyan-400 whitespace-nowrap">{c.id}</span>
+                          {!isStaticCase && (
+                            <span
+                              className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold shrink-0"
+                              style={{
+                                background: 'rgba(34,197,94,0.15)',
+                                border: '1px solid rgba(34,197,94,0.3)',
+                                color: '#4ade80',
+                              }}
+                            >
+                              LIVE
+                            </span>
+                          )}
+                        </div>
+                        <div className="shrink-0">
+                          <CaseStatusPill
+                            status={c.status}
+                            animate={c.status === 'open' || c.status === 'investigating'}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-white font-medium leading-snug break-words">
+                        {c.title}
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-white/[0.04] text-xs">
+                        <div className="flex items-center gap-2 shrink-0">
+                          <SeverityPill severity={c.severity} />
+                          <span className="text-[10px] text-gray-400 font-mono px-2 py-0.5 rounded bg-white/[0.04] border border-white/5 whitespace-nowrap">
+                            {c.threatType}
                           </span>
-                        )}
-                      </div>
-                      <div className="col-span-4">
-                        <span className="text-xs text-white font-medium truncate block">{c.title}</span>
-                      </div>
-                      <div className="col-span-2">
-                        <SeverityPill severity={c.severity} />
-                      </div>
-                      <div className="col-span-2">
-                        <CaseStatusPill
-                          status={c.status}
-                          animate={c.status === 'open' || c.status === 'investigating'}
-                        />
-                      </div>
-                      <div className="col-span-1 flex items-center justify-between">
-                        <span className="text-[10px] text-gray-400 font-mono truncate">{c.threatType}</span>
-                        <ChevronRight className="w-3.5 h-3.5 text-gray-600 group-hover:text-cyan-400 transition-all shrink-0" />
+                        </div>
+                        <div className="flex items-center gap-1 text-[11px] text-cyan-400 font-mono">
+                          <span>Inspect</span>
+                          <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+                        </div>
                       </div>
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Desktop & Tablet Linked Cases Table (md+) */}
+              <div className="hidden md:block">
+                {/* Table header */}
+                <div
+                  className="grid grid-cols-12 gap-2 px-4 py-2.5 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider mb-1"
+                  style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}
+                >
+                  <div className="col-span-3">Case ID</div>
+                  <div className="col-span-4">Title / Subject</div>
+                  <div className="col-span-2">Severity</div>
+                  <div className="col-span-2">Status</div>
+                  <div className="col-span-1">Threat Type</div>
+                </div>
+
+                {/* Rows */}
+                <div className="space-y-1.5">
+                  {casesForCampaign.map((c) => {
+                    const isStaticCase = !!INVESTIGATION_CASES.find((ic) => ic.id === c.id);
+                    return (
+                      <div
+                        key={c.id}
+                        onClick={() => setSelectedCase(c)}
+                        className="grid grid-cols-12 gap-2 px-4 py-3 rounded-xl cursor-pointer transition-all duration-150 hover:scale-[1.005] group items-center"
+                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                      >
+                        <div className="col-span-3 flex items-center gap-1.5">
+                          <Crosshair className="w-3 h-3 text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                          <span className="text-xs font-mono font-bold text-cyan-400">{c.id}</span>
+                          {!isStaticCase && (
+                            <span
+                              className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold"
+                              style={{
+                                background: 'rgba(34,197,94,0.15)',
+                                border: '1px solid rgba(34,197,94,0.3)',
+                                color: '#4ade80',
+                              }}
+                            >
+                              LIVE
+                            </span>
+                          )}
+                        </div>
+                        <div className="col-span-4">
+                          <span className="text-xs text-white font-medium truncate block">{c.title}</span>
+                        </div>
+                        <div className="col-span-2">
+                          <SeverityPill severity={c.severity} />
+                        </div>
+                        <div className="col-span-2">
+                          <CaseStatusPill
+                            status={c.status}
+                            animate={c.status === 'open' || c.status === 'investigating'}
+                          />
+                        </div>
+                        <div className="col-span-1 flex items-center justify-between">
+                          <span className="text-[10px] text-gray-400 font-mono truncate">{c.threatType}</span>
+                          <ChevronRight className="w-3.5 h-3.5 text-gray-600 group-hover:text-cyan-400 transition-all shrink-0" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </>
           )}
@@ -1137,26 +1471,26 @@ function CampaignDetail({
               <Activity className="w-4 h-4 text-purple-400" />
               Campaign Timeline
             </h3>
-            <div className="relative pl-2">
-              <div className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-white/10" />
-              <div className="space-y-4">
+            <div className="relative pl-0 sm:pl-1">
+              <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-white/15 -translate-x-1/2" />
+              <div className="space-y-3.5 sm:space-y-4">
                 {campaign.timeline.map((t, i) => (
-                  <div key={i} className="relative flex gap-4 items-start">
+                  <div key={i} className="relative flex gap-3 sm:gap-4 items-start min-w-0">
                     <div
-                      className="relative z-10 w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border"
+                      className="relative z-10 w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-md"
                       style={{
-                        background: 'rgba(168,85,247,0.15)',
-                        borderColor: 'rgba(168,85,247,0.3)',
+                        background: 'rgba(168,85,247,0.2)',
+                        borderColor: 'rgba(168,85,247,0.4)',
                         color: '#c084fc',
                       }}
                     >
                       <span className="text-xs font-bold font-mono">{i + 1}</span>
                     </div>
                     <div
-                      className="flex-1 rounded-xl p-3"
+                      className="flex-1 min-w-0 rounded-xl p-3"
                       style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
                     >
-                      <span className="text-xs text-white font-medium">{t.event}</span>
+                      <span className="text-xs text-white font-medium leading-relaxed block break-words">{t.event}</span>
                       <div className="text-[10px] text-gray-500 font-mono mt-1">{t.time}</div>
                     </div>
                   </div>
@@ -1321,10 +1655,10 @@ function CaseDetail({
                         active
                           ? { background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color }
                           : {
-                              background: 'rgba(255,255,255,0.02)',
-                              border: '1px solid rgba(255,255,255,0.04)',
-                              color: '#4b5563',
-                            }
+                            background: 'rgba(255,255,255,0.02)',
+                            border: '1px solid rgba(255,255,255,0.04)',
+                            color: '#4b5563',
+                          }
                       }
                     >
                       <span
@@ -1433,19 +1767,19 @@ function CaseDetail({
                         style={
                           i === 0
                             ? {
-                                background: 'rgba(239,68,68,0.2)',
-                                borderColor: '#ef4444',
-                                color: '#f87171',
-                                boxShadow: '0 0 12px rgba(239,68,68,0.4)',
-                              }
+                              background: 'rgba(239,68,68,0.2)',
+                              borderColor: '#ef4444',
+                              color: '#f87171',
+                              boxShadow: '0 0 12px rgba(239,68,68,0.4)',
+                            }
                             : i === caseData.timeline.length - 1
-                            ? {
+                              ? {
                                 background: 'rgba(34,197,94,0.2)',
                                 borderColor: '#22c55e',
                                 color: '#4ade80',
                                 boxShadow: '0 0 12px rgba(34,197,94,0.4)',
                               }
-                            : {
+                              : {
                                 background: 'rgba(255,255,255,0.05)',
                                 borderColor: 'rgba(255,255,255,0.12)',
                                 color: '#6b7280',

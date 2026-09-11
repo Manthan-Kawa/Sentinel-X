@@ -200,25 +200,27 @@ export function ReportsPage({ onNavigate }: { onNavigate?: (route: string) => vo
       {/* ── Header ── */}
       <SlideIn delay={0} direction="down">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-black text-white tracking-tight">Reports & Export</h2>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 flex-nowrap w-full">
+              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight whitespace-nowrap">
+                Reports &amp; Export
+              </h2>
               {currentResult && (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-purple-500/15 border border-purple-500/30 text-purple-300 flex items-center gap-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider bg-purple-500/15 border border-purple-500/30 text-purple-300 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 shadow-[0_0_10px_rgba(168,85,247,0.15)] ml-auto">
                   <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
                   Synced with Analyzer
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-400 mt-0.5">
+            <p className="text-xs sm:text-sm text-gray-400 mt-1 leading-relaxed">
               Complete forensic analysis, threat intelligence, and interactive attack graphs.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               onClick={() => onNavigate?.('email-analyzer')}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 shadow-md cursor-pointer"
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 active:scale-95 shadow-md cursor-pointer w-full sm:w-auto"
               style={{
                 background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
                 border: '1px solid rgba(99,102,241,0.4)',
@@ -296,21 +298,36 @@ export function ReportsPage({ onNavigate }: { onNavigate?: (route: string) => vo
                 border: '1px solid rgba(255,255,255,0.08)',
               }}
             >
-              <div className="flex items-center gap-3 flex-wrap flex-1 min-w-0">
-                <span className="text-xs font-mono font-bold text-gray-400 flex items-center gap-1.5 shrink-0">
-                  <Shield className="w-4 h-4 text-cyan-400" />
-                  ACTIVE CASE:
-                </span>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 flex-1 min-w-0 w-full">
+                <div className="flex items-center justify-between sm:justify-start gap-2 shrink-0">
+                  <span className="text-xs font-mono font-bold text-gray-400 flex items-center gap-1.5">
+                    <Shield className="w-4 h-4 text-cyan-400" />
+                    ACTIVE CASE:
+                  </span>
+                  {/* Live indicator badge on mobile (placed on header line) */}
+                  {currentResult && (
+                    <span
+                      className={`sm:hidden px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold shrink-0 ${currentResult.threat_score >= 80
+                          ? 'text-red-400 bg-red-500/10 border border-red-500/25'
+                          : currentResult.threat_score >= 50
+                            ? 'text-orange-400 bg-orange-500/10 border border-orange-500/25'
+                            : 'text-green-400 bg-green-500/10 border border-green-500/25'
+                        }`}
+                    >
+                      {currentResult.alert_level.toUpperCase()} ({currentResult.threat_score}/100)
+                    </span>
+                  )}
+                </div>
 
                 {/* Integrated Case Search & Selector */}
-                <div className="relative flex-1 min-w-[280px] max-w-xl" ref={searchContainerRef}>
+                <div className="relative flex-1 w-full min-w-0 max-w-xl" ref={searchContainerRef}>
                   <div className="relative flex items-center">
                     <Search className="w-3.5 h-3.5 text-purple-400 absolute left-3 pointer-events-none" />
                     <input
                       type="text"
                       placeholder={
                         currentResult
-                          ? `${currentResult.case_id} — ${currentResult.headers.find((h) => h.key.toLowerCase() === 'subject')?.value || currentResult.verdict}`
+                          ? `${currentResult.case_id} — ${decodeMimeHeader(currentResult.headers.find((h) => h.key.toLowerCase() === 'subject')?.value || currentResult.verdict)}`
                           : 'Search case ID, subject, IOC...'
                       }
                       value={caseSearch}
@@ -353,7 +370,7 @@ export function ReportsPage({ onNavigate }: { onNavigate?: (route: string) => vo
                   {/* Suggestions Dropdown */}
                   {searchFocused && (
                     <div
-                      className="absolute left-0 mt-2 w-full min-w-[320px] max-w-[560px] rounded-2xl p-2.5 z-50 shadow-2xl border backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+                      className="absolute left-0 mt-2 w-[calc(100vw-2.5rem)] sm:w-full sm:min-w-[320px] max-w-[560px] rounded-2xl p-2.5 z-50 shadow-2xl border backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
                       style={{
                         background: 'rgba(10, 13, 22, 0.97)',
                         borderColor: 'rgba(168, 85, 247, 0.35)',
@@ -384,6 +401,8 @@ export function ReportsPage({ onNavigate }: { onNavigate?: (route: string) => vo
                                   : 'text-green-400 bg-green-500/15 border-green-500/30';
                             const subj = c.headers.find((h) => h.key.toLowerCase() === 'subject')?.value;
                             const fromVal = c.headers.find((h) => h.key.toLowerCase() === 'from')?.value;
+                            const cleanSubj = decodeMimeHeader(subj || c.verdict);
+                            const cleanFrom = fromVal ? decodeMimeHeader(fromVal) : '';
 
                             return (
                               <div
@@ -393,11 +412,10 @@ export function ReportsPage({ onNavigate }: { onNavigate?: (route: string) => vo
                                   setCaseSearch('');
                                   setSearchFocused(false);
                                 }}
-                                className={`flex items-center justify-between gap-2 p-2.5 rounded-xl cursor-pointer transition-all ${
-                                  isSelected
+                                className={`flex items-center justify-between gap-2 p-2.5 rounded-xl cursor-pointer transition-all ${isSelected
                                     ? 'bg-purple-500/25 border border-purple-500/40 text-white'
                                     : 'hover:bg-white/10 text-gray-300 border border-transparent'
-                                }`}
+                                  }`}
                               >
                                 <div className="min-w-0 flex-1 flex flex-col gap-1">
                                   <div className="flex items-center justify-between gap-2">
@@ -410,13 +428,13 @@ export function ReportsPage({ onNavigate }: { onNavigate?: (route: string) => vo
                                     </span>
                                   </div>
 
-                                  <p className="text-[11px] text-gray-200 truncate font-sans font-medium" title={subj || c.verdict}>
-                                    {subj || c.verdict}
+                                  <p className="text-[11px] text-gray-200 truncate font-sans font-medium" title={cleanSubj}>
+                                    {cleanSubj}
                                   </p>
 
-                                  {fromVal && (
+                                  {cleanFrom && (
                                     <p className="text-[10px] text-gray-400 font-mono truncate">
-                                      From: {fromVal}
+                                      From: {cleanFrom}
                                     </p>
                                   )}
                                 </div>
@@ -444,16 +462,15 @@ export function ReportsPage({ onNavigate }: { onNavigate?: (route: string) => vo
                   )}
                 </div>
 
-                {/* Live indicator badge */}
+                {/* Live indicator badge for desktop */}
                 {currentResult && (
                   <span
-                    className={`px-2.5 py-1 rounded-xl text-xs font-mono font-bold shrink-0 ${
-                      currentResult.threat_score >= 80
+                    className={`hidden sm:inline-flex px-2.5 py-1 rounded-xl text-xs font-mono font-bold shrink-0 ${currentResult.threat_score >= 80
                         ? 'text-red-400 bg-red-500/10 border border-red-500/25'
                         : currentResult.threat_score >= 50
                           ? 'text-orange-400 bg-orange-500/10 border border-orange-500/25'
                           : 'text-green-400 bg-green-500/10 border border-green-500/25'
-                    }`}
+                      }`}
                   >
                     {currentResult.alert_level.toUpperCase()} ({currentResult.threat_score}/100)
                   </span>
@@ -473,30 +490,29 @@ export function ReportsPage({ onNavigate }: { onNavigate?: (route: string) => vo
                   boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
                 }}
               >
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-white/10">
-                  <div>
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-4 border-b border-white/10">
+                  <div className="min-w-0 flex-1">
                     <h3 className="text-base font-bold text-white flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-cyan-400" />
-                      SOC Forensic Intelligence Dossier
+                      <FileText className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <span>SOC Forensic Intelligence Dossier</span>
                     </h3>
-                    <p className="text-xs text-gray-400 mt-1 font-mono">
+                    <p className="text-xs text-gray-400 mt-1 font-mono break-words leading-relaxed">
                       {reportData.caseId} — <span className="text-white font-semibold">
-                        {currentResult?.headers.find((h) => h.key.toLowerCase() === 'subject')?.value || reportData.caseTitle.replace(/^[^:]+:\s*/, '')}
+                        {decodeMimeHeader(currentResult?.headers.find((h) => h.key.toLowerCase() === 'subject')?.value || reportData.caseTitle.replace(/^[^:]+:\s*/, ''))}
                       </span>
                     </p>
                   </div>
 
                   {/* Threat Score & Verdict Badge (1st Image Element) */}
-                  <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-black/60 border border-white/10 shrink-0 shadow-lg">
-                    <div className="text-right">
+                  <div className="flex items-center justify-between sm:justify-start gap-3 px-4 py-2 rounded-2xl bg-black/60 border border-white/10 shrink-0 shadow-lg w-full md:w-auto">
+                    <div className="text-left sm:text-right">
                       <div
-                        className={`text-xl font-bold font-mono leading-tight ${
-                          (currentResult?.threat_score ?? reportData.riskScore) >= 75 || currentResult?.alert_level === 'critical'
+                        className={`text-xl font-bold font-mono leading-tight ${(currentResult?.threat_score ?? reportData.riskScore) >= 75 || currentResult?.alert_level === 'critical'
                             ? 'text-red-400'
                             : (currentResult?.threat_score ?? reportData.riskScore) >= 40
-                            ? 'text-amber-400'
-                            : 'text-emerald-400'
-                        }`}
+                              ? 'text-amber-400'
+                              : 'text-emerald-400'
+                          }`}
                       >
                         {currentResult?.threat_score ?? reportData.riskScore}/100
                       </div>
@@ -533,12 +549,12 @@ export function ReportsPage({ onNavigate }: { onNavigate?: (route: string) => vo
                 </div>
 
                 {/* Main Action Buttons */}
-                <div className="flex flex-wrap items-center gap-3 pt-4">
+                <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3 pt-4">
                   {/* Save as PDF Button (Prominently Highlighted) */}
                   <button
                     id="save-pdf-btn"
                     onClick={handleSaveAsPDF}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 shadow-xl cursor-pointer"
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 active:scale-95 shadow-xl cursor-pointer w-full sm:w-auto"
                     style={{
                       background: 'linear-gradient(135deg, #7c3aed 0%, #9333ea 50%, #6366f1 100%)',
                       border: '1px solid rgba(192,132,252,0.6)',
@@ -553,27 +569,27 @@ export function ReportsPage({ onNavigate }: { onNavigate?: (route: string) => vo
                   {/* Export Text Report */}
                   <button
                     onClick={handleExportText}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 shadow-md"
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 active:scale-95 shadow-md w-full sm:w-auto"
                     style={{
                       background: 'linear-gradient(135deg, #0284c7, #2563eb)',
                       border: '1px solid rgba(56,189,248,0.5)',
                     }}
                   >
                     <Download className="w-3.5 h-3.5" />
-                    Export Raw Text
+                    <span>Export Raw Text</span>
                   </button>
 
                   {/* Toggle Preview Button */}
                   <button
                     onClick={() => setShowPreview(!showPreview)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white transition-all hover:scale-105"
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white transition-all hover:scale-105 active:scale-95 w-full sm:w-auto"
                     style={{
                       background: 'rgba(255,255,255,0.04)',
                       border: '1px solid rgba(255,255,255,0.1)',
                     }}
                   >
                     <Eye className="w-3.5 h-3.5 text-cyan-400" />
-                    {showPreview ? 'Hide Report Preview' : 'Show Report Preview'}
+                    <span>{showPreview ? 'Hide Report Preview' : 'Show Report Preview'}</span>
                   </button>
                 </div>
               </div>
@@ -645,8 +661,8 @@ function FullReportPreview({
   const threatLevel: 'malicious' | 'suspicious' | 'clean' = isMalicious
     ? 'malicious'
     : isSuspicious
-    ? 'suspicious'
-    : 'clean';
+      ? 'suspicious'
+      : 'clean';
 
   // Build the map markers from current result origin data
   const liveMarkers: InfraLocation[] = [
@@ -739,8 +755,8 @@ function FullReportPreview({
         urgency: (act.priority?.toLowerCase() === 'high' || act.priority?.toLowerCase() === 'immediate'
           ? 'immediate'
           : act.priority?.toLowerCase() === 'medium'
-          ? 'recommended'
-          : 'optional') as 'immediate' | 'recommended' | 'optional',
+            ? 'recommended'
+            : 'optional') as 'immediate' | 'recommended' | 'optional',
         reason: act.description || act.rationale || 'SOC standard containment procedure',
       }));
     }
@@ -810,8 +826,8 @@ function FullReportPreview({
     const filename = realName || (isMalicious
       ? 'Corporate_Verification_M365_Notice.pdf'
       : isSuspicious
-      ? 'statement-INV928491.zip'
-      : '');
+        ? 'statement-INV928491.zip'
+        : '');
     const realMime = (result as any)?.attachment_mime;
     const realSize = (result as any)?.attachment_size;
     return {
@@ -828,38 +844,38 @@ function FullReportPreview({
       md5: isMalicious ? '44d88612fea8a8f36de82e1278abb02f' : '9e107d9d372bb6826bd81d3542a419d6',
       tagsDetected: isMalicious
         ? [
-            { tag: '/JavaScript', description: 'Embedded executable ECMAScript script found inside PDF dictionary', risk: 'critical' as const },
-            { tag: '/OpenAction', description: 'Triggers automatic payload launch immediately upon file opening', risk: 'critical' as const },
-            { tag: '/Launch', description: 'Invokes external system process without explicit user consent', risk: 'critical' as const },
-            { tag: '/URI', description: 'Silent URL redirection beacon linking to external credential portal', risk: 'high' as const },
-            { tag: '/AcroForm', description: 'Fake input form fields designed to collect user input locally', risk: 'medium' as const },
-          ]
+          { tag: '/JavaScript', description: 'Embedded executable ECMAScript script found inside PDF dictionary', risk: 'critical' as const },
+          { tag: '/OpenAction', description: 'Triggers automatic payload launch immediately upon file opening', risk: 'critical' as const },
+          { tag: '/Launch', description: 'Invokes external system process without explicit user consent', risk: 'critical' as const },
+          { tag: '/URI', description: 'Silent URL redirection beacon linking to external credential portal', risk: 'high' as const },
+          { tag: '/AcroForm', description: 'Fake input form fields designed to collect user input locally', risk: 'medium' as const },
+        ]
         : isSuspicious
-        ? [
+          ? [
             { tag: 'Nested Archive', description: 'Contains compressed script payload (.vbs/.js) disguised with double extension', risk: 'high' as const },
             { tag: 'Hidden Executable', description: 'Executable PE header identified inside compressed stream', risk: 'high' as const },
           ]
-        : [
+          : [
             { tag: 'Standard Text Streams', description: 'Clean FlateDecode compressed font and vector layouts', risk: 'low' as const },
           ],
       sandboxStatus: isMalicious ? 'Quarantined Before Execution' : isSuspicious ? 'Executed in Sandbox' : 'Verified Benign',
       runtimeBehavior: isMalicious
         ? [
-            'Attempts to spawn cmd.exe via Adobe Acrobat Reader child process',
-            'Creates temporary staging file in %APPDATA%\\Roaming\\cert-updater.exe',
-            'Queries registry keys: HKCU\\Software\\Microsoft\\Office\\Outlook',
-          ]
+          'Attempts to spawn cmd.exe via Adobe Acrobat Reader child process',
+          'Creates temporary staging file in %APPDATA%\\Roaming\\cert-updater.exe',
+          'Queries registry keys: HKCU\\Software\\Microsoft\\Office\\Outlook',
+        ]
         : isSuspicious
-        ? [
+          ? [
             'Extracts payload into temporary cache directory',
             'Sends DNS query to dynamic DNS provider',
           ]
-        : ['No abnormal child processes or registry mutations observed.'],
+          : ['No abnormal child processes or registry mutations observed.'],
       outboundConnections: isMalicious
         ? ['hxxps://m365-auth-verify.azure-security-portal[.]com:443', '185.220.101.47:8080']
         : isSuspicious
-        ? ['hxxps://storage-fastdownload[.]xyz:443']
-        : [],
+          ? ['hxxps://storage-fastdownload[.]xyz:443']
+          : [],
     };
   }, [isMalicious, isSuspicious, threatLevel]);
 
@@ -885,11 +901,10 @@ function FullReportPreview({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as ReportContentTab)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
-                active
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${active
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-900/30'
                   : 'bg-white/[0.02] text-gray-400 hover:text-white hover:bg-white/[0.05] border border-white/5'
-              }`}
+                }`}
             >
               <Icon className="w-3.5 h-3.5" />
               {tab.label}
@@ -980,13 +995,12 @@ function FullReportPreview({
                         {item.action}
                       </span>
                       <span
-                        className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
-                          item.urgency === 'immediate'
+                        className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${item.urgency === 'immediate'
                             ? 'bg-red-500/20 text-red-300 border border-red-500/30'
                             : item.urgency === 'recommended'
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                            : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                        }`}
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          }`}
                       >
                         {item.urgency}
                       </span>
@@ -1045,9 +1059,8 @@ function FullReportPreview({
                       <XCircle className="w-4 h-4 text-red-400" />
                     )}
                     <span
-                      className={`text-sm font-black ${
-                        pass ? 'text-emerald-400' : 'text-red-400'
-                      }`}
+                      className={`text-sm font-black ${pass ? 'text-emerald-400' : 'text-red-400'
+                        }`}
                     >
                       {auth.val}
                     </span>
@@ -1091,15 +1104,14 @@ function FullReportPreview({
                       <td className="py-3 px-3 text-gray-400">{hop.delay}</td>
                       <td className="py-3 px-3">
                         <span
-                          className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
-                            hop.status === 'malicious'
+                          className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${hop.status === 'malicious'
                               ? 'bg-red-500/20 text-red-300 border border-red-500/30'
                               : hop.status === 'suspicious'
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                              : hop.status === 'internal'
-                              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                              : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                          }`}
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                : hop.status === 'internal'
+                                  ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                  : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            }`}
                         >
                           {hop.status}
                         </span>
@@ -1155,13 +1167,12 @@ function FullReportPreview({
                     <div className="text-xs font-mono font-bold text-white">{originIp}</div>
                   </div>
                   <span
-                    className={`text-xs uppercase font-bold px-2.5 py-1 rounded ${
-                      isMalicious
+                    className={`text-xs uppercase font-bold px-2.5 py-1 rounded ${isMalicious
                         ? 'bg-red-500/20 text-red-300 border border-red-500/30'
                         : isSuspicious
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                    }`}
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      }`}
                   >
                     {result?.threat_intel.ip_reputation || (isMalicious ? 'malicious' : 'suspicious')}
                   </span>
@@ -1224,13 +1235,12 @@ function FullReportPreview({
                         <div className="text-[11px] text-gray-400">{bl.detail}</div>
                       </div>
                       <span
-                        className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded shrink-0 ${
-                          isClean
+                        className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded shrink-0 ${isClean
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                             : bl.status === 'warning'
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                            : 'bg-red-500/20 text-red-300 border border-red-500/30'
-                        }`}
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                          }`}
                       >
                         {bl.status}
                       </span>
@@ -1242,22 +1252,24 @@ function FullReportPreview({
           </div>
 
           {/* IOC Badges Row */}
-          <div className="p-4 rounded-2xl bg-[#11121b] border border-white/10 space-y-2">
-            <div className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center justify-between">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-[#11121b] border border-white/10 space-y-2 overflow-hidden max-w-full">
+            <div className="text-xs font-bold text-gray-300 uppercase tracking-wider flex flex-wrap items-center justify-between gap-1">
               <span>Captured Indicators of Compromise (IOCs)</span>
-              <span className="text-[10px] text-gray-500">{data.indicators.length} IOCs cataloged</span>
+              <span className="text-[10px] text-gray-500 shrink-0">{data.indicators.length} IOCs cataloged</span>
             </div>
-            <div className="flex flex-wrap gap-2 pt-1">
+            <div className="flex flex-wrap gap-2 pt-1 min-w-0">
               {data.indicators.map((ind, i) => (
                 <div
                   key={`${ind.value}-${i}`}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono bg-white/[0.03] border border-white/10 text-white"
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-mono bg-white/[0.03] border border-white/10 text-white max-w-full min-w-0"
                 >
-                  <span className="text-cyan-400 font-bold">{ind.type}:</span>
-                  <span className="text-gray-300">{ind.value}</span>
+                  <span className="text-cyan-400 font-bold shrink-0">{ind.type}:</span>
+                  <span className="text-gray-300 truncate max-w-[190px] xs:max-w-[240px] sm:max-w-xs md:max-w-md break-all" title={ind.value}>
+                    {ind.value}
+                  </span>
                   <button
                     onClick={() => handleCopy(ind.value, `ioc-${i}`)}
-                    className="ml-1 p-1 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors cursor-pointer"
+                    className="ml-auto p-1 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
                     title="Copy IOC"
                   >
                     {copiedText === `ioc-${i}` ? (

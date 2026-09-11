@@ -296,14 +296,14 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
             boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
           }}
         >
-          <div className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-thin pb-1">
+          <div className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-none no-scrollbar touch-scroll pb-1">
             {ANALYSIS_STAGES.map((stage, i) => {
               const isActive = stage === activeStage;
               const isDone = ANALYSIS_STAGES.indexOf(activeStage) > i;
               return (
                 <div key={stage} className="flex items-center shrink-0">
                   <div
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-300 ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-300 ${
                       isActive ? 'text-purple-300' : isDone ? 'text-green-400' : 'text-gray-500'
                     }`}
                     style={
@@ -670,8 +670,8 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
               <span className="text-[11px] text-gray-500">{headerForensics.hops.length} Network Hops Traced</span>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+            <div className="overflow-x-auto scrollbar-thin touch-scroll">
+              <table className="w-full text-left text-xs min-w-[580px] md:min-w-0">
                 <thead>
                   <tr className="border-b border-white/10 text-gray-400 uppercase text-[10px]">
                     <th className="py-2.5 px-3">Hop</th>

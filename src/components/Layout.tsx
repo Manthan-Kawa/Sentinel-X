@@ -219,12 +219,12 @@ export function Sidebar({ activeId, onNavigate, onSignOut, mobileOpen, onMobileC
     <>
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9990] lg:hidden"
           onClick={onMobileClose}
         />
       )}
       <aside
-        className={`soc-sidebar fixed lg:static inset-y-0 left-0 z-50 w-64 flex flex-col transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        className={`soc-sidebar fixed lg:static inset-y-0 left-0 z-[9999] lg:z-auto w-64 flex flex-col transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
           }`}
         style={{ background: '#08090e', borderRight: '1px solid rgba(255,255,255,0.06)' }}
       >
@@ -1042,9 +1042,22 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
       <div className="flex items-center gap-3 relative" ref={searchContainerRef}>
         <button
           onClick={onMenuClick}
-          className="lg:hidden text-gray-500 hover:text-white transition-colors shrink-0"
+          className="lg:hidden text-gray-500 hover:text-white transition-colors shrink-0 p-1.5 rounded-lg hover:bg-white/5"
+          title="Open Menu"
         >
           <Menu className="w-5 h-5" />
+        </button>
+
+        {/* Mobile Search Button */}
+        <button
+          onClick={() => {
+            setSearchOpen(!searchOpen);
+            if (!searchOpen) setTimeout(() => searchInputRef.current?.focus(), 100);
+          }}
+          className="md:hidden text-gray-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5 shrink-0"
+          title="Search tools and telemetry"
+        >
+          <Search className="w-4 h-4" />
         </button>
 
         <div
@@ -1091,13 +1104,29 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
 
         {searchOpen && (
           <div
-            className="absolute top-12 left-0 w-96 rounded-2xl p-2 z-50 shadow-2xl backdrop-blur-xl animate-fade-in"
+            className="fixed md:absolute top-16 md:top-12 left-3 right-3 md:left-0 md:right-auto w-auto md:w-96 rounded-2xl p-2.5 md:p-2 z-50 shadow-2xl backdrop-blur-xl animate-fade-in"
             style={{
-              background: 'rgba(12, 15, 24, 0.96)',
+              background: 'rgba(12, 15, 24, 0.98)',
               border: '1px solid rgba(255,255,255,0.12)',
               boxShadow: '0 16px 40px rgba(0,0,0,0.8), 0 0 30px rgba(139,92,246,0.12)',
             }}
           >
+            {/* Mobile-only Search input field */}
+            <div className="md:hidden flex items-center gap-2 px-3 py-2 rounded-xl mb-2 bg-white/5 border border-white/10">
+              <Search className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search pages, tools, telemetry..."
+                autoFocus
+                className="bg-transparent text-xs text-gray-200 placeholder-gray-500 focus:outline-none w-full font-mono"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="text-gray-400 text-xs p-0.5">✕</button>
+              )}
+            </div>
+
             <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/5 mb-1">
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-gray-400">
                 {searchQuery.trim() ? `Search Results (${filteredSearchItems.length})` : 'Quick Navigation & Modules'}
@@ -1237,7 +1266,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
           {notifOpen && (
             <div
               ref={notifDropdownRef}
-              className="absolute right-0 mt-2 w-84 sm:w-96 rounded-2xl shadow-2xl z-50 border overflow-hidden animate-fade-in"
+              className="fixed sm:absolute top-14 sm:top-full left-3 sm:left-auto right-3 sm:right-0 sm:mt-2 w-auto sm:w-96 max-w-none sm:max-w-sm rounded-2xl shadow-2xl z-50 border overflow-hidden animate-fade-in"
               style={{
                 background: 'linear-gradient(180deg, #0f121d 0%, #0a0c14 100%)',
                 borderColor: 'rgba(255,255,255,0.1)',
@@ -1247,10 +1276,10 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
               {/* Header */}
               <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Bell className="w-3.5 h-3.5 text-purple-400" />
+                  <Bell className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                   <p className="text-xs font-bold text-white uppercase tracking-wider font-mono">Notifications</p>
                   {unreadCount > 0 && (
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-red-500/20 text-red-400 border border-red-500/30 shrink-0">
                       {unreadCount} NEW
                     </span>
                   )}
@@ -1258,7 +1287,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllRead}
-                    className="text-[10px] font-mono font-semibold text-purple-400 hover:text-purple-300 transition-colors"
+                    className="text-[10px] font-mono font-semibold text-purple-400 hover:text-purple-300 transition-colors shrink-0"
                   >
                     Mark all read
                   </button>
@@ -1267,12 +1296,12 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
 
               {/* Category Filter Tabs */}
               {isAnalyst ? (
-                <div className="px-3 py-1.5 border-b border-white/5 flex items-center gap-1.5 bg-white/[0.02] overflow-x-auto scrollbar-thin">
+                <div className="px-3 py-1.5 border-b border-white/5 flex items-center gap-1.5 bg-white/[0.02] overflow-x-auto scrollbar-none touch-scroll">
                   {(['all', 'requests', 'alerts', 'intel', 'system'] as const).map((cat) => (
                     <button
                       key={cat}
                       onClick={() => setNotifCategory(cat as any)}
-                      className={`px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase whitespace-nowrap transition-all ${
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase whitespace-nowrap shrink-0 transition-all ${
                         notifCategory === cat
                           ? 'bg-purple-500/25 text-purple-200 border border-purple-500/40 shadow-sm'
                           : 'text-gray-400 hover:text-white border border-transparent'
@@ -1307,7 +1336,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                     return (
                       <div
                         key={n.id}
-                        className={`px-4 py-3 flex items-start gap-3 transition-all duration-150 ${
+                        className={`px-3.5 sm:px-4 py-3 flex items-start gap-2.5 sm:gap-3 transition-all duration-150 ${
                           !n.read ? 'bg-white/[0.03] hover:bg-white/[0.07]' : 'hover:bg-white/[0.04]'
                         }`}
                       >
@@ -1330,12 +1359,12 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                               <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0" />
                             )}
                           </div>
-                          <p className="text-[11px] text-gray-400 leading-snug mt-0.5 line-clamp-2 pr-2">
+                          <p className="text-[11px] text-gray-400 leading-snug mt-0.5 line-clamp-2 pr-1">
                             {n.msg}
                           </p>
                           <div className="flex items-center gap-1 text-[9px] text-purple-400/80 font-mono font-medium mt-1">
                             <span>Open module</span>
-                            <ArrowRight className="w-2.5 h-2.5" />
+                            <ArrowRight className="w-2.5 h-2.5 shrink-0" />
                           </div>
                         </div>
                         <div className="flex flex-col items-center gap-1 shrink-0 pt-0.5">
@@ -1345,7 +1374,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                               e.stopPropagation();
                               dismissNotification(n.id);
                             }}
-                            className="w-6 h-6 rounded-lg flex items-center justify-center text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 group mt-0.5"
+                            className="w-6 h-6 rounded-lg flex items-center justify-center text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 group mt-0.5 cursor-pointer"
                             title="Delete notification"
                           >
                             <Trash2 className="w-3 h-3 group-hover:drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]" />
@@ -1360,14 +1389,35 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
           )}
         </div>
 
-        {/* Divider */}
-        <div className="w-px h-5" style={{ background: 'rgba(255,255,255,0.08)' }} />
+        {/* Divider (desktop/tablet only, hidden on mobile) */}
+        <div className="hidden sm:block w-px h-5" style={{ background: 'rgba(255,255,255,0.08)' }} />
 
-        {/* User chip */}
-        <div
-          className="hidden sm:flex items-center gap-2.5 cursor-pointer px-2 py-1 rounded-lg transition-all duration-150"
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+        {/* User profile avatar (clickable to open profile update in settings on mobile responsive devices, not PC) */}
+        <button
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.innerWidth < 640) {
+              try {
+                sessionStorage.setItem('settings_active_tab', 'profile');
+              } catch { /* ignore */ }
+              try {
+                let evt: any;
+                try {
+                  evt = new CustomEvent('sentinel_open_settings_tab', { detail: 'profile' });
+                } catch {
+                  evt = document.createEvent('CustomEvent');
+                  evt.initCustomEvent('sentinel_open_settings_tab', false, false, 'profile');
+                }
+                window.dispatchEvent(evt);
+              } catch { /* ignore */ }
+              onNavigate('settings');
+            }
+          }}
+          title={
+            typeof window !== 'undefined' && window.innerWidth < 640
+              ? 'Update Profile'
+              : `${currentUser?.displayName ?? 'User'} (${isAnalyst ? 'Cybersecurity Analyst' : 'Standard User'})`
+          }
+          className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-150 cursor-pointer sm:cursor-default sm:pointer-events-none hover:opacity-85 sm:hover:opacity-100 focus:outline-none"
         >
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 overflow-hidden"
@@ -1397,14 +1447,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
               currentUser?.initials ?? 'U'
             )}
           </div>
-          <div className="flex flex-col justify-center">
-            <p className="text-[12px] font-semibold text-white whitespace-nowrap leading-tight">{currentUser?.displayName ?? 'User'}</p>
-            <p className="text-[10px] mt-1 whitespace-nowrap leading-none font-medium tracking-wide"
-              style={{ color: isAnalyst ? '#9ca3af' : '#4ade80' }}>
-              {isAnalyst ? 'Cybersecurity Analyst' : 'Standard User'}
-            </p>
-          </div>
-        </div>
+        </button>
       </div>
 
       {/* ── Slide Down / Slide Out Toast Banner ── */}
@@ -1415,7 +1458,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
             setToastVisible(false);
             setTimeout(() => setActiveToast(null), 350);
           }}
-          className={`fixed top-4 right-6 z-50 max-w-sm w-[90vw] sm:w-96 p-3.5 rounded-2xl cursor-pointer shadow-2xl transition-all duration-500 ease-out flex items-start gap-3 border ${
+          className={`fixed top-3 left-3 right-3 sm:left-auto sm:right-6 z-50 max-w-sm w-auto sm:w-96 p-3.5 rounded-2xl cursor-pointer shadow-2xl transition-all duration-500 ease-out flex items-start gap-3 border ${
             toastVisible
               ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto'
               : '-translate-y-8 opacity-0 scale-95 pointer-events-none'

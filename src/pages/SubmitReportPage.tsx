@@ -204,17 +204,17 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
         <p className="text-xs text-gray-500 text-center max-w-sm">
           You will be notified when an analyst has reviewed your submission. Track the status in Check Status.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <button
             onClick={() => { setSubmitted(null); setEmlFile(null); setComment(''); }}
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-300 transition-all hover:text-white"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-300 transition-all hover:text-white text-center"
             style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
           >
             Submit Another
           </button>
           <button
             onClick={() => onNavigate('check-status')}
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 text-center"
             style={{ background: 'linear-gradient(135deg, #059669, #047857)', boxShadow: '0 4px 20px rgba(5,150,105,0.3)' }}
           >
             Check Status
@@ -293,7 +293,7 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
           </div>
         ) : (
           /* Drop prompt */
-          <div className="p-12 flex flex-col items-center gap-3 text-center">
+          <div className="p-8 sm:p-12 flex flex-col items-center gap-3 text-center">
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center"
               style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}

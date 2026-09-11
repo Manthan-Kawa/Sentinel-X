@@ -131,12 +131,12 @@ function CaseDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
       style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(10px)' }}
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-2xl rounded-3xl overflow-hidden animate-slide-up flex flex-col max-h-[92vh]"
+        className="relative w-full max-w-2xl rounded-2xl sm:rounded-3xl overflow-hidden animate-slide-up flex flex-col max-h-[92vh]"
         style={{
           background: 'linear-gradient(145deg, #0d1118, #0a0c14)',
           border: '1px solid rgba(255,255,255,0.1)',
@@ -146,12 +146,12 @@ function CaseDetailModal({
       >
         {/* Modal Header */}
         <div
-          className="flex items-center justify-between px-6 py-4 shrink-0"
+          className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 shrink-0"
           style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
         >
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
               style={{
                 background: isResolved
                   ? 'rgba(168,85,247,0.15)'
@@ -178,7 +178,7 @@ function CaseDetailModal({
               )}
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-sm font-black text-white font-mono">{ticket.id}</p>
                 <StatusBadge status={ticket.status} />
               </div>
@@ -187,17 +187,17 @@ function CaseDetailModal({
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-all"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-all shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="overflow-y-auto scrollbar-thin flex-1 px-6 py-5 space-y-5">
+        <div className="overflow-y-auto scrollbar-thin flex-1 px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5 touch-scroll">
           {/* Progress Stepper */}
           <div
-            className="p-3.5 rounded-2xl flex items-center justify-between"
+            className="p-3 sm:p-3.5 rounded-2xl flex items-center justify-between overflow-x-auto scrollbar-none gap-2 touch-scroll"
             style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
           >
             {[
@@ -206,7 +206,7 @@ function CaseDetailModal({
               { label: '3. Findings Ready', active: isAnalyzed || isResolved, done: isAnalyzed || isResolved },
               { label: '4. Resolved', active: isResolved, done: isResolved },
             ].map((step, idx) => (
-              <div key={step.label} className="flex items-center gap-1 text-[10px] font-bold">
+              <div key={step.label} className="flex items-center gap-1 text-[10px] font-bold shrink-0 whitespace-nowrap">
                 <div
                   className={`w-2 h-2 rounded-full ${
                     step.done
@@ -226,7 +226,7 @@ function CaseDetailModal({
 
           {/* Metadata Grid */}
           <div
-            className="grid grid-cols-2 gap-3 p-4 rounded-2xl"
+            className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 p-3.5 sm:p-4 rounded-2xl"
             style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}
           >
             {[
@@ -509,7 +509,7 @@ function CaseDetailModal({
                     return (
                       <div
                         key={msg.id}
-                        className={`p-3 rounded-xl text-xs leading-relaxed w-[40%] min-w-[220px] ${
+                        className={`p-3 rounded-xl text-xs leading-relaxed max-w-[85%] sm:max-w-[70%] min-w-[180px] ${
                           isAnalyst
                             ? 'mr-auto bg-purple-950/30 border border-purple-500/20 text-purple-100'
                             : 'ml-auto bg-white/[0.06] border border-white/10 text-gray-200'
@@ -641,12 +641,24 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
             </div>
             <h1 className="text-2xl font-black text-white">Check Status</h1>
             {pending > 0 && (
-              <span
-                className="px-2 py-0.5 rounded-full text-xs font-bold text-amber-300 font-mono"
-                style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}
-              >
-                {pending} pending
-              </span>
+              <>
+                {/* Mobile View: Yellow circle with number only */}
+                <span
+                  className="sm:hidden w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-amber-300 font-mono shrink-0 shadow-sm"
+                  style={{ background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.45)' }}
+                  title={`${pending} pending`}
+                >
+                  {pending}
+                </span>
+
+                {/* PC / Desktop View: Classic pill badge with 'pending' */}
+                <span
+                  className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-xs font-bold text-amber-300 font-mono shrink-0"
+                  style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}
+                >
+                  {pending} pending
+                </span>
+              </>
             )}
           </div>
           <p className="text-gray-400 text-sm">
@@ -704,15 +716,15 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
       <div className="flex items-center gap-3 flex-wrap">
         {/* Status filter tabs */}
         <div
-          className="h-10 flex items-center gap-1 p-1 rounded-xl"
+          className="h-10 flex items-center gap-1 p-1 rounded-xl overflow-x-auto scrollbar-none max-w-full touch-scroll"
           style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
-          <Filter className="w-3.5 h-3.5 text-gray-500 ml-2 mr-1" />
+          <Filter className="w-3.5 h-3.5 text-gray-500 ml-2 mr-1 shrink-0" />
           {(['all', 'pending', 'in_review', 'analyzed', 'resolved'] as const).map((s) => (
             <button
               key={s}
               onClick={() => setFilterStatus(s)}
-              className="h-8 px-3.5 rounded-lg text-xs font-bold capitalize transition-all flex items-center justify-center"
+              className="h-8 px-3.5 rounded-lg text-xs font-bold capitalize transition-all flex items-center justify-center shrink-0 whitespace-nowrap"
               style={
                 filterStatus === s
                   ? { background: 'rgba(34,197,94,0.25)', color: '#86efac', border: '1px solid rgba(34,197,94,0.4)' }
@@ -787,7 +799,7 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                 boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
               }}
             >
-              <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
@@ -819,9 +831,9 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                     )}
                   </div>
 
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-mono font-bold text-white">{ticket.id}</span>
+                      <span className="text-xs font-mono font-bold text-white whitespace-nowrap">{ticket.id}</span>
                       <StatusBadge status={ticket.status} />
                       {ticket.verdict && (
                         <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-white/5 text-gray-300">
@@ -830,21 +842,22 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                       )}
                     </div>
 
-                    <p className="text-xs text-gray-300 mt-1 truncate">
+                    <p className="text-xs text-gray-300 break-words leading-snug">
                       {ticket.userComment || (ticket.emlFile ? `File: ${ticket.emlFile.name}` : 'No description')}
                     </p>
 
-                    <div className="flex items-center gap-4 mt-2 text-[11px] text-gray-500 flex-wrap">
-                      <span>Submitted: {formatDate(ticket.submittedAt)}</span>
-                      {ticket.emlFile && <span>• {ticket.emlFile.name}</span>}
+                    <div className="flex items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-gray-500 flex-wrap font-mono">
+                      <span className="whitespace-nowrap">Submitted: {formatDate(ticket.submittedAt)}</span>
+                      {ticket.emlFile && <span className="truncate max-w-[200px]">• {ticket.emlFile.name}</span>}
                       {ticket.threadMessages && ticket.threadMessages.length > 0 && (
-                        <span>• {ticket.threadMessages.length} message(s)</span>
+                        <span className="whitespace-nowrap">• {ticket.threadMessages.length} message(s)</span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0 self-center">
+                {/* Mobile action bar */}
+                <div className="sm:hidden flex items-center justify-between pt-2 border-t border-white/5">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -852,7 +865,26 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                         deleteTicket(ticket.id);
                       }
                     }}
-                    className="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                    title="Delete report"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-xs text-emerald-400 group-hover:text-emerald-300 transition-colors font-mono font-semibold flex items-center gap-1">
+                    View Details →
+                  </span>
+                </div>
+
+                {/* Desktop action bar */}
+                <div className="hidden sm:flex items-center gap-2 shrink-0 self-center">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Delete report ${ticket.id}?`)) {
+                        deleteTicket(ticket.id);
+                      }
+                    }}
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
                     title="Delete report"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

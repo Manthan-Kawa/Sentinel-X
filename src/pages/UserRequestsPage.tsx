@@ -20,6 +20,17 @@ function formatDate(iso: string): string {
   });
 }
 
+function formatTimeAgo(iso?: string): string {
+  if (!iso) return 'recently';
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.max(1, Math.floor(diff / 60000));
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -227,12 +238,12 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
       style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-3xl rounded-3xl overflow-hidden animate-slide-up flex flex-col max-h-[92vh]"
+        className="relative w-full max-w-3xl rounded-2xl sm:rounded-3xl overflow-hidden animate-slide-up flex flex-col max-h-[92vh]"
         style={{
           background: 'linear-gradient(145deg, #0d1118, #0a0c14)',
           border: '1px solid rgba(255,255,255,0.1)',
@@ -242,18 +253,18 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
       >
         {/* Modal header */}
         <div
-          className="flex items-center justify-between px-6 py-4 shrink-0"
+          className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 shrink-0"
           style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
         >
           <div className="flex items-center gap-3">
             <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center"
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
               style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)' }}
             >
               <Inbox className="w-4.5 h-4.5 text-violet-400" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-sm font-black text-white font-mono">{ticket.id}</p>
                 <StatusBadge status={status} />
               </div>
@@ -264,13 +275,13 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
             <button
               onClick={() => sendEmailToUser(ticket, analystComment, reportFile)}
               title={`Compose email to ${ticket.userEmail}`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold text-purple-300 hover:text-white bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition-all"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold text-purple-300 hover:text-white bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition-all"
             >
               <Mail className="w-3.5 h-3.5" /> Launch Gmail
             </button>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-all shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
@@ -278,10 +289,10 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
         </div>
 
         {/* Scrollable body */}
-        <div className="overflow-y-auto scrollbar-thin flex-1 px-6 py-5 space-y-5">
+        <div className="overflow-y-auto scrollbar-thin flex-1 px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5 touch-scroll">
           {/* Submission metadata */}
           <div
-            className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-2xl"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 p-3.5 sm:p-4 rounded-2xl"
             style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}
           >
             {[
@@ -500,7 +511,7 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
                       return (
                         <div
                           key={msg.id}
-                          className={`p-2.5 rounded-xl text-xs w-[40%] min-w-[220px] ${
+                          className={`p-2.5 rounded-xl text-xs max-w-[85%] sm:max-w-[70%] min-w-[180px] ${
                             isAnalyst
                               ? 'ml-auto bg-purple-950/40 border border-purple-500/25 text-purple-100'
                               : 'mr-auto bg-white/[0.04] border border-white/10 text-gray-200'
@@ -704,10 +715,55 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
     return matchesStatus && matchesSearch;
   });
 
-  const pending = tickets.filter((t) => t.status === 'pending').length;
+  const pendingTickets = tickets.filter((t) => t.status === 'pending');
+  const pending = pendingTickets.length;
   const inReview = tickets.filter((t) => t.status === 'in_review').length;
   const analyzed = tickets.filter((t) => t.status === 'analyzed').length;
   const resolved = tickets.filter((t) => t.status === 'resolved' || t.status === 'closed').length;
+
+  // Pending ticket loop switcher for mobile
+  const [activePendingIdx, setActivePendingIdx] = useState(0);
+  const [pendingFade, setPendingFade] = useState<'in' | 'out'>('in');
+
+  useEffect(() => {
+    if (pendingTickets.length <= 1) return;
+    const interval = setInterval(() => {
+      setPendingFade('out');
+      setTimeout(() => {
+        setActivePendingIdx((prev) => (prev + 1) % pendingTickets.length);
+        setPendingFade('in');
+      }, 250);
+    }, 4500);
+
+    return () => clearInterval(interval);
+  }, [pendingTickets.length]);
+
+  const currentPendingTicket = pendingTickets[activePendingIdx % (pendingTickets.length || 1)] || pendingTickets[0];
+
+  // Auto-purge live countdown timer
+  const [autoPurgeTime, setAutoPurgeTime] = useState('23:59:12');
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = new Date();
+      const endOfDay = new Date(now);
+      endOfDay.setHours(23, 59, 59, 999);
+      const diff = Math.max(0, endOfDay.getTime() - now.getTime());
+      const hours = String(Math.floor(diff / (1000 * 60 * 60))).padStart(2, '0');
+      const minutes = String(Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+      const seconds = String(Math.floor((diff % (1000 * 60)) / 1000)).padStart(2, '0');
+      setAutoPurgeTime(`${hours}:${minutes}:${seconds}`);
+    };
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleClearAll = async () => {
+    if (window.confirm('Are you sure you want to clear all requests from the queue? This will wipe all tickets from local cache and the database.')) {
+      await clearAllTickets();
+      setToastMessage('All user requests have been purged from the database and local cache.');
+    }
+  };
 
   return (
     <div className="space-y-6 pb-10 animate-fade-in">
@@ -725,20 +781,119 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      {/* ── Mobile Card Header (Phone only: block md:hidden) Matching User Screenshot ── */}
+      <div className="block md:hidden rounded-2xl p-4 sm:p-5 bg-[#0e101a] border border-white/10 shadow-2xl space-y-4">
+        {/* Row 1: Icon + Title + Pending Count Badge */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-400 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/10">
+              <Inbox className="w-5 h-5 text-purple-400" />
+            </div>
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white whitespace-nowrap">
+              User Requests
+            </h1>
+          </div>
+
+          <div
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full shrink-0"
+            style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.35)' }}
+          >
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-xs font-bold text-amber-300 font-mono">{pending}</span>
+          </div>
+        </div>
+
+        {/* Row 2: Subtitle Description */}
+        <p className="text-xs text-gray-400 leading-relaxed">
+          Investigate suspicious emails reported by end-users, publish forensic verdicts, and provide mitigation instructions.
+        </p>
+
+        {/* Row 3: Meta badges (Sandbox, Avg SLA, High Priority) */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Sandbox: Active</span>
+            </div>
+            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-xs text-gray-400">
+              <span>Avg SLA:</span>
+              <span className="text-white font-mono font-bold">12m</span>
+            </div>
+          </div>
+
+          <span className="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/25 text-[10px] font-mono font-bold text-rose-400 tracking-wider uppercase shrink-0">
+            HIGH PRIORITY
+          </span>
+        </div>
+
+        {/* Row 4: Pending Case Card with Live Loop Switcher */}
+        {currentPendingTicket ? (
+          <div
+            onClick={() => setSelectedTicket(currentPendingTicket)}
+            className="rounded-xl p-3 bg-[#131625] hover:bg-[#161a2e] border border-white/10 hover:border-amber-500/40 flex items-center justify-between gap-3 transition-all cursor-pointer active:scale-[0.99] group shadow-inner"
+          >
+            <div className={`min-w-0 flex-1 space-y-0.5 transition-opacity duration-200 ${pendingFade === 'in' ? 'opacity-100' : 'opacity-0'}`}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-amber-400 font-mono font-bold text-xs">
+                  {currentPendingTicket.id.startsWith('#') ? currentPendingTicket.id : `#${currentPendingTicket.id}`}
+                </span>
+                <span className="text-gray-500 text-xs">•</span>
+                <span className="text-gray-400 text-xs font-mono">
+                  {formatTimeAgo(currentPendingTicket.submittedAt)}
+                </span>
+              </div>
+              <p className="text-xs font-semibold text-white truncate max-w-[240px] sm:max-w-xs">
+                {currentPendingTicket.userComment || (currentPendingTicket.emlFile ? currentPendingTicket.emlFile.name : 'Urgent: Suspicious Email Report')}
+              </p>
+              <p className="text-[11px] text-gray-400 truncate max-w-[240px] sm:max-w-xs">
+                Reported by: {currentPendingTicket.userEmail || 'user@enterprise.internal'}
+              </p>
+            </div>
+
+            <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-gray-400 group-hover:text-white flex items-center justify-center shrink-0">
+              <ChevronRight className="w-4 h-4" />
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-xl p-3 bg-[#131625]/50 border border-white/5 text-center text-xs text-gray-500 font-mono">
+            No pending cases in queue · All caught up
+          </div>
+        )}
+
+        {/* Row 5: Divider */}
+        <div className="border-t border-white/10" />
+
+        {/* Row 6: Clear All Requests Button */}
+        {tickets.length > 0 && (
+          <button
+            onClick={handleClearAll}
+            className="w-full py-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold text-xs flex items-center justify-center gap-2 transition-all active:scale-98 shadow-sm cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+            <span>Clear All Requests</span>
+          </button>
+        )}
+
+        {/* Row 7: Auto-purge Timer */}
+        <div className="text-center text-xs text-gray-500 font-mono">
+          Auto-purge in: {autoPurgeTime}
+        </div>
+      </div>
+
+      {/* ── Desktop Header (PC only: hidden md:flex) ── */}
+      <div className="hidden md:flex !mt-0 items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center"
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
               style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)' }}
             >
               <Inbox className="w-4.5 h-4.5 text-violet-400" />
             </div>
-            <h1 className="text-2xl font-black text-white">User Requests & Triage</h1>
+            <h1 className="text-2xl font-black text-white">User Requests &amp; Triage</h1>
             {pending > 0 && (
               <span
-                className="px-2 py-0.5 rounded-full text-xs font-bold text-amber-300 font-mono"
+                className="px-2 py-0.5 rounded-full text-xs font-bold text-amber-300 font-mono shrink-0"
                 style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}
               >
                 {pending} pending
@@ -752,12 +907,7 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
 
         {tickets.length > 0 && (
           <button
-            onClick={async () => {
-              if (window.confirm('Are you sure you want to clear all requests from the queue? This will wipe all tickets from local cache and the database.')) {
-                await clearAllTickets();
-                setToastMessage('All user requests have been purged from the database and local cache.');
-              }
-            }}
+            onClick={handleClearAll}
             className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition-all cursor-pointer shadow-sm"
             title="Purge all user requests from local cache and remote database"
           >
@@ -785,15 +935,15 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
       {/* Filter and Search */}
       <div className="flex items-center gap-3 flex-wrap">
         <div
-          className="h-10 flex items-center gap-1 p-1 rounded-xl"
+          className="h-10 flex items-center gap-1 p-1 rounded-xl overflow-x-auto scrollbar-none max-w-full touch-scroll"
           style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
-          <Filter className="w-3.5 h-3.5 text-gray-500 ml-2 mr-1" />
+          <Filter className="w-3.5 h-3.5 text-gray-500 ml-2 mr-1 shrink-0" />
           {(['all', 'pending', 'in_review', 'analyzed', 'resolved'] as const).map((s) => (
             <button
               key={s}
               onClick={() => setFilterStatus(s)}
-              className="h-8 px-3.5 rounded-lg text-xs font-bold capitalize transition-all font-mono"
+              className="h-8 px-3.5 rounded-lg text-xs font-bold capitalize transition-all font-mono shrink-0 whitespace-nowrap"
               style={
                 filterStatus === s
                   ? { background: 'rgba(139,92,246,0.25)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.4)' }
@@ -854,7 +1004,7 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
                 boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
               }}
             >
-              <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
@@ -886,13 +1036,10 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
                     )}
                   </div>
 
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-mono font-bold text-white">{ticket.id}</span>
+                      <span className="text-xs font-mono font-bold text-white whitespace-nowrap">{ticket.id}</span>
                       <StatusBadge status={ticket.status} />
-                      <span className="text-[11px] font-mono text-gray-400 font-bold">
-                        {ticket.userEmail}
-                      </span>
                       {ticket.verdict && (
                         <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-white/5 text-gray-300">
                           {ticket.verdict}
@@ -900,24 +1047,29 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
                       )}
                     </div>
 
-                    <p className="text-xs text-gray-300 mt-1 truncate">
+                    <div className="text-[11px] font-mono text-gray-400 font-bold truncate block" title={ticket.userEmail}>
+                      {ticket.userEmail}
+                    </div>
+
+                    <p className="text-xs text-gray-300 break-words leading-snug">
                       {ticket.userComment || (ticket.emlFile ? `Attachment: ${ticket.emlFile.name}` : 'No comment')}
                     </p>
 
-                    <div className="flex items-center gap-4 mt-2 text-[11px] text-gray-500 flex-wrap font-mono">
-                      <span>Submitted: {formatDate(ticket.submittedAt)}</span>
-                      {ticket.emlFile && <span>• {ticket.emlFile.name}</span>}
+                    <div className="flex items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-gray-500 flex-wrap font-mono">
+                      <span className="whitespace-nowrap">Submitted: {formatDate(ticket.submittedAt)}</span>
+                      {ticket.emlFile && <span className="truncate max-w-[200px]">• {ticket.emlFile.name}</span>}
                       {ticket.threadMessages && ticket.threadMessages.length > 0 && (
-                        <span>• {ticket.threadMessages.length} message(s)</span>
+                        <span className="whitespace-nowrap">• {ticket.threadMessages.length} message(s)</span>
                       )}
                       {ticket.userAcknowledged && (
-                        <span className="text-purple-400 font-bold">• User Confirmed Resolved</span>
+                        <span className="text-purple-400 font-bold whitespace-nowrap">• User Confirmed Resolved</span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0 self-center">
+                {/* Mobile action bar */}
+                <div className="sm:hidden flex items-center justify-between pt-2 border-t border-white/5">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -926,7 +1078,27 @@ export function UserRequestsPage({ onNavigate: _onNavigate }: UserRequestsPagePr
                         setToastMessage(`Deleted ticket ${ticket.id}.`);
                       }
                     }}
-                    className="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                    title="Delete ticket"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-xs text-violet-400 group-hover:text-violet-300 transition-colors font-mono font-semibold flex items-center gap-1">
+                    Investigate →
+                  </span>
+                </div>
+
+                {/* Desktop action bar */}
+                <div className="hidden sm:flex items-center gap-2 shrink-0 self-center">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Delete ticket ${ticket.id}?`)) {
+                        deleteTicket(ticket.id);
+                        setToastMessage(`Deleted ticket ${ticket.id}.`);
+                      }
+                    }}
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
                     title="Delete ticket"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
