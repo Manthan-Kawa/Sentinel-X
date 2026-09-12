@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTickets } from '@/contexts/TicketContext';
 import { KEY_USER_INGESTED_EMAILS } from '@/utils/storageKeys';
 import { UserNotificationService } from '@/services/userNotificationService';
+import { NotificationRulesService } from '@/services/notificationRulesService';
 
 export interface EmailFilterState {
   searchQuery: string;
@@ -177,6 +178,28 @@ export function EmailIngestionProvider({ children }: { children: React.ReactNode
       setEmails(onlyReal);
       const now = new Date().toISOString();
       setLastSyncedAt(now);
+
+      // Check for incoming critical threat emails and fire push alert if enabled
+      if (result.newEmailsCount > 0 && NotificationRulesService.isCriticalAlertsEnabled(effectiveEmail)) {
+        const critThreat = onlyReal.find(
+          (e) => e.analysis?.threat_level === 'malicious' || (e.analysis?.threat_score ?? 0) >= 70
+        );
+        if (critThreat) {
+          NotificationRulesService.sendBrowserPush(
+            `🚨 [CRITICAL THREAT] ${critThreat.subject}`,
+            `From ${critThreat.sender}: High-risk phishing payload detected (Score: ${critThreat.analysis?.threat_score || 85}/100)`
+          );
+          UserNotificationService.addUserNotification(effectiveEmail, {
+            id: `notif-crit-${Date.now()}`,
+            title: 'Critical Threat Detected',
+            msg: `Urgent: "${critThreat.subject}" contains malicious indicators (Score: ${critThreat.analysis?.threat_score || 85}/100)`,
+            sev: 'critical',
+            category: 'alerts',
+            route: 'emails',
+          });
+        }
+      }
+
       return result.newEmailsCount;
     } catch (err) {
       console.error('Email sync failed:', err);
