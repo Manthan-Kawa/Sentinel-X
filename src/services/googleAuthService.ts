@@ -33,6 +33,7 @@ declare global {
             callback: (response: GoogleTokenResponse) => void;
             error_callback?: (error: any) => void;
             prompt?: string;
+            hint?: string;
           }) => GoogleTokenClient;
           revoke: (token: string, done?: () => void) => void;
         };
@@ -52,7 +53,7 @@ export interface GoogleTokenResponse {
 }
 
 export interface GoogleTokenClient {
-  requestAccessToken: (overrideConfig?: { prompt?: string }) => void;
+  requestAccessToken: (overrideConfig?: { prompt?: string; hint?: string }) => void;
 }
 
 let gsiScriptLoadedPromise: Promise<void> | null = null;
@@ -141,8 +142,13 @@ export class GoogleAuthService {
       if (expiry) {
         const expiryTime = parseInt(expiry, 10);
         if (Date.now() >= expiryTime) {
-          // Token expired
+          // Token expired: record expiry flag and notify components
+          sessionStorage.setItem('sentinel_google_token_expired', 'true');
+          localStorage.setItem('sentinel_google_token_expired', 'true');
           this.clearStoredAuth();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('sentinel_google_auth_changed', { detail: { profile: null, expired: true } }));
+          }
           return null;
         }
       }
@@ -150,6 +156,24 @@ export class GoogleAuthService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Returns true if Google session access token has expired.
+   */
+  static isTokenExpired(): boolean {
+    return (
+      sessionStorage.getItem('sentinel_google_token_expired') === 'true' ||
+      localStorage.getItem('sentinel_google_token_expired') === 'true'
+    );
+  }
+
+  /**
+   * Clears token expired flag upon new login or manual sign out.
+   */
+  static clearTokenExpiredFlag(): void {
+    sessionStorage.removeItem('sentinel_google_token_expired');
+    localStorage.removeItem('sentinel_google_token_expired');
   }
 
   /**
@@ -167,8 +191,9 @@ export class GoogleAuthService {
 
   /**
    * Initiates Google Sign-In with popup asking for email, profile, and Gmail readonly access.
+   * If expectedEmail is provided, strictly requires the authenticated Google account to match it.
    */
-  static async signInWithGoogle(): Promise<{ token: string; profile: GoogleUserProfile }> {
+  static async signInWithGoogle(expectedEmail?: string): Promise<{ token: string; profile: GoogleUserProfile }> {
     const clientId = this.getClientId();
     if (!clientId) {
       throw new Error('GOOGLE_CLIENT_ID_MISSING');
@@ -186,12 +211,15 @@ export class GoogleAuthService {
       'https://www.googleapis.com/auth/gmail.readonly',
     ].join(' ');
 
+    const trimmedExpected = expectedEmail?.trim();
+
     return new Promise((resolve, reject) => {
       let isResolved = false;
 
       const tokenClient = window.google!.accounts.oauth2.initTokenClient({
         client_id: clientId,
         scope: scopes,
+        hint: trimmedExpected || undefined,
         callback: async (tokenResponse: GoogleTokenResponse) => {
           if (tokenResponse.error) {
             isResolved = true;
@@ -209,6 +237,34 @@ export class GoogleAuthService {
             // Fetch Google user profile
             const profile = await GoogleAuthService.fetchUserProfile(tokenResponse.access_token);
 
+            // If an expectedEmail is given, strictly require that the connected account matches!
+            if (trimmedExpected) {
+              const normExpected = trimmedExpected.toLowerCase();
+              const normProfile = (profile.email || '').trim().toLowerCase();
+
+              if (normProfile !== normExpected) {
+                // Immediately revoke access grant if possible so Google doesn't hold the token
+                try {
+                  if (window.google?.accounts?.oauth2?.revoke) {
+                    window.google.accounts.oauth2.revoke(tokenResponse.access_token, () => {});
+                  }
+                } catch {
+                  // ignore
+                }
+
+                // Clear any stored Google session
+                GoogleAuthService.signOut();
+
+                isResolved = true;
+                reject(
+                  new Error(
+                    `Account mismatch: You are signed up as "${trimmedExpected}", but tried connecting "${profile.email}". You must connect using your registered email address "${trimmedExpected}".`
+                  )
+                );
+                return;
+              }
+            }
+
             // Store token, expiration, and profile
             const expiresInSeconds = tokenResponse.expires_in || 3600;
             const expiryTime = Date.now() + expiresInSeconds * 1000;
@@ -221,6 +277,8 @@ export class GoogleAuthService {
             localStorage.setItem(KEY_GOOGLE_ACCESS_TOKEN, tokenResponse.access_token);
             localStorage.setItem(KEY_GOOGLE_TOKEN_EXPIRY, expiryTime.toString());
             localStorage.setItem(KEY_GOOGLE_USER_PROFILE, JSON.stringify(profile));
+
+            this.clearTokenExpiredFlag();
 
             if (typeof window !== 'undefined') {
               window.dispatchEvent(new CustomEvent('sentinel_google_auth_changed', { detail: { profile } }));
@@ -241,7 +299,11 @@ export class GoogleAuthService {
         },
       });
 
-      tokenClient.requestAccessToken({ prompt: 'consent' });
+      const requestConfig: { prompt?: string; hint?: string } = { prompt: 'consent' };
+      if (trimmedExpected) {
+        requestConfig.hint = trimmedExpected;
+      }
+      tokenClient.requestAccessToken(requestConfig);
     });
   }
 
@@ -276,6 +338,7 @@ export class GoogleAuthService {
       }
     }
     this.clearStoredAuth();
+    this.clearTokenExpiredFlag();
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('sentinel_google_auth_changed', { detail: { profile: null } }));
     }

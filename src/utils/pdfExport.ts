@@ -769,7 +769,8 @@ export function generateFormattedPdfHtml(
           doubleClickZoom: false
         });
 
-        var tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        var cartoKey = import.meta.env.VITE_CARTO_API_KEY || 'cb1_3i66_1_450e166351e036c0fa2b44d5';
+        var tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' + (cartoKey ? '?key=' + cartoKey : ''), {
           subdomains: 'abcd',
           maxZoom: 19
         }).addTo(map);

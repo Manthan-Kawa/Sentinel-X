@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   MessageSquare,
   Trash2,
+  Mail,
 } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { getNavItemsForRole, type NavRole } from '@/config/navigation';
@@ -35,6 +36,8 @@ import { useTickets, type TicketMessage } from '@/contexts/TicketContext';
 import { resultToAlert } from '@/utils/alertUtils';
 import { SECURITY_ALERTS, type SecurityAlert } from '@/data/mockData';
 import { SupabaseDataService } from '@/services/supabaseDataService';
+import { UserNotificationService, type UserActivityNotification } from '@/services/userNotificationService';
+import { NotificationRulesService } from '@/services/notificationRulesService';
 import analystAvatar from '@/analyst.png';
 
 interface SearchableItem {
@@ -431,6 +434,49 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
     });
   };
 
+  // Custom user and analyst notifications (Gmail connected, password updated, name changed)
+  const effectiveEmail = (currentUser?.email || (typeof localStorage !== 'undefined' ? localStorage.getItem('sentinel_user') : '') || '').trim().toLowerCase();
+  const [customUserNotifs, setCustomUserNotifs] = useState<UserActivityNotification[]>(() => {
+    return effectiveEmail ? UserNotificationService.getUserNotifications(effectiveEmail) : [];
+  });
+
+  useEffect(() => {
+    if (effectiveEmail) {
+      setCustomUserNotifs(UserNotificationService.getUserNotifications(effectiveEmail));
+    } else {
+      setCustomUserNotifs([]);
+    }
+  }, [effectiveEmail]);
+
+  // Real-time listener for dispatched user and analyst activity notifications
+  useEffect(() => {
+    const handleNewNotif = (e: Event) => {
+      const customEvt = e as CustomEvent<UserActivityNotification & { userEmail?: string }>;
+      const notif = customEvt.detail;
+      if (!notif) return;
+      const currentEmail = (effectiveEmail || '').trim().toLowerCase();
+      if (notif.userEmail && currentEmail && notif.userEmail.toLowerCase() !== currentEmail) return;
+
+      setCustomUserNotifs((prev) => [notif, ...prev.filter((p) => p.id !== notif.id)]);
+      fireToast({
+        id: notif.id,
+        title: notif.title,
+        msg: notif.msg,
+        time: notif.time,
+        timestamp: notif.timestamp,
+        sev: notif.sev,
+        category: notif.category,
+        route: notif.route,
+        read: false,
+      });
+    };
+
+    window.addEventListener('sentinel_user_notification_dispatched', handleNewNotif);
+    return () => {
+      window.removeEventListener('sentinel_user_notification_dispatched', handleNewNotif);
+    };
+  }, [effectiveEmail]);
+
   // Build notifications dynamically from tickets, analyzedReports, and system alerts
   const notifications: SystemNotification[] = useMemo(() => {
     if (!isAnalyst) {
@@ -438,6 +484,21 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
       const userMail = currentUser.email.toLowerCase().trim();
       const myTickets = tickets.filter((t) => t.userEmail.toLowerCase().trim() === userMail);
       const notifs: SystemNotification[] = [];
+
+      // 1. User activity notifications (Gmail connected, password updated, name changed)
+      customUserNotifs.forEach((cn) => {
+        notifs.push({
+          id: cn.id,
+          title: cn.title,
+          msg: cn.msg,
+          time: cn.time,
+          timestamp: cn.timestamp,
+          sev: cn.sev,
+          category: cn.category,
+          route: cn.route,
+          read: readNotifIds.includes(cn.id),
+        });
+      });
 
       myTickets.forEach((t) => {
         const subTime = new Date(t.submittedAt).getTime() || (Date.now() - 60000);
@@ -628,11 +689,24 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
         });
       });
 
-
+    // 3. Account activity notifications (Gmail connected, password updated, name changed)
+    customUserNotifs.forEach((cn) => {
+      analystNotifs.push({
+        id: cn.id,
+        title: cn.title,
+        msg: cn.msg,
+        time: cn.time,
+        timestamp: cn.timestamp,
+        sev: cn.sev,
+        category: cn.category,
+        route: cn.route,
+        read: readNotifIds.includes(cn.id),
+      });
+    });
 
     // Sort descending: newest on top
     return analystNotifs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-  }, [isAnalyst, currentUser?.email, tickets, analyzedReports, readNotifIds]);
+  }, [isAnalyst, currentUser?.email, tickets, analyzedReports, readNotifIds, customUserNotifs]);
 
   const isMountedRef = useRef(false);
   useEffect(() => {
@@ -791,10 +865,11 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
     const currentAnalyzed = myTickets.filter((t) => t.status === 'analyzed');
     const newAnalyzedTicket = currentAnalyzed.find((t) => !prevAnalyzedTicketsRef.current.includes(t.id));
     if (newAnalyzedTicket && isMountedRef.current) {
+      const emailNotifEnabled = NotificationRulesService.isEmailNotificationsEnabled(userMail);
       const n: SystemNotification = {
         id: `notif-analyzed-${Date.now()}`,
         title: 'Report Review Complete',
-        msg: `Analyst completed review for ${newAnalyzedTicket.id}. Forensic report is ready.`,
+        msg: `Analyst completed review for ${newAnalyzedTicket.id}. Forensic report is ready.${emailNotifEnabled ? ` (Notice dispatched to ${userMail})` : ''}`,
         time: 'Just now',
         timestamp: Date.now(),
         sev: 'high',
@@ -804,6 +879,13 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
         read: false,
       };
       fireToast(n);
+
+      if (emailNotifEnabled) {
+        NotificationRulesService.sendSampleEmailNotification(
+          userMail,
+          `Forensic investigation finished for case ${newAnalyzedTicket.id}. Detailed threat summary and mitigations are now accessible in your dashboard.`
+        );
+      }
     }
     prevAnalyzedTicketsRef.current = currentAnalyzed.map((t) => t.id);
 
@@ -848,24 +930,37 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
         const isThreat = (latestReport.threat_score ?? 0) >= 40 && !v.includes('benign') && !v.includes('authentic') && !v.includes('legitimate');
         if (isThreat) {
           const isCrit = (latestReport.threat_score ?? 0) >= 70;
-          const newNotif: SystemNotification = {
-            id: `notif-${Date.now()}`,
-            title: isCrit ? 'Critical Threat Detected' : 'Threat Analyzed',
-            msg: `${latestReport.verdict} — ${latestReport.case_id} (Score: ${latestReport.threat_score}/100)`,
-            time: 'Just now',
-            timestamp: Date.now(),
-            sev: isCrit ? 'critical' : 'high',
-            category: 'alerts',
-            route: 'alerts',
-            read: false,
-          };
-          fireToast(newNotif);
+          const userEmail = currentUser?.email;
+          const criticalEnabled = NotificationRulesService.isCriticalAlertsEnabled(userEmail);
+
+          // If critical alert is disabled, skip pop-up toast & push alert for critical items
+          if (!isCrit || criticalEnabled) {
+            const newNotif: SystemNotification = {
+              id: `notif-${Date.now()}`,
+              title: isCrit ? 'Critical Threat Detected' : 'Threat Analyzed',
+              msg: `${latestReport.verdict} — ${latestReport.case_id} (Score: ${latestReport.threat_score}/100)`,
+              time: 'Just now',
+              timestamp: Date.now(),
+              sev: isCrit ? 'critical' : 'high',
+              category: 'alerts',
+              route: 'alerts',
+              read: false,
+            };
+            fireToast(newNotif);
+
+            if (isCrit && criticalEnabled) {
+              NotificationRulesService.sendBrowserPush(
+                `🚨 [CRITICAL THREAT] ${latestReport.case_id}`,
+                `${latestReport.verdict} (Score: ${latestReport.threat_score}/100)`
+              );
+            }
+          }
         }
       }
     }
     prevReportsCountRef.current = analyzedReports.length;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analyzedReports, isAnalyst]);
+  }, [analyzedReports, currentUser?.email, isAnalyst]);
 
   function fireToast(n: SystemNotification) {
     setActiveToast(n);
@@ -905,6 +1000,13 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
     if (n.ticketId) {
       sessionStorage.setItem('sentinel_active_ticket_id', n.ticketId);
     }
+    if (n.route === 'settings') {
+      const targetTab = n.id.includes('pwd') ? 'password' : 'profile';
+      try {
+        sessionStorage.setItem('settings_active_tab', targetTab);
+        window.dispatchEvent(new CustomEvent('sentinel_open_settings_tab', { detail: targetTab }));
+      } catch { /* ignore */ }
+    }
     onNavigate(n.route);
   };
 
@@ -914,12 +1016,16 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
     try {
       localStorage.setItem(`sentinel_dismissed_notifs_${userNotifKey}`, JSON.stringify(updated));
     } catch { /* ignore */ }
+    if (effectiveEmail) {
+      UserNotificationService.deleteUserNotification(effectiveEmail, id);
+      setCustomUserNotifs((prev) => prev.filter((p) => p.id !== id));
+    }
   };
 
   const filteredNotifs = useMemo(() => {
     const notDismissed = (n: SystemNotification) => !dismissedNotifIds.includes(n.id);
     if (!isAnalyst) {
-      return notifications.filter((n) => n.category === 'ticket' && notDismissed(n));
+      return notifications.filter((n) => (n.category === 'ticket' || n.category === 'system' || n.category === 'auth') && notDismissed(n));
     }
     let base = notifications;
     if (notifCategory === 'requests' || notifCategory === 'ticket') base = notifications.filter((n) => n.category === 'ticket');
@@ -1314,10 +1420,10 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
               ) : (
                 <div className="px-4 py-1.5 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                   <span className="text-[10px] font-mono font-bold uppercase text-gray-400">
-                    Report Activity ({filteredNotifs.length})
+                    Activity &amp; Updates ({filteredNotifs.length})
                   </span>
                   <span className="text-[9px] font-mono text-emerald-400/90 font-semibold">
-                    Submissions &amp; Reviews
+                    Security &amp; Account
                   </span>
                 </div>
               )}
@@ -1328,7 +1434,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                   <div className="p-8 text-center text-xs text-gray-500 font-mono">
                     {isAnalyst
                       ? 'No notifications in this category.'
-                      : 'No report activity yet. Submit an email report to track review progress.'}
+                      : 'No notifications yet. Account activity and report reviews will appear here.'}
                   </div>
                 ) : (
                   filteredNotifs.map((n) => {
@@ -1561,6 +1667,12 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
           >
             {activeToast.title.includes('Investigation') ? (
               <Clock className="w-4 h-4 text-cyan-400 animate-spin" />
+            ) : activeToast.title.includes('Gmail') ? (
+              <Mail className="w-4 h-4 text-emerald-400" />
+            ) : activeToast.title.includes('Password') ? (
+              <Lock className="w-4 h-4 text-cyan-400" />
+            ) : activeToast.title.includes('Profile') || activeToast.title.includes('Name') ? (
+              <CheckCircle2 className="w-4 h-4 text-purple-400" />
             ) : activeToast.title.includes('Message') ? (
               <MessageSquare className="w-4 h-4 text-purple-400" />
             ) : activeToast.sev === 'critical' ? (
@@ -1600,11 +1712,15 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                   ? 'Reply to User'
                   : activeToast.title.includes('Message') && activeToast.route === 'check-status'
                   ? 'Reply to Analyst'
+                  : activeToast.route === 'emails'
+                  ? 'View in Emails'
+                  : activeToast.route === 'settings'
+                  ? 'View in Settings'
                   : activeToast.route === 'check-status'
                   ? 'View in Check Status'
                   : activeToast.route === 'user-requests'
                   ? 'View User Requests'
-                  : 'Open in triage'}
+                  : 'Open module'}
               </span>
               <ArrowRight className="w-3 h-3" />
             </div>

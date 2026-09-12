@@ -19,14 +19,17 @@ import {
   Clock,
   CheckCircle2,
   Check,
+  Link2Off,
 } from 'lucide-react';
 import { useEmailIngestion } from '@/contexts/EmailIngestionContext';
+import { type IngestedEmail, type ThreatLevel, decodeMimeHeader, generateRealisticCleanScore } from '@/services/emailIngestionService';
 import { EmailDetailDrawer } from '@/components/EmailDetailDrawer';
 import { GoogleSetupModal } from '@/components/GoogleSetupModal';
 import { GoogleAuthService } from '@/services/googleAuthService';
-import { type IngestedEmail, type ThreatLevel, decodeMimeHeader, generateRealisticCleanScore } from '@/services/emailIngestionService';
+import { UserNotificationService } from '@/services/userNotificationService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTickets } from '@/contexts/TicketContext';
+import { SlideIn } from '@/components/SlideIn';
 
 interface EmailsPageProps {
   onNavigate: (route: string, opts?: { role?: 'analyst' | 'user' }) => void;
@@ -44,6 +47,7 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
     filterState,
     isGoogleConnected,
     googleProfile,
+    disconnectGoogle,
     setFilterState,
     selectEmail,
     syncNow,
@@ -65,6 +69,18 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
   const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
 
+  const handleDisconnectGmail = () => {
+    disconnectGoogle();
+    UserNotificationService.addUserNotification({
+      title: 'Gmail Disconnected',
+      message: 'Gmail account disconnected from Sentinel-X monitoring.',
+      category: 'system',
+      userEmail: currentUser?.email,
+    });
+    setSyncNotice('Gmail account disconnected successfully.');
+    setTimeout(() => setSyncNotice(null), 4000);
+  };
+
   const handleConnectGoogle = async () => {
     if (!GoogleAuthService.isConfigured()) {
       setIsGoogleModalOpen(true);
@@ -74,8 +90,8 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
       await connectGoogle();
     } catch (err: any) {
       console.error('Google connect error:', err);
-      setSyncNotice(`Google connection failed: ${err?.message || 'Unknown error'}`);
-      setTimeout(() => setSyncNotice(null), 5000);
+      setSyncNotice(err?.message || 'Google connection failed.');
+      setTimeout(() => setSyncNotice(null), 8000);
     }
   };
 
@@ -85,13 +101,19 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
       await connectGoogle();
     } catch (err: any) {
       console.error('Failed to sign in after setting client ID', err);
-      setSyncNotice(`Failed to authenticate with Google: ${err?.message || 'Unknown error'}`);
-      setTimeout(() => setSyncNotice(null), 5000);
+      setSyncNotice(err?.message || 'Failed to authenticate with Google.');
+      setTimeout(() => setSyncNotice(null), 8000);
     }
   };
 
   const handleManualSync = async () => {
     setSyncNotice(null);
+    if (!isGoogleConnected) {
+      setSyncNotice('Please connect your Gmail account first to sync and view your emails.');
+      setTimeout(() => setSyncNotice(null), 6000);
+      handleConnectGoogle();
+      return;
+    }
     try {
       const count = await syncNow();
       if (count > 0) {
@@ -172,14 +194,16 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in text-white pb-16">
-      {/* ── Desktop Card (PC only: md:flex) Matching Screenshot ── */}
-      <div className="hidden md:flex items-center justify-between gap-4 p-4 lg:p-5 rounded-2xl bg-[#090b12] border border-white/10 relative overflow-hidden shadow-2xl">
-        {/* Left: Icon + Title & Badges + Connected Account */}
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0 shadow-lg shadow-cyan-500/10">
-            <Mail className="w-5 h-5 text-cyan-400" />
-          </div>
+    <div className="space-y-6 text-white pb-16">
+      {/* ── Header Card (Responsive Desktop + Mobile) ── */}
+      <SlideIn delay={0} direction="down">
+        {/* ── Desktop Card (PC only: md:flex) Matching Screenshot ── */}
+        <div className="hidden md:flex items-center justify-between gap-4 p-4 lg:p-5 rounded-2xl bg-[#090b12] border border-white/10 relative overflow-hidden shadow-2xl">
+          {/* Left: Icon + Title & Badges + Connected Account */}
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0 shadow-lg shadow-cyan-500/10">
+              <Mail className="w-5 h-5 text-cyan-400" />
+            </div>
 
           <div className="min-w-0 space-y-1">
             {/* Title + Badges */}
@@ -207,13 +231,25 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
             <div className="flex items-center gap-2 text-xs text-gray-400 flex-wrap">
               <span className="text-gray-500">Connected account</span>
               {isGoogleConnected ? (
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-white/[0.04] border border-white/10 text-gray-300 font-mono text-xs">
+                <span className="relative group inline-flex items-center gap-1.5 pl-2.5 pr-1 py-0.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 hover:border-white/20 text-gray-300 font-mono text-xs transition-all">
                   {googleProfile?.picture ? (
-                    <img src={googleProfile.picture} alt="" className="w-3.5 h-3.5 rounded-full" />
+                    <img src={googleProfile.picture} alt="" className="w-3.5 h-3.5 rounded-full object-cover" />
                   ) : (
                     <span className="w-2 h-2 rounded-full bg-blue-400" />
                   )}
-                  {googleProfile?.email || currentUser?.email}
+                  <span>{googleProfile?.email || currentUser?.email}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDisconnectGmail();
+                    }}
+                    title="Disconnect Gmail (Unlink)"
+                    aria-label="Disconnect Gmail"
+                    className="p-0.5 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-all cursor-pointer flex items-center justify-center group/unlink"
+                  >
+                    <Link2Off className="w-3 h-3 group-hover/unlink:scale-110 transition-transform" />
+                  </button>
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-white/[0.04] border border-white/10 text-gray-300 font-mono text-xs">
@@ -232,12 +268,12 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
         {/* Right: Telemetry status + Action buttons */}
         <div className="flex items-center gap-4 shrink-0">
           <div className="text-right space-y-0.5">
-            <div className="text-xs text-emerald-400 font-medium flex items-center gap-1.5 justify-end">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>{isGoogleConnected ? 'Live Gmail · auto-sync 30s' : 'Mailbox · auto-sync 30s'}</span>
+            <div className={`text-xs font-medium flex items-center gap-1.5 justify-end ${isGoogleConnected ? 'text-emerald-400' : 'text-gray-400'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${isGoogleConnected ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
+              <span>{isGoogleConnected ? 'Live Gmail · auto-sync 30s' : 'Gmail Not Connected'}</span>
             </div>
             <div className="text-[11px] text-gray-500 font-mono">
-              Last synced {lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() : 'Never'}
+              {isGoogleConnected && lastSyncedAt ? `Last synced ${new Date(lastSyncedAt).toLocaleTimeString()}` : 'Connect account to sync'}
             </div>
           </div>
 
@@ -322,7 +358,22 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
                   {googleProfile?.email || currentUser?.email}
                 </span>
               </div>
-              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                  <Check className="w-3 h-3" />
+                  <span>LIVE</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleDisconnectGmail}
+                  title="Disconnect Gmail (Unlink)"
+                  aria-label="Disconnect Gmail"
+                  className="px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 hover:text-red-300 text-[10px] font-mono font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+                >
+                  <Link2Off className="w-3 h-3" />
+                  <span>Unlink</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between gap-3">
@@ -353,14 +404,26 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
         {/* Row 4: Subtle divider line */}
         <div className="border-t border-white/10 pt-3">
           {/* Row 5: Status indicator + Last synced */}
-          <div className="flex items-center justify-between text-xs text-gray-400 font-mono">
-            <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${isGoogleConnected ? 'bg-emerald-400' : 'bg-cyan-400'} animate-pulse`} />
-              <span>Auto-sync</span>
+          <div className="flex items-start justify-between text-xs font-mono">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${isGoogleConnected ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
+                <span className={`font-medium ${isGoogleConnected ? 'text-emerald-400' : 'text-gray-400'}`}>
+                  {isGoogleConnected ? 'Live Gmail' : 'Gmail Not Connected'}
+                </span>
+              </div>
+              <div className="text-[11px] text-gray-400 pl-3.5">
+                {isGoogleConnected ? 'auto-sync 30s' : 'Auto-sync disabled'}
+              </div>
             </div>
-            <span>
-              Last synced {lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() : 'Never'}
-            </span>
+            <div className="text-right space-y-0.5">
+              <div className="text-[11px] text-gray-400">
+                {isGoogleConnected && lastSyncedAt ? 'Last synced' : 'Status'}
+              </div>
+              <div className="text-xs text-white font-mono">
+                {isGoogleConnected && lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() : 'Not connected'}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -368,116 +431,177 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
         <button
           onClick={handleManualSync}
           disabled={isSyncing}
-          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white text-xs font-semibold shadow-lg shadow-blue-900/30 flex items-center justify-center gap-2 transition-all active:scale-98 disabled:opacity-60 cursor-pointer"
+          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white text-xs font-semibold shadow-lg shadow-blue-900/30 flex items-center justify-center gap-2 transition-colors active:scale-95 disabled:opacity-60 cursor-pointer overflow-hidden select-none"
         >
-          <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-          <span>{isSyncing ? 'Syncing...' : isGoogleConnected ? 'Sync Gmail' : 'Sync Now'}</span>
+          {isSyncing ? (
+            <>
+              <RefreshCw className="w-4 h-4 shrink-0 animate-spin" />
+              <span className="whitespace-nowrap">Syncing...</span>
+            </>
+          ) : (
+            <>
+              <RefreshCw className="w-4 h-4 shrink-0" />
+              <span className="whitespace-nowrap">{isGoogleConnected ? 'Sync Gmail' : 'Sync Now'}</span>
+            </>
+          )}
         </button>
       </div>
+      </SlideIn>
+
+      {/* Google Session Expired Notification Banner */}
+      {!isGoogleConnected && GoogleAuthService.isTokenExpired() && (
+        <SlideIn delay={40} direction="down">
+          <div className="p-3.5 rounded-xl border bg-amber-500/10 border-amber-500/30 text-xs text-amber-200 flex items-center justify-between gap-3 animate-slide-down">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>
+                Your Gmail session has expired. Click <strong>Connect Gmail</strong> to re-authenticate and resume automated inbox threat monitoring.
+              </span>
+            </div>
+            <button
+              onClick={handleConnectGoogle}
+              className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-xs font-semibold shrink-0 transition-all cursor-pointer"
+            >
+              Re-authenticate
+            </button>
+          </div>
+        </SlideIn>
+      )}
 
       {/* Sync Notification Banner */}
       {syncNotice && (
-        <div className="p-3.5 rounded-xl bg-cyan-950/30 border border-cyan-500/40 text-cyan-200 text-xs flex items-center gap-2.5 animate-slide-down">
-          <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
-          <span>{syncNotice}</span>
-        </div>
+        <SlideIn delay={50} direction="down">
+          <div
+            className={`p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 animate-slide-down ${
+              syncNotice.toLowerCase().includes('mismatch') ||
+              syncNotice.toLowerCase().includes('failed') ||
+              syncNotice.toLowerCase().includes('error')
+                ? 'bg-rose-950/40 border-rose-500/40 text-rose-200'
+                : 'bg-cyan-950/30 border-cyan-500/40 text-cyan-200'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              {syncNotice.toLowerCase().includes('mismatch') ||
+              syncNotice.toLowerCase().includes('failed') ||
+              syncNotice.toLowerCase().includes('error') ? (
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              ) : (
+                <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
+              )}
+              <span className="font-medium leading-relaxed">{syncNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSyncNotice(null)}
+              className="text-gray-400 hover:text-white shrink-0 p-1 rounded-lg hover:bg-white/10 transition-colors"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </SlideIn>
       )}
 
       {/* Stat Metric Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
-        {/* Total Scanned */}
-        <div className="p-3 sm:p-4 rounded-2xl bg-white/[0.03] border border-white/8 hover:border-white/15 transition-all">
-          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-            <span className="text-xs font-medium text-gray-400">Total Scanned</span>
-            <Inbox className="w-4 h-4 text-gray-400" />
+      <SlideIn delay={80} direction="up">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
+          {/* Total Scanned */}
+          <div className="p-3 sm:p-4 rounded-2xl bg-white/[0.03] border border-white/8 hover:border-white/15 transition-all">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+              <span className="text-xs font-medium text-gray-400">Total Scanned</span>
+              <Inbox className="w-4 h-4 text-gray-400" />
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-white">{stats.total}</div>
+            <div className="text-[11px] text-gray-500 mt-1">Inbox messages monitored</div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-white">{stats.total}</div>
-          <div className="text-[11px] text-gray-500 mt-1">Inbox messages monitored</div>
-        </div>
 
-        {/* Clean / Authentic */}
-        <div className="p-3 sm:p-4 rounded-2xl bg-emerald-950/15 border border-emerald-500/20 hover:border-emerald-500/40 transition-all">
-          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-            <span className="text-xs font-medium text-emerald-400">Clean & Authentic</span>
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          {/* Clean / Authentic */}
+          <div className="p-3 sm:p-4 rounded-2xl bg-emerald-950/15 border border-emerald-500/20 hover:border-emerald-500/40 transition-all">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+              <span className="text-xs font-medium text-emerald-400">Clean & Authentic</span>
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-emerald-300">{stats.clean}</div>
+            <div className="text-[11px] text-emerald-500 mt-1">Verified safe communications</div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-emerald-300">{stats.clean}</div>
-          <div className="text-[11px] text-emerald-500 mt-1">Verified safe communications</div>
-        </div>
 
-        {/* Suspicious */}
-        <div className="p-3 sm:p-4 rounded-2xl bg-amber-950/15 border border-amber-500/20 hover:border-amber-500/40 transition-all">
-          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-            <span className="text-xs font-medium text-amber-400">Suspicious Anomalies</span>
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
+          {/* Suspicious */}
+          <div className="p-3 sm:p-4 rounded-2xl bg-amber-950/15 border border-amber-500/20 hover:border-amber-500/40 transition-all">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+              <span className="text-xs font-medium text-amber-400">Suspicious Anomalies</span>
+              <AlertTriangle className="w-4 h-4 text-amber-400" />
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-amber-300">{stats.suspicious}</div>
+            <div className="text-[11px] text-amber-500 mt-1">Require user caution</div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-amber-300">{stats.suspicious}</div>
-          <div className="text-[11px] text-amber-500 mt-1">Require user caution</div>
-        </div>
 
-        {/* Malicious */}
-        <div className="p-3 sm:p-4 rounded-2xl bg-red-950/15 border border-red-500/20 hover:border-red-500/40 transition-all">
-          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-            <span className="text-xs font-medium text-red-400">Malicious Threats</span>
-            <ShieldAlert className="w-4 h-4 text-red-400" />
+          {/* Malicious */}
+          <div className="p-3 sm:p-4 rounded-2xl bg-red-950/15 border border-red-500/20 hover:border-red-500/40 transition-all">
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+              <span className="text-xs font-medium text-red-400">Malicious Threats</span>
+              <ShieldAlert className="w-4 h-4 text-red-400" />
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-red-300">{stats.malicious}</div>
+            <div className="text-[11px] text-red-500 mt-1">Phishing & fraud intercepted</div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-red-300">{stats.malicious}</div>
-          <div className="text-[11px] text-red-500 mt-1">Phishing & fraud intercepted</div>
         </div>
-      </div>
+      </SlideIn>
 
       {/* Filters and Search Bar */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-[#11121b] border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 shadow-sm">
-        {/* Search input */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            value={filterState.searchQuery}
-            onChange={(e) => {
-              setFilterState((prev) => ({ ...prev, searchQuery: e.target.value }));
-              setCurrentPage(1);
-            }}
-            placeholder="Search by sender, subject, or AI summary..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition-colors"
-          />
-        </div>
+      <SlideIn delay={120} direction="up">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-[#11121b] border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 shadow-sm">
+          {/* Search input */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={filterState.searchQuery}
+              onChange={(e) => {
+                setFilterState((prev) => ({ ...prev, searchQuery: e.target.value }));
+                setCurrentPage(1);
+              }}
+              placeholder="Search by sender, subject, or AI summary..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition-colors"
+            />
+          </div>
 
-        {/* Filter pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none touch-scroll pb-1 md:pb-0">
-          <span className="text-xs text-gray-400 mr-1 flex items-center gap-1 shrink-0">
-            <Filter className="w-3.5 h-3.5" />
-            Filter:
-          </span>
-          {(['all', 'malicious', 'suspicious', 'clean'] as const).map((lvl) => {
-            const isActive = filterState.threatLevel === lvl;
-            return (
-              <button
-                key={lvl}
-                onClick={() => {
-                  setFilterState((prev) => ({ ...prev, threatLevel: lvl }));
-                  setCurrentPage(1);
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all shrink-0 ${isActive
-                  ? lvl === 'malicious'
-                    ? 'bg-red-500/20 text-red-300 border border-red-500/40 shadow-sm'
-                    : lvl === 'suspicious'
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                      : lvl === 'clean'
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                        : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                  : 'bg-white/[0.03] text-gray-400 hover:text-white border border-white/5'
-                  }`}
-              >
-                {lvl === 'all' ? 'All Emails' : lvl}
-              </button>
-            );
-          })}
+          {/* Filter pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none touch-scroll pb-1 md:pb-0">
+            <span className="text-xs text-gray-400 mr-1 flex items-center gap-1 shrink-0">
+              <Filter className="w-3.5 h-3.5" />
+              Filter:
+            </span>
+            {(['all', 'malicious', 'suspicious', 'clean'] as const).map((lvl) => {
+              const isActive = filterState.threatLevel === lvl;
+              return (
+                <button
+                  key={lvl}
+                  onClick={() => {
+                    setFilterState((prev) => ({ ...prev, threatLevel: lvl }));
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all shrink-0 ${isActive
+                    ? lvl === 'malicious'
+                      ? 'bg-red-500/20 text-red-300 border border-red-500/40 shadow-sm'
+                      : lvl === 'suspicious'
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                        : lvl === 'clean'
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                          : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                    : 'bg-white/[0.03] text-gray-400 hover:text-white border border-white/5'
+                    }`}
+                >
+                  {lvl === 'all' ? 'All Emails' : lvl}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      </SlideIn>
 
       {/* Main Paginated Emails: Mobile Cards + Desktop Table */}
-      <div className="rounded-2xl border border-white/10 bg-[#11121b] overflow-hidden shadow-xl">
+      <SlideIn delay={160} direction="up">
+        <div className="rounded-2xl border border-white/10 bg-[#11121b] overflow-hidden shadow-xl">
         {/* ── Mobile Card View (md:hidden) ── */}
         <div className="block md:hidden divide-y divide-white/5">
           {isLoading ? (
@@ -488,15 +612,30 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
               </div>
             </div>
           ) : paginatedEmails.length === 0 ? (
-            <div className="py-12 text-center text-gray-400 p-4">
-              <div className="flex flex-col items-center justify-center gap-3">
-                <Inbox className="w-8 h-8 text-gray-500" />
-                <span className="text-xs">
-                  {isGoogleConnected
-                    ? 'No live Gmail messages loaded yet. Click "Sync Gmail" above to fetch and triage your real inbox.'
-                    : 'No emails match your current filter criteria.'}
-                </span>
-              </div>
+            <div className="py-12 px-4 text-center">
+              {!isGoogleConnected ? (
+                <div className="flex flex-col items-center justify-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                    <Mail className="w-7 h-7 text-cyan-400" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-white">Connect Gmail to get started</p>
+                    <p className="text-xs text-gray-400">Link your Gmail account to monitor, scan and triage your inbox in real time.</p>
+                  </div>
+                  <button
+                    onClick={handleConnectGoogle}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold transition-colors shadow-lg shadow-cyan-900/30"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24"><path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                    Connect Gmail
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-3 text-gray-400">
+                  <Inbox className="w-8 h-8 text-gray-500" />
+                  <span className="text-xs">No live Gmail messages loaded yet. Tap "Sync Now" above to fetch your inbox.</span>
+                </div>
+              )}
             </div>
           ) : (
             paginatedEmails.map((email) => {
@@ -597,15 +736,30 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
                 </tr>
               ) : paginatedEmails.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-gray-400">
-                    <div className="flex flex-col items-center justify-center gap-3">
-                      <Inbox className="w-8 h-8 text-gray-500" />
-                      <span>
-                        {isGoogleConnected
-                          ? 'No live Gmail messages loaded yet. Click "Sync Gmail" above to fetch and triage your real inbox.'
-                          : 'No emails match your current filter criteria.'}
-                      </span>
-                    </div>
+                  <td colSpan={5} className="py-16 text-center">
+                    {!isGoogleConnected ? (
+                      <div className="flex flex-col items-center justify-center gap-4">
+                        <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                          <Mail className="w-7 h-7 text-cyan-400" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-white">Connect Gmail to get started</p>
+                          <p className="text-xs text-gray-400">Link your Gmail account to monitor, scan and triage your inbox in real time.</p>
+                        </div>
+                        <button
+                          onClick={handleConnectGoogle}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold transition-colors shadow-lg shadow-cyan-900/30"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24"><path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                          Connect Gmail
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center gap-3 text-gray-400">
+                        <Inbox className="w-8 h-8 text-gray-500" />
+                        <span>No live Gmail messages loaded yet. Click "Sync Gmail" above to fetch and triage your real inbox.</span>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -735,6 +889,7 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
           </div>
         </div>
       </div>
+    </SlideIn>
 
       {/* Side Detail Drawer */}
       <EmailDetailDrawer

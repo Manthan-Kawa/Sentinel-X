@@ -140,8 +140,13 @@ export function DarkCyberMap({
       dragging: true,
     });
 
-    // CartoDB Dark Matter — free, no API key, perfect dark aesthetic
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    // CartoDB Dark Matter with API key from .env to remove watermark
+    const cartoApiKey = import.meta.env.VITE_CARTO_API_KEY || 'cb1_3i66_1_450e166351e036c0fa2b44d5';
+    const tileUrl = cartoApiKey
+      ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${cartoApiKey}`
+      : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+    L.tileLayer(tileUrl, {
       attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
       subdomains: 'abcd',
       maxZoom: 19,

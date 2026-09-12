@@ -12,13 +12,14 @@ html {
 }
 
 html, body, #root {
-  background-color: #08090e;
+  background-color: var(--theme-bg, #08090e);
   color: #ffffff;
   min-height: 100vh;
   margin: 0;
   padding: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.25s ease;
 }
 
 /* Prevent iOS Safari from auto-zooming viewport on input focus */
@@ -445,4 +446,183 @@ html, body, #root {
   @keyframes glow-spin {
     to { --angle: 360deg; }
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   APPEARANCE THEME PRESETS & ACCENTS
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Default / Dark Cyber Theme */
+:root, [data-theme="Dark Cyber"] {
+  --theme-primary: #8b5cf6;
+  --theme-primary-rgb: 139, 92, 246;
+  --theme-primary-glow: rgba(139, 92, 246, 0.3);
+  --theme-primary-hover: #7c3aed;
+  --theme-bg: #08090e;
+  --theme-card-bg: #0c0e18;
+  --theme-card-border: rgba(139, 92, 246, 0.25);
+}
+
+/* 1. Obsidian Black Theme */
+[data-theme="Obsidian Black"] {
+  --theme-primary: #3b82f6;
+  --theme-primary-rgb: 59, 130, 246;
+  --theme-primary-glow: rgba(59, 130, 246, 0.3);
+  --theme-primary-hover: #2563eb;
+  --theme-bg: #030508;
+  --theme-card-bg: #070b12;
+  --theme-card-border: rgba(59, 130, 246, 0.25);
+}
+
+[data-theme="Obsidian Black"] .bg-purple-600,
+[data-theme="Obsidian Black"] .bg-purple-500 {
+  background-color: #3b82f6 !important;
+}
+[data-theme="Obsidian Black"] .hover\:bg-purple-700:hover,
+[data-theme="Obsidian Black"] .hover\:bg-purple-600:hover {
+  background-color: #2563eb !important;
+}
+[data-theme="Obsidian Black"] .text-purple-400,
+[data-theme="Obsidian Black"] .text-purple-300,
+[data-theme="Obsidian Black"] .text-purple-200 {
+  color: #60a5fa !important;
+}
+[data-theme="Obsidian Black"] .border-purple-500\/20,
+[data-theme="Obsidian Black"] .border-purple-500\/25,
+[data-theme="Obsidian Black"] .border-purple-500\/30,
+[data-theme="Obsidian Black"] .border-purple-500\/40,
+[data-theme="Obsidian Black"] .border-purple-500\/50,
+[data-theme="Obsidian Black"] .border-purple-500 {
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+[data-theme="Obsidian Black"] .bg-purple-500\/10,
+[data-theme="Obsidian Black"] .bg-purple-500\/15,
+[data-theme="Obsidian Black"] .bg-purple-500\/20,
+[data-theme="Obsidian Black"] .bg-purple-500\/25 {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+[data-theme="Obsidian Black"] .focus\:border-purple-500:focus {
+  border-color: #3b82f6 !important;
+}
+[data-theme="Obsidian Black"] .focus\:ring-purple-500:focus,
+[data-theme="Obsidian Black"] .focus\:ring-purple-500\/20:focus {
+  --tw-ring-color: rgba(59, 130, 246, 0.3) !important;
+}
+[data-theme="Obsidian Black"] [style*="border-color: rgb(139, 92, 246)"],
+[data-theme="Obsidian Black"] [style*="borderColor: rgb(139, 92, 246)"] {
+  border-color: #3b82f6 !important;
+}
+
+/* 2. Cyberpunk Teal Theme */
+[data-theme="Cyberpunk Teal"] {
+  --theme-primary: #14b8a6;
+  --theme-primary-rgb: 20, 184, 166;
+  --theme-primary-glow: rgba(20, 184, 166, 0.3);
+  --theme-primary-hover: #0d9488;
+  --theme-bg: #030c10;
+  --theme-card-bg: #051419;
+  --theme-card-border: rgba(20, 184, 166, 0.25);
+}
+
+[data-theme="Cyberpunk Teal"] .bg-purple-600,
+[data-theme="Cyberpunk Teal"] .bg-purple-500 {
+  background-color: #14b8a6 !important;
+}
+[data-theme="Cyberpunk Teal"] .hover\:bg-purple-700:hover,
+[data-theme="Cyberpunk Teal"] .hover\:bg-purple-600:hover {
+  background-color: #0d9488 !important;
+}
+[data-theme="Cyberpunk Teal"] .text-purple-400,
+[data-theme="Cyberpunk Teal"] .text-purple-300,
+[data-theme="Cyberpunk Teal"] .text-purple-200 {
+  color: #2dd4bf !important;
+}
+[data-theme="Cyberpunk Teal"] .border-purple-500\/20,
+[data-theme="Cyberpunk Teal"] .border-purple-500\/25,
+[data-theme="Cyberpunk Teal"] .border-purple-500\/30,
+[data-theme="Cyberpunk Teal"] .border-purple-500\/40,
+[data-theme="Cyberpunk Teal"] .border-purple-500\/50,
+[data-theme="Cyberpunk Teal"] .border-purple-500 {
+  border-color: rgba(20, 184, 166, 0.35) !important;
+}
+[data-theme="Cyberpunk Teal"] .bg-purple-500\/10,
+[data-theme="Cyberpunk Teal"] .bg-purple-500\/15,
+[data-theme="Cyberpunk Teal"] .bg-purple-500\/20,
+[data-theme="Cyberpunk Teal"] .bg-purple-500\/25 {
+  background-color: rgba(20, 184, 166, 0.15) !important;
+}
+[data-theme="Cyberpunk Teal"] .focus\:border-purple-500:focus {
+  border-color: #14b8a6 !important;
+}
+[data-theme="Cyberpunk Teal"] .focus\:ring-purple-500:focus,
+[data-theme="Cyberpunk Teal"] .focus\:ring-purple-500\/20:focus {
+  --tw-ring-color: rgba(20, 184, 166, 0.3) !important;
+}
+
+/* 3. Crimson Red Theme */
+[data-theme="Crimson Red"] {
+  --theme-primary: #ef4444;
+  --theme-primary-rgb: 239, 68, 68;
+  --theme-primary-glow: rgba(239, 68, 68, 0.3);
+  --theme-primary-hover: #dc2626;
+  --theme-bg: #0a0406;
+  --theme-card-bg: #13060a;
+  --theme-card-border: rgba(239, 68, 68, 0.25);
+}
+
+[data-theme="Crimson Red"] .bg-purple-600,
+[data-theme="Crimson Red"] .bg-purple-500 {
+  background-color: #ef4444 !important;
+}
+[data-theme="Crimson Red"] .hover\:bg-purple-700:hover,
+[data-theme="Crimson Red"] .hover\:bg-purple-600:hover {
+  background-color: #dc2626 !important;
+}
+[data-theme="Crimson Red"] .text-purple-400,
+[data-theme="Crimson Red"] .text-purple-300,
+[data-theme="Crimson Red"] .text-purple-200 {
+  color: #f87171 !important;
+}
+[data-theme="Crimson Red"] .border-purple-500\/20,
+[data-theme="Crimson Red"] .border-purple-500\/25,
+[data-theme="Crimson Red"] .border-purple-500\/30,
+[data-theme="Crimson Red"] .border-purple-500\/40,
+[data-theme="Crimson Red"] .border-purple-500\/50,
+[data-theme="Crimson Red"] .border-purple-500 {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+[data-theme="Crimson Red"] .bg-purple-500\/10,
+[data-theme="Crimson Red"] .bg-purple-500\/15,
+[data-theme="Crimson Red"] .bg-purple-500\/20,
+[data-theme="Crimson Red"] .bg-purple-500\/25 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+[data-theme="Crimson Red"] .focus\:border-purple-500:focus {
+  border-color: #ef4444 !important;
+}
+[data-theme="Crimson Red"] .focus\:ring-purple-500:focus,
+[data-theme="Crimson Red"] .focus\:ring-purple-500\/20:focus {
+  --tw-ring-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   NEON GLOW EFFECTS TOGGLE
+   ══════════════════════════════════════════════════════════════════ */
+html[data-glow="false"] [style*="boxShadow"],
+html[data-glow="false"] [style*="box-shadow"] {
+  box-shadow: none !important;
+}
+html[data-glow="false"] .glow-critical,
+html[data-glow="false"] .glow-btn::after {
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SLIDEIN ENTRANCE ANIMATIONS TOGGLE
+   ══════════════════════════════════════════════════════════════════ */
+html[data-animations="false"] * {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
 }

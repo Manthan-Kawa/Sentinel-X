@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTickets, type TicketAttachment } from '@/contexts/TicketContext';
+import { SlideIn } from '@/components/SlideIn';
 
 interface SubmitReportPageProps {
   onNavigate: (id: string) => void;
@@ -227,92 +228,96 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-10 animate-fade-in">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-3 mb-1">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)' }}
-          >
-            <Upload className="w-4.5 h-4.5 text-blue-400" />
+      <SlideIn delay={0} direction="down">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)' }}
+            >
+              <Upload className="w-4.5 h-4.5 text-blue-400" />
+            </div>
+            <h1 className="text-2xl font-black text-white">Submit a Report</h1>
           </div>
-          <h1 className="text-2xl font-black text-white">Submit a Report</h1>
+          <p className="text-gray-400 text-sm">
+            Upload a suspicious .eml email file for our security analysts to investigate.
+          </p>
         </div>
-        <p className="text-gray-400 text-sm">
-          Upload a suspicious .eml email file for our security analysts to investigate.
-        </p>
-      </div>
+      </SlideIn>
 
       {/* EML Drop Zone */}
-      <div
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onClick={() => !emlFile && fileInputRef.current?.click()}
-        className="relative rounded-2xl transition-all duration-200 cursor-pointer"
-        style={{
-          border: dragging
-            ? '2px dashed rgba(59,130,246,0.7)'
-            : emlFile
-            ? '2px solid rgba(34,197,94,0.4)'
-            : '2px dashed rgba(255,255,255,0.15)',
-          background: dragging
-            ? 'rgba(59,130,246,0.06)'
-            : emlFile
-            ? 'rgba(34,197,94,0.04)'
-            : 'rgba(255,255,255,0.02)',
-          boxShadow: dragging ? '0 0 30px rgba(59,130,246,0.12)' : 'none',
-        }}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".eml,.EML,message/rfc822"
-          className="hidden"
-          onChange={handleInputChange}
-        />
+      <SlideIn delay={50} direction="up">
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClick={() => !emlFile && fileInputRef.current?.click()}
+          className="relative rounded-2xl transition-all duration-200 cursor-pointer"
+          style={{
+            border: dragging
+              ? '2px dashed rgba(59,130,246,0.7)'
+              : emlFile
+              ? '2px solid rgba(34,197,94,0.4)'
+              : '2px dashed rgba(255,255,255,0.15)',
+            background: dragging
+              ? 'rgba(59,130,246,0.06)'
+              : emlFile
+              ? 'rgba(34,197,94,0.04)'
+              : 'rgba(255,255,255,0.02)',
+            boxShadow: dragging ? '0 0 30px rgba(59,130,246,0.12)' : 'none',
+          }}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".eml,.EML,message/rfc822"
+            className="hidden"
+            onChange={handleInputChange}
+          />
 
-        {emlFile ? (
-          /* File attached */
-          <div className="p-6 flex items-center gap-4">
-            <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}
-            >
-              <FileText className="w-6 h-6 text-green-400" />
+          {emlFile ? (
+            /* File attached */
+            <div className="p-6 flex items-center gap-4">
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}
+              >
+                <FileText className="w-6 h-6 text-green-400" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-white truncate">{emlFile.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{formatBytes(emlFile.size)} · .eml</p>
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); setEmlFile(null); }}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-white truncate">{emlFile.name}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{formatBytes(emlFile.size)} · .eml</p>
+          ) : (
+            /* Drop prompt */
+            <div className="p-8 sm:p-12 flex flex-col items-center gap-3 text-center">
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}
+              >
+                <Paperclip className="w-7 h-7 text-gray-500" />
+              </div>
+              <div>
+                <p className="text-white font-semibold text-sm">Drop your .eml file here</p>
+                <p className="text-gray-500 text-xs mt-1">or click to browse</p>
+              </div>
+              <span
+                className="px-3 py-1 rounded-full text-[10px] font-bold text-blue-400"
+                style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
+              >
+                .EML files only
+              </span>
             </div>
-            <button
-              onClick={(e) => { e.stopPropagation(); setEmlFile(null); }}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ) : (
-          /* Drop prompt */
-          <div className="p-8 sm:p-12 flex flex-col items-center gap-3 text-center">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}
-            >
-              <Paperclip className="w-7 h-7 text-gray-500" />
-            </div>
-            <div>
-              <p className="text-white font-semibold text-sm">Drop your .eml file here</p>
-              <p className="text-gray-500 text-xs mt-1">or click to browse</p>
-            </div>
-            <span
-              className="px-3 py-1 rounded-full text-[10px] font-bold text-blue-400"
-              style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
-            >
-              .EML files only
-            </span>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </SlideIn>
 
       {error && (
         <div
@@ -325,144 +330,152 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
       )}
 
       {/* How to export .eml — collapsible instructions */}
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}
-      >
-        <div className="px-5 py-3 flex items-center gap-2 border-b border-white/5">
-          <HelpCircle className="w-4 h-4 text-gray-400" />
-          <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">
-            How to export a .eml file
-          </span>
-        </div>
-        <div className="divide-y divide-white/[0.05]">
-          {EML_INSTRUCTIONS.map((client) => {
-            const open = expandedClient === client.client;
-            return (
-              <div key={client.client}>
-                <button
-                  onClick={() => setExpandedClient(open ? null : client.client)}
-                  className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.03] transition-colors text-left"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">{client.icon}</span>
-                    <span className={`text-sm font-semibold ${client.color}`}>{client.client}</span>
-                  </div>
-                  {open ? (
-                    <ChevronUp className="w-4 h-4 text-gray-500" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-gray-500" />
-                  )}
-                </button>
-                {open && (
-                  <div
-                    className="px-5 pb-4 animate-fade-in"
-                    style={{ background: client.bg }}
+      <SlideIn delay={100} direction="up">
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}
+        >
+          <div className="px-5 py-3 flex items-center gap-2 border-b border-white/5">
+            <HelpCircle className="w-4 h-4 text-gray-400" />
+            <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">
+              How to export a .eml file
+            </span>
+          </div>
+          <div className="divide-y divide-white/[0.05]">
+            {EML_INSTRUCTIONS.map((client) => {
+              const open = expandedClient === client.client;
+              return (
+                <div key={client.client}>
+                  <button
+                    onClick={() => setExpandedClient(open ? null : client.client)}
+                    className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.03] transition-colors text-left"
                   >
-                    <ol className="space-y-2 mt-1">
-                      {client.steps.map((step, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                          <span
-                            className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5"
-                            style={{ background: 'rgba(255,255,255,0.08)', color: '#9ca3af' }}
-                          >
-                            {i + 1}
-                          </span>
-                          <p className="text-xs text-gray-300 leading-relaxed">{step}</p>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">{client.icon}</span>
+                      <span className={`text-sm font-semibold ${client.color}`}>{client.client}</span>
+                    </div>
+                    {open ? (
+                      <ChevronUp className="w-4 h-4 text-gray-500" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-gray-500" />
+                    )}
+                  </button>
+                  {open && (
+                    <div
+                      className="px-5 pb-4 animate-fade-in"
+                      style={{ background: client.bg }}
+                    >
+                      <ol className="space-y-2 mt-1">
+                        {client.steps.map((step, i) => (
+                          <li key={i} className="flex items-start gap-3">
+                            <span
+                              className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5"
+                              style={{ background: 'rgba(255,255,255,0.08)', color: '#9ca3af' }}
+                            >
+                              {i + 1}
+                            </span>
+                            <p className="text-xs text-gray-300 leading-relaxed">{step}</p>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      </SlideIn>
 
       {/* Comment / Notes */}
-      <div className="space-y-2">
-        <label className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
-          <Mail className="w-3.5 h-3.5 text-gray-400" />
-          Additional Notes (optional)
-        </label>
-        <textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="Describe any suspicious behaviour, why you think this email is malicious, any context that may help the analyst…"
-          rows={4}
-          className="w-full px-4 py-3 rounded-xl text-sm text-gray-200 placeholder-gray-600 focus:outline-none resize-none transition-all"
-          style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.1)',
-          }}
-          onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(59,130,246,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.08)'; }}
-          onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = 'none'; }}
-        />
-        <p className="text-[11px] text-gray-600">{comment.length} characters</p>
-      </div>
+      <SlideIn delay={140} direction="up">
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+            <Mail className="w-3.5 h-3.5 text-gray-400" />
+            Additional Notes (optional)
+          </label>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Describe any suspicious behaviour, why you think this email is malicious, any context that may help the analyst…"
+            rows={4}
+            className="w-full px-4 py-3 rounded-xl text-sm text-gray-200 placeholder-gray-600 focus:outline-none resize-none transition-all"
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}
+            onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(59,130,246,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.08)'; }}
+            onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = 'none'; }}
+          />
+          <p className="text-[11px] text-gray-600">{comment.length} characters</p>
+        </div>
+      </SlideIn>
 
       {/* Incident Urgency & Interaction Checklist */}
-      <div
-        className="p-4 rounded-2xl space-y-2.5"
-        style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}
-      >
-        <p className="text-xs font-bold text-gray-300 uppercase tracking-wider">
-          Incident Severity & Interaction (Helps SOC prioritize)
-        </p>
-        <div className="space-y-2 text-xs text-gray-300">
-          <label className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors">
-            <input
-              type="checkbox"
-              checked={clickedLink}
-              onChange={(e) => setClickedLink(e.target.checked)}
-              className="rounded accent-red-500 w-4 h-4 cursor-pointer"
-            />
-            <span>I clicked a link or opened a web page inside this email</span>
-          </label>
-          <label className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors">
-            <input
-              type="checkbox"
-              checked={enteredCreds}
-              onChange={(e) => setEnteredCreds(e.target.checked)}
-              className="rounded accent-red-500 w-4 h-4 cursor-pointer"
-            />
-            <span>I entered my password, credentials, or personal info</span>
-          </label>
-          <label className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors">
-            <input
-              type="checkbox"
-              checked={isUrgent}
-              onChange={(e) => setIsUrgent(e.target.checked)}
-              className="rounded accent-amber-500 w-4 h-4 cursor-pointer"
-            />
-            <span className="text-amber-300 font-semibold">Mark as Critical / Urgent triage request</span>
-          </label>
+      <SlideIn delay={180} direction="up">
+        <div
+          className="p-4 rounded-2xl space-y-2.5"
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          <p className="text-xs font-bold text-gray-300 uppercase tracking-wider">
+            Incident Severity & Interaction (Helps SOC prioritize)
+          </p>
+          <div className="space-y-2 text-xs text-gray-300">
+            <label className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors">
+              <input
+                type="checkbox"
+                checked={clickedLink}
+                onChange={(e) => setClickedLink(e.target.checked)}
+                className="rounded accent-red-500 w-4 h-4 cursor-pointer"
+              />
+              <span>I clicked a link or opened a web page inside this email</span>
+            </label>
+            <label className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors">
+              <input
+                type="checkbox"
+                checked={enteredCreds}
+                onChange={(e) => setEnteredCreds(e.target.checked)}
+                className="rounded accent-red-500 w-4 h-4 cursor-pointer"
+              />
+              <span>I entered my password, credentials, or personal info</span>
+            </label>
+            <label className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors">
+              <input
+                type="checkbox"
+                checked={isUrgent}
+                onChange={(e) => setIsUrgent(e.target.checked)}
+                className="rounded accent-amber-500 w-4 h-4 cursor-pointer"
+              />
+              <span className="text-amber-300 font-semibold">Mark as Critical / Urgent triage request</span>
+            </label>
+          </div>
         </div>
-      </div>
+      </SlideIn>
 
       {/* Submit */}
-      <button
-        onClick={handleSubmit}
-        disabled={submitting || (!emlFile && !comment.trim())}
-        className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl text-white font-bold text-sm transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98]"
-        style={{
-          background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #7c3aed 100%)',
-          boxShadow: (emlFile || comment.trim()) ? '0 6px 28px rgba(99,102,241,0.4)' : 'none',
-        }}
-      >
-        {submitting ? (
-          <>
-            <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-            Submitting…
-          </>
-        ) : (
-          <>
-            <Send className="w-4 h-4" />
-            Submit Report
-          </>
-        )}
-      </button>
+      <SlideIn delay={220} direction="up">
+        <button
+          onClick={handleSubmit}
+          disabled={submitting || (!emlFile && !comment.trim())}
+          className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl text-white font-bold text-sm transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98]"
+          style={{
+            background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #7c3aed 100%)',
+            boxShadow: (emlFile || comment.trim()) ? '0 6px 28px rgba(99,102,241,0.4)' : 'none',
+          }}
+        >
+          {submitting ? (
+            <>
+              <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+              Submitting…
+            </>
+          ) : (
+            <>
+              <Send className="w-4 h-4" />
+              Submit Report
+            </>
+          )}
+        </button>
+      </SlideIn>
     </div>
   );
 }

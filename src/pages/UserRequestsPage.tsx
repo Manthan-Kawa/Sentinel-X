@@ -46,43 +46,7 @@ function downloadAttachment(data: string, name: string) {
   document.body.removeChild(a);
 }
 
-function SlideIn({
-  children,
-  delay = 0,
-  direction = 'up',
-  className = '',
-}: {
-  children: React.ReactNode;
-  delay?: number;
-  direction?: 'up' | 'left' | 'right' | 'down';
-  className?: string;
-}) {
-  const [vis, setVis] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setVis(true), delay);
-    return () => clearTimeout(t);
-  }, [delay]);
-  const from =
-    direction === 'left'
-      ? 'translateX(-36px)'
-      : direction === 'right'
-        ? 'translateX(36px)'
-        : direction === 'down'
-          ? 'translateY(-20px)'
-          : 'translateY(24px)';
-  return (
-    <div
-      className={className}
-      style={{
-        opacity: vis ? 1 : 0,
-        transform: vis ? 'none' : from,
-        transition: 'opacity .5s cubic-bezier(.22,1,.36,1), transform .5s cubic-bezier(.22,1,.36,1)',
-      }}
-    >
-      {children}
-    </div>
-  );
-}
+import { SlideIn } from '@/components/SlideIn';
 
 function fileToAttachment(file: File): Promise<TicketAttachment> {
   return new Promise((resolve, reject) => {

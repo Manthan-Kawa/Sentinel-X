@@ -259,6 +259,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (profile && profile.email) {
           const cleanEmail = profile.email.trim().toLowerCase();
+          const currentLoggedIn = (localStorage.getItem(KEY_USER) || '').trim().toLowerCase();
+          if (currentLoggedIn && currentLoggedIn !== cleanEmail) {
+            return;
+          }
           const role: UserRole = deriveRoleFromEmail(cleanEmail);
 
           const savedName = getSavedDisplayName(cleanEmail);

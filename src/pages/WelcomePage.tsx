@@ -2,37 +2,26 @@ import Spline from '@splinetool/react-spline';
 import { useState } from 'react';
 import {
   Shield, ArrowRight, Mail, Zap, Eye, EyeOff, Lock, Globe,
-  UserPlus, ChevronLeft, Check, Sparkles, UserCheck,
+  UserPlus, ChevronLeft, Check, Sparkles, UserCheck, AlertTriangle,
 } from 'lucide-react';
 import { TransparentLogo } from '@/components/TransparentLogo';
-import { buildUser, type UserRole, deriveRoleFromEmail } from '@/contexts/AuthContext';
+import { buildUser, type UserRole, deriveRoleFromEmail, deriveDisplayName } from '@/contexts/AuthContext';
 import { GoogleAuthService } from '@/services/googleAuthService';
 import { GmailIngestionService } from '@/services/gmailIngestionService';
 import { GoogleSetupModal } from '@/components/GoogleSetupModal';
 import { SupabaseDataService } from '@/services/supabaseDataService';
+import { UserNotificationService } from '@/services/userNotificationService';
+
+import { AuthAccountService, hashPassword, type StoredAccount } from '@/services/authAccountService';
 
 interface WelcomePageProps {
   onNavigate: (route: string, opts?: { role?: UserRole }) => void;
 }
 
-/* ─── User Registry ─── */
-interface RegisteredUser {
-  email: string;
-  password: string;
-  role: UserRole;
-}
-
-const USERS_DB: RegisteredUser[] = [
-  { email: 'sentinelx.analyst@gmail.com', password: 'password', role: 'analyst' },
-  { email: 'analyst@gmail.com', password: 'password', role: 'analyst' },
-  { email: 'demouser1@gmail.com', password: 'password', role: 'user' },
-  { email: 'demouser2@gmail.com', password: 'password', role: 'user' },
-  { email: 'janvip2246@gmail.com', password: 'password', role: 'user' },
-  { email: 'dharmikk566@gmail.com', password: 'password', role: 'user' },
-  { email: 'raichuramanthan13@gmail.com', password: 'password', role: 'user' },
-  { email: 'tirthmpatel25@gmail.com', password: 'password', role: 'user' },
-  { email: 'manthank0306@gmail.com', password: 'password', role: 'user' },
-];
+export { type StoredAccount };
+export const getStoredAccounts = () => AuthAccountService.getStoredAccounts();
+export const saveStoredAccount = (acc: StoredAccount) => AuthAccountService.saveStoredAccount(acc);
+export const checkEmailAlreadyExists = (email: string) => AuthAccountService.checkEmailAlreadyExists(email);
 
 /* ─── Auth hook (Supabase + localStorage) ─── */
 function useAuth() {
@@ -43,7 +32,8 @@ function useAuth() {
   async function login(
     email: string,
     password: string,
-    requestedRole?: UserRole
+    requestedRole?: UserRole,
+    mode: 'login' | 'signup' = 'login'
   ): Promise<{ success: boolean; role?: UserRole; error?: string }> {
     const e = email.trim().toLowerCase();
     const p = password.trim();
@@ -52,11 +42,55 @@ function useAuth() {
       return { success: false, error: 'Please fill in all fields.' };
     }
 
+    // Always clear mismatched Google tokens if logging in as an account that differs from the active Google profile
+    const existingGoogleProfile = GoogleAuthService.getUserProfile();
+    if (existingGoogleProfile?.email && existingGoogleProfile.email.toLowerCase().trim() !== e) {
+      GoogleAuthService.signOut();
+    }
+
+    // If attempting to Sign Up: check if email is already registered
+    if (mode === 'signup') {
+      const check = await checkEmailAlreadyExists(e);
+      if (check.exists) {
+        return {
+          success: false,
+          error: 'Account already created through email or Gmail. Please sign in to use.',
+        };
+      }
+
+      // New account registration with SHA-256 hashed password
+      const finalRole: UserRole = deriveRoleFromEmail(e);
+      const hashedPassword = await hashPassword(p);
+      saveStoredAccount({
+        email: e,
+        method: 'email',
+        password: hashedPassword,
+        createdAt: new Date().toISOString(),
+      });
+
+      localStorage.setItem('sentinel_auth', 'true');
+      localStorage.setItem('sentinel_user', e);
+      localStorage.setItem('sentinel_user_role', finalRole);
+      setIsLoggedIn(true);
+
+      // Async sync profile to Supabase
+      SupabaseDataService.upsertProfile({
+        email: e,
+        role: finalRole,
+        displayName: deriveDisplayName(e),
+      }).catch(() => {});
+
+      return { success: true, role: finalRole };
+    }
+
+    // Login mode
     // Try Supabase auth first if available
     try {
       const supabaseRes = await SupabaseDataService.signInWithEmail(e, p);
       if (supabaseRes.success && supabaseRes.role) {
         const resolvedRole = deriveRoleFromEmail(e);
+        const hashedPassword = await hashPassword(p);
+        saveStoredAccount({ email: e, method: 'email', password: hashedPassword });
         localStorage.setItem('sentinel_auth', 'true');
         localStorage.setItem('sentinel_user', e);
         localStorage.setItem('sentinel_user_role', resolvedRole);
@@ -67,34 +101,26 @@ function useAuth() {
       // Fallback to local DB check
     }
 
-    // Clear any mismatched Google session tokens if logging in as another account
-    const storedGoogleProfile = localStorage.getItem('sentinel_google_user_profile') || sessionStorage.getItem('sentinel_google_user_profile');
-    if (storedGoogleProfile) {
-      try {
-        const parsed = JSON.parse(storedGoogleProfile);
-        if (parsed.email && parsed.email.toLowerCase() !== e) {
-          localStorage.removeItem('sentinel_google_user_profile');
-          sessionStorage.removeItem('sentinel_google_user_profile');
-          localStorage.removeItem('sentinel_google_access_token');
-          sessionStorage.removeItem('sentinel_google_access_token');
-          localStorage.removeItem('sentinel_google_token_expiry');
-          sessionStorage.removeItem('sentinel_google_token_expiry');
-        }
-      } catch {}
-    }
-
-    // Check known users DB
-    const known = USERS_DB.find((u) => u.email === e);
+    // Check stored accounts (USERS_DB + previously registered)
+    const storedAccounts = getStoredAccounts();
+    const known = storedAccounts.find((u) => u.email === e);
     if (known) {
-      if (known.password !== p) {
+      if (known.method === 'google' && !known.password) {
+        return {
+          success: false,
+          error: 'This account was registered with Google. Please use Continue with Google to sign in.',
+        };
+      }
+      const isPasswordValid = await AuthAccountService.verifyPassword(e, p);
+      if (!isPasswordValid) {
         return { success: false, error: 'Incorrect password.' };
       }
+      const role = deriveRoleFromEmail(known.email);
       localStorage.setItem('sentinel_auth', 'true');
       localStorage.setItem('sentinel_user', known.email);
-      localStorage.setItem('sentinel_user_role', known.role);
+      localStorage.setItem('sentinel_user_role', role);
       setIsLoggedIn(true);
 
-      // Ensure any custom display name previously set for this account is preserved and active
       const existingName =
         localStorage.getItem(`sentinel_user_display_name_${known.email}`) ||
         localStorage.getItem('sentinel_user_display_name');
@@ -103,29 +129,13 @@ function useAuth() {
         localStorage.setItem('sentinel_user_display_name', existingName);
       }
 
-      // Async sync profile to Supabase only if not already established
-      SupabaseDataService.fetchProfile(known.email).then((existingProfile) => {
-        if (!existingProfile) {
-          SupabaseDataService.upsertProfile({
-            email: known.email,
-            role: known.role,
-            displayName: existingName || (known.role === 'analyst' ? 'Sentinel Analyst' : 'Demo User'),
-          }).catch(() => {});
-        }
-      }).catch(() => {});
-
-      return { success: true, role: known.role };
+      return { success: true, role };
     }
 
-    // Dynamic signup / new user: ALL new emails strictly receive 'user' role
-    const finalRole: UserRole = deriveRoleFromEmail(e);
-
-    localStorage.setItem('sentinel_auth', 'true');
-    localStorage.setItem('sentinel_user', e);
-    localStorage.setItem('sentinel_user_role', finalRole);
-    setIsLoggedIn(true);
-
-    return { success: true, role: finalRole };
+    return {
+      success: false,
+      error: 'No account found with this email. Please sign up first.',
+    };
   }
 
   function logout() {
@@ -160,7 +170,7 @@ function GoogleIcon() {
 /* ─── Apple icon ─── */
 function AppleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-white shrink-0">
       <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.67-.82 1.13-1.96.99-3.12-1 .04-2.22.67-2.92 1.49-.63.73-1.18 1.9-1.03 3.05 1.12.09 2.37-.6 3.03-1.42z" />
     </svg>
   );
@@ -172,7 +182,7 @@ function AppleIcon() {
 interface AuthModalProps {
   initialMode?: 'login' | 'signup';
   onClose: () => void;
-  onSuccess: (email: string, password: string, role?: UserRole) => void;
+  onSuccess: (email: string, password: string, role?: UserRole, mode?: 'login' | 'signup') => Promise<{ success: boolean; error?: string } | void> | void;
   onGoogleSignIn?: (role?: UserRole) => void;
   isGoogleLoading?: boolean;
 }
@@ -185,20 +195,58 @@ function AuthModal({ initialMode = 'login', onClose, onSuccess, onGoogleSignIn, 
   const [showPw, setShowPw] = useState(false);
   const [role, setRole] = useState<UserRole>('user');
   const [error, setError] = useState('');
+  const [appleToast, setAppleToast] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleAppleClick() {
+    setAppleToast(true);
+    setTimeout(() => setAppleToast(false), 3000);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    if (!email.trim() || !password.trim()) {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
       setError('Please fill in all fields.');
       return;
     }
-    if (tab === 'signup' && password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
+
+    if (tab === 'signup') {
+      if (cleanPassword !== confirmPassword.trim()) {
+        setError('Passwords do not match.');
+        return;
+      }
+      if (cleanPassword.length < 6) {
+        setError('Password must be at least 6 characters.');
+        return;
+      }
+
+      setIsSubmitting(true);
+      try {
+        const check = await checkEmailAlreadyExists(cleanEmail);
+        if (check.exists) {
+          setError('Account already created through email or Gmail. Please sign in to use.');
+          setIsSubmitting(false);
+          return;
+        }
+      } catch {
+        // proceed
+      }
     }
-    const resolvedRole = deriveRoleFromEmail(email);
-    onSuccess(email, password, resolvedRole);
+
+    setIsSubmitting(true);
+    try {
+      const resolvedRole = deriveRoleFromEmail(cleanEmail);
+      const res = await onSuccess(cleanEmail, cleanPassword, resolvedRole, tab);
+      if (res && typeof res === 'object' && !res.success && res.error) {
+        setError(res.error);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -314,18 +362,42 @@ function AuthModal({ initialMode = 'login', onClose, onSuccess, onGoogleSignIn, 
             </div>
           )}
 
-          {error && <p className="text-red-400 text-xs text-center">{error}</p>}
+          {error && (
+            <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/25 text-xs text-red-300 flex items-start gap-2.5 animate-slide-down">
+              <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+              <div className="flex-1 leading-relaxed text-left">
+                <span>{error}</span>
+                {tab === 'signup' && error.toLowerCase().includes('already created') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTab('login');
+                      setError('');
+                    }}
+                    className="mt-1.5 text-cyan-400 hover:text-cyan-300 font-semibold underline underline-offset-2 block cursor-pointer"
+                  >
+                    Click here to Sign In &rarr;
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Primary CTA */}
           <button
             type="submit"
-            className="w-full py-3.5 rounded-2xl text-white font-bold text-sm mt-1 hover:opacity-90 active:opacity-80 transition-opacity"
+            disabled={isSubmitting}
+            className="w-full py-3.5 rounded-2xl text-white font-bold text-sm mt-1 hover:opacity-90 active:opacity-80 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
             style={{
               background: 'linear-gradient(135deg, #06b6d4 0%, #6366f1 50%, #8b5cf6 100%)',
               boxShadow: '0 4px 24px rgba(99,102,241,0.4)',
             }}
           >
-            {tab === 'login' ? 'Sign In' : 'Create User Account'}
+            {isSubmitting ? (
+              <span>{tab === 'login' ? 'Signing in...' : 'Checking account...'}</span>
+            ) : (
+              <span>{tab === 'login' ? 'Sign In' : 'Create User Account'}</span>
+            )}
           </button>
         </form>
 
@@ -352,13 +424,25 @@ function AuthModal({ initialMode = 'login', onClose, onSuccess, onGoogleSignIn, 
           </button>
           <button
             type="button"
-            onClick={() => onSuccess('user@apple.com', 'apple-oauth', 'user')}
-            className="w-full flex items-center justify-center gap-3 py-3 rounded-2xl text-white text-sm font-medium transition-all hover:brightness-110"
+            onClick={handleAppleClick}
+            className="w-full flex items-center justify-center gap-3 py-3 rounded-2xl text-white text-sm font-medium transition-all hover:brightness-110 active:scale-95"
             style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)' }}
           >
             <AppleIcon />
             Continue with Apple
           </button>
+          {appleToast && (
+            <div
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium animate-slide-down"
+              style={{ background: 'rgba(255,200,50,0.08)', border: '1px solid rgba(255,200,50,0.2)', color: 'rgba(255,210,80,0.9)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              Apple Sign-In is not available yet — coming soon!
+            </div>
+          )}
+
         </div>
       </div>
     </div>
@@ -419,6 +503,13 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
         localStorage.setItem('sentinel_user_display_name', savedCustomName);
       }
 
+      // Save Google account to registered accounts
+      saveStoredAccount({
+        email: profile.email,
+        method: 'google',
+        createdAt: new Date().toISOString(),
+      });
+
       // Background sync to Supabase profiles
       SupabaseDataService.syncGoogleUser(profile, resolvedRole).catch((e) => {
         console.warn('Supabase Google user sync error:', e);
@@ -428,6 +519,21 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
       GmailIngestionService.syncGmailEmails(token, profile.email).catch((e) => {
         console.warn('Initial live Gmail sync error:', e);
       });
+
+      if (resolvedRole === 'user') {
+        const existingNotifs = UserNotificationService.getUserNotifications(profile.email);
+        const hasGmailNotif = existingNotifs.some((n) => n.id.startsWith('notif-gmail'));
+        if (!hasGmailNotif) {
+          UserNotificationService.addUserNotification(profile.email, {
+            id: `notif-gmail-auth-${Date.now()}`,
+            title: 'Gmail Connected',
+            msg: `Gmail account (${profile.email}) connected for automated threat monitoring.`,
+            sev: 'info',
+            category: 'system',
+            route: 'emails',
+          });
+        }
+      }
 
       setAuthModal(null);
       setGoogleLoading(false);
@@ -456,11 +562,16 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
     }
   }
 
-  async function handleAuthSuccess(email: string, password: string, selectedRole?: UserRole) {
-    const result = await login(email, password, selectedRole);
+  async function handleAuthSuccess(
+    email: string,
+    password: string,
+    selectedRole?: UserRole,
+    mode: 'login' | 'signup' = 'login'
+  ) {
+    const result = await login(email, password, selectedRole, mode);
     if (!result.success) {
-      setAuthError(result.error ?? 'Login failed.');
-      return;
+      setAuthError(result.error ?? 'Authentication failed.');
+      return result;
     }
     const role = result.role ?? 'user';
     setAuthError('');

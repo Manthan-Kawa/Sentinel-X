@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTickets, type Ticket, type TicketAttachment, type TicketStatus } from '@/contexts/TicketContext';
+import { SlideIn } from '@/components/SlideIn';
 
 interface CheckStatusPageProps {
   onNavigate: (id: string) => void;
@@ -630,280 +631,335 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
   return (
     <div className="space-y-6 pb-10 animate-fade-in">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center"
-              style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}
-            >
-              <ClipboardList className="w-4.5 h-4.5 text-green-400" />
+      <SlideIn delay={0} direction="down">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center"
+                style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}
+              >
+                <ClipboardList className="w-4.5 h-4.5 text-green-400" />
+              </div>
+              <h1 className="text-2xl font-black text-white">Check Status</h1>
+              {pending > 0 && (
+                <>
+                  {/* Mobile View: Yellow circle with number only */}
+                  <span
+                    className="sm:hidden w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-amber-300 font-mono shrink-0 shadow-sm"
+                    style={{ background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.45)' }}
+                    title={`${pending} pending`}
+                  >
+                    {pending}
+                  </span>
+
+                  {/* PC / Desktop View: Classic pill badge with 'pending' */}
+                  <span
+                    className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-xs font-bold text-amber-300 font-mono shrink-0"
+                    style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}
+                  >
+                    {pending} pending
+                  </span>
+                </>
+              )}
             </div>
-            <h1 className="text-2xl font-black text-white">Check Status</h1>
-            {pending > 0 && (
-              <>
-                {/* Mobile View: Yellow circle with number only */}
-                <span
-                  className="sm:hidden w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-amber-300 font-mono shrink-0 shadow-sm"
-                  style={{ background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.45)' }}
-                  title={`${pending} pending`}
-                >
-                  {pending}
-                </span>
-
-                {/* PC / Desktop View: Classic pill badge with 'pending' */}
-                <span
-                  className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-xs font-bold text-amber-300 font-mono shrink-0"
-                  style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}
-                >
-                  {pending} pending
-                </span>
-              </>
-            )}
+            <p className="text-gray-400 text-sm">
+              Track submitted suspicious email reports, view SOC verdicts, and communicate with security analysts.
+            </p>
           </div>
-          <p className="text-gray-400 text-sm">
-            Track submitted suspicious email reports, view SOC verdicts, and communicate with security analysts.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2">
-          {tickets.length > 0 && (
-            <button
-              onClick={async () => {
-                if (window.confirm('Are you sure you want to clear your submitted report history?')) {
-                  for (const t of tickets) {
-                    await deleteTicket(t.id);
+          <div className="flex items-center gap-2">
+            {tickets.length > 0 && (
+              <button
+                onClick={async () => {
+                  if (window.confirm('Are you sure you want to clear your submitted report history?')) {
+                    for (const t of tickets) {
+                      await deleteTicket(t.id);
+                    }
                   }
-                }
-              }}
-              className="px-3 py-2 rounded-xl text-xs font-mono font-bold text-gray-400 hover:text-rose-400 bg-white/[0.03] hover:bg-rose-500/10 border border-white/10 hover:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Clear all your submitted reports"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Clear History
-            </button>
-          )}
+                }}
+                className="px-3 py-2 rounded-xl text-xs font-mono font-bold text-gray-400 hover:text-rose-400 bg-white/[0.03] hover:bg-rose-500/10 border border-white/10 hover:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Clear all your submitted reports"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear History
+              </button>
+            )}
 
-          <button
-            onClick={() => onNavigate('submit-report')}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-lg hover:opacity-90 flex items-center gap-2"
-            style={{
-              background: 'linear-gradient(135deg, #059669, #047857)',
-              boxShadow: '0 4px 16px rgba(5,150,105,0.25)',
-            }}
-          >
-            + Submit New Report
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl">
-        {[
-          { label: 'Total Submitted', value: tickets.length, color: 'text-blue-400', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.2)' },
-          { label: 'Pending Review',  value: pending,        color: 'text-amber-400', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)' },
-          { label: 'In Investigation',value: inReview,       color: 'text-cyan-400',  bg: 'rgba(6,182,212,0.08)',  border: 'rgba(6,182,212,0.2)' },
-          { label: 'Analyzed & Done', value: analyzed + resolved, color: 'text-green-400', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.2)' },
-        ].map((s) => (
-          <div key={s.label} className="rounded-xl px-4 py-3 text-center" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
-            <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Filter and Search Toolbar */}
-      <div className="flex items-center gap-3 flex-wrap">
-        {/* Status filter tabs */}
-        <div
-          className="h-10 flex items-center gap-1 p-1 rounded-xl overflow-x-auto overflow-y-hidden scrollbar-none max-w-full touch-scroll touch-pan-x overscroll-x-contain"
-          style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            touchAction: 'pan-x',
-            WebkitOverflowScrolling: 'touch',
-            overscrollBehaviorY: 'none',
-          }}
-        >
-          <Filter className="w-3.5 h-3.5 text-gray-500 ml-2 mr-1 shrink-0" />
-          {(['all', 'pending', 'in_review', 'analyzed', 'resolved'] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setFilterStatus(s)}
-              className="h-8 px-3.5 rounded-lg text-xs font-bold capitalize transition-all flex items-center justify-center shrink-0 whitespace-nowrap"
-              style={
-                filterStatus === s
-                  ? { background: 'rgba(34,197,94,0.25)', color: '#86efac', border: '1px solid rgba(34,197,94,0.4)' }
-                  : { color: '#6b7280', border: '1px solid transparent' }
-              }
-            >
-              {s.replace('_', ' ')}
-            </button>
-          ))}
-        </div>
-
-        {/* Search */}
-        <div
-          className="h-10 flex-1 min-w-[200px] flex items-center gap-2.5 px-3.5 rounded-xl"
-          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
-        >
-          <Search className="w-4 h-4 text-gray-500 shrink-0" />
-          <input
-            type="text"
-            placeholder="Search by case ID, filename, or comment..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full text-xs text-white bg-transparent placeholder-gray-500 focus:outline-none"
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="text-gray-500 hover:text-white">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Ticket List */}
-      {filtered.length === 0 ? (
-        <div
-          className="rounded-2xl p-12 text-center"
-          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
-        >
-          <ClipboardList className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-          <p className="text-sm font-bold text-gray-400">No reports found</p>
-          <p className="text-xs text-gray-600 mt-1 max-w-sm mx-auto">
-            {tickets.length === 0
-              ? 'You have not submitted any reports yet. Click "Submit New Report" to upload a suspicious email.'
-              : 'No tickets match the selected filters.'}
-          </p>
-          {tickets.length === 0 && (
             <button
               onClick={() => onNavigate('submit-report')}
-              className="mt-4 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90"
-              style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}
-            >
-              Submit Your First Report
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((ticket) => (
-            <div
-              key={ticket.id}
-              onClick={() => setSelectedTicket(ticket)}
-              className="rounded-2xl p-4 transition-all duration-200 hover:scale-[1.007] cursor-pointer group"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-lg hover:opacity-90 flex items-center gap-2"
               style={{
-                background: 'linear-gradient(145deg, #0d1118, #0a0c14)',
-                border: ticket.status === 'analyzed'
-                  ? '1px solid rgba(34,197,94,0.25)'
-                  : ticket.status === 'resolved'
-                  ? '1px solid rgba(168,85,247,0.25)'
-                  : ticket.status === 'in_review'
-                  ? '1px solid rgba(6,182,212,0.25)'
-                  : '1px solid rgba(255,255,255,0.07)',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                background: 'linear-gradient(135deg, #059669, #047857)',
+                boxShadow: '0 4px 16px rgba(5,150,105,0.25)',
               }}
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                    style={{
-                      background: ticket.status === 'resolved'
-                        ? 'rgba(168,85,247,0.12)'
-                        : ticket.status === 'analyzed'
-                        ? 'rgba(34,197,94,0.12)'
-                        : ticket.status === 'in_review'
-                        ? 'rgba(6,182,212,0.12)'
-                        : 'rgba(245,158,11,0.12)',
-                      border: ticket.status === 'resolved'
-                        ? '1px solid rgba(168,85,247,0.25)'
-                        : ticket.status === 'analyzed'
-                        ? '1px solid rgba(34,197,94,0.25)'
-                        : ticket.status === 'in_review'
-                        ? '1px solid rgba(6,182,212,0.3)'
-                        : '1px solid rgba(245,158,11,0.25)',
-                    }}
-                  >
-                    {ticket.status === 'resolved' ? (
-                      <ShieldCheck className="w-5 h-5 text-purple-400" />
-                    ) : ticket.status === 'analyzed' ? (
-                      <ShieldCheck className="w-5 h-5 text-green-400" />
-                    ) : ticket.status === 'in_review' ? (
-                      <Clock className="w-5 h-5 text-cyan-400 animate-spin" />
-                    ) : (
-                      <Clock className="w-5 h-5 text-amber-400 animate-pulse" />
-                    )}
-                  </div>
+              + Submit New Report
+            </button>
+          </div>
+        </div>
+      </SlideIn>
 
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-mono font-bold text-white whitespace-nowrap">{ticket.id}</span>
-                      <StatusBadge status={ticket.status} />
-                      {ticket.verdict && (
-                        <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-white/5 text-gray-300">
-                          {ticket.verdict}
-                        </span>
-                      )}
-                    </div>
+      {/* Stats Cards */}
+      <SlideIn delay={50} direction="up" className="w-full">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full">
+          {[
+            {
+              label: 'Total Submitted',
+              value: tickets.length,
+              dotColor: 'bg-[#60a5fa] shadow-sm shadow-blue-400/50',
+              numColor: 'text-[#60a5fa]',
+              filter: 'all' as const,
+              glow: 'shadow-[0_0_20px_rgba(96,165,250,0.2)]',
+            },
+            {
+              label: 'Pending Review',
+              value: pending,
+              dotColor: 'bg-[#fbbf24] shadow-sm shadow-amber-400/50',
+              numColor: 'text-[#fbbf24]',
+              filter: 'pending' as const,
+              glow: 'shadow-[0_0_20px_rgba(251,191,36,0.2)]',
+            },
+            {
+              label: 'In Investigation',
+              value: inReview,
+              dotColor: 'bg-[#22d3ee] shadow-sm shadow-cyan-400/50',
+              numColor: 'text-[#22d3ee]',
+              filter: 'in_review' as const,
+              glow: 'shadow-[0_0_20px_rgba(34,211,238,0.2)]',
+            },
+            {
+              label: 'Analyzed & Done',
+              value: analyzed + resolved,
+              dotColor: 'bg-[#4ade80] shadow-sm shadow-emerald-400/50',
+              numColor: 'text-[#4ade80]',
+              filter: 'analyzed' as const,
+              glow: 'shadow-[0_0_20px_rgba(74,222,128,0.2)]',
+            },
+          ].map((stat) => {
+            const isActive = stat.filter === 'analyzed'
+              ? (filterStatus === 'analyzed' || filterStatus === 'resolved')
+              : filterStatus === stat.filter;
 
-                    <p className="text-xs text-gray-300 break-words leading-snug">
-                      {ticket.userComment || (ticket.emlFile ? `File: ${ticket.emlFile.name}` : 'No description')}
-                    </p>
-
-                    <div className="flex items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-gray-500 flex-wrap font-mono">
-                      <span className="whitespace-nowrap">Submitted: {formatDate(ticket.submittedAt)}</span>
-                      {ticket.emlFile && <span className="truncate max-w-[200px]">• {ticket.emlFile.name}</span>}
-                      {ticket.threadMessages && ticket.threadMessages.length > 0 && (
-                        <span className="whitespace-nowrap">• {ticket.threadMessages.length} message(s)</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Mobile action bar */}
-                <div className="sm:hidden flex items-center justify-between pt-2 border-t border-white/5">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (window.confirm(`Delete report ${ticket.id}?`)) {
-                        deleteTicket(ticket.id);
-                      }
-                    }}
-                    className="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                    title="Delete report"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="text-xs text-emerald-400 group-hover:text-emerald-300 transition-colors font-mono font-semibold flex items-center gap-1">
-                    View Details →
+            return (
+              <div
+                key={stat.label}
+                onClick={() => setFilterStatus(stat.filter)}
+                className={`p-3.5 sm:p-4 rounded-2xl bg-[#0c0e18] border border-white/[0.08] hover:border-white/20 transition-all cursor-pointer flex flex-col justify-between min-h-[82px] sm:min-h-[92px] group ${
+                  isActive ? `${stat.glow} border-white/20` : ''
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-mono text-[11px] sm:text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    {stat.label}
                   </span>
+                  <span className={`w-2 h-2 rounded-full ${stat.dotColor}`} />
                 </div>
-
-                {/* Desktop action bar */}
-                <div className="hidden sm:flex items-center gap-2 shrink-0 self-center">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (window.confirm(`Delete report ${ticket.id}?`)) {
-                        deleteTicket(ticket.id);
-                      }
-                    }}
-                    className="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                    title="Delete report"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="text-xs text-gray-400 group-hover:text-white transition-colors">
-                    View Details →
-                  </span>
+                <div className={`text-2xl sm:text-3xl font-bold font-mono tracking-tight ${stat.numColor}`}>
+                  {stat.value}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
-      )}
+      </SlideIn>
+
+      {/* Filter and Search Toolbar */}
+      <SlideIn delay={100} direction="up">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Status filter tabs */}
+          <div
+            className="h-10 flex items-center gap-1 p-1 rounded-xl overflow-x-auto overflow-y-hidden scrollbar-none max-w-full touch-scroll touch-pan-x overscroll-x-contain"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              touchAction: 'pan-x',
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehaviorY: 'none',
+            }}
+          >
+            <Filter className="w-3.5 h-3.5 text-gray-500 ml-2 mr-1 shrink-0" />
+            {(['all', 'pending', 'in_review', 'analyzed', 'resolved'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setFilterStatus(s)}
+                className="h-8 px-3.5 rounded-lg text-xs font-bold capitalize transition-all flex items-center justify-center shrink-0 whitespace-nowrap"
+                style={
+                  filterStatus === s
+                    ? { background: 'rgba(34,197,94,0.25)', color: '#86efac', border: '1px solid rgba(34,197,94,0.4)' }
+                    : { color: '#6b7280', border: '1px solid transparent' }
+                }
+              >
+                {s.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div
+            className="h-10 flex-1 min-w-[200px] flex items-center gap-2.5 px-3.5 rounded-xl"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            <Search className="w-4 h-4 text-gray-500 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search by case ID, filename, or comment..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full text-xs text-white bg-transparent placeholder-gray-500 focus:outline-none"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="text-gray-500 hover:text-white">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </SlideIn>
+
+      {/* Ticket List */}
+      <SlideIn delay={140} direction="up">
+        {filtered.length === 0 ? (
+          <div
+            className="rounded-2xl p-12 text-center"
+            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <ClipboardList className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+            <p className="text-sm font-bold text-gray-400">No reports found</p>
+            <p className="text-xs text-gray-600 mt-1 max-w-sm mx-auto">
+              {tickets.length === 0
+                ? 'You have not submitted any reports yet. Click "Submit New Report" to upload a suspicious email.'
+                : 'No tickets match the selected filters.'}
+            </p>
+            {tickets.length === 0 && (
+              <button
+                onClick={() => onNavigate('submit-report')}
+                className="mt-4 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90"
+                style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}
+              >
+                Submit Your First Report
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map((ticket) => (
+              <div
+                key={ticket.id}
+                onClick={() => setSelectedTicket(ticket)}
+                className="rounded-2xl p-4 transition-all duration-200 hover:scale-[1.007] cursor-pointer group"
+                style={{
+                  background: 'linear-gradient(145deg, #0d1118, #0a0c14)',
+                  border: ticket.status === 'analyzed'
+                    ? '1px solid rgba(34,197,94,0.25)'
+                    : ticket.status === 'resolved'
+                    ? '1px solid rgba(168,85,247,0.25)'
+                    : ticket.status === 'in_review'
+                    ? '1px solid rgba(6,182,212,0.25)'
+                    : '1px solid rgba(255,255,255,0.07)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                }}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                      style={{
+                        background: ticket.status === 'resolved'
+                          ? 'rgba(168,85,247,0.12)'
+                          : ticket.status === 'analyzed'
+                          ? 'rgba(34,197,94,0.12)'
+                          : ticket.status === 'in_review'
+                          ? 'rgba(6,182,212,0.12)'
+                          : 'rgba(245,158,11,0.12)',
+                        border: ticket.status === 'resolved'
+                          ? '1px solid rgba(168,85,247,0.25)'
+                          : ticket.status === 'analyzed'
+                          ? '1px solid rgba(34,197,94,0.25)'
+                          : ticket.status === 'in_review'
+                          ? '1px solid rgba(6,182,212,0.3)'
+                          : '1px solid rgba(245,158,11,0.25)',
+                      }}
+                    >
+                      {ticket.status === 'resolved' ? (
+                        <ShieldCheck className="w-5 h-5 text-purple-400" />
+                      ) : ticket.status === 'analyzed' ? (
+                        <ShieldCheck className="w-5 h-5 text-green-400" />
+                      ) : ticket.status === 'in_review' ? (
+                        <Clock className="w-5 h-5 text-cyan-400 animate-spin" />
+                      ) : (
+                        <Clock className="w-5 h-5 text-amber-400 animate-pulse" />
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-mono font-bold text-white whitespace-nowrap">{ticket.id}</span>
+                        <StatusBadge status={ticket.status} />
+                        {ticket.verdict && (
+                          <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-white/5 text-gray-300">
+                            {ticket.verdict}
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-gray-300 break-words leading-snug">
+                        {ticket.userComment || (ticket.emlFile ? `File: ${ticket.emlFile.name}` : 'No description')}
+                      </p>
+
+                      <div className="flex items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-gray-500 flex-wrap font-mono">
+                        <span className="whitespace-nowrap">Submitted: {formatDate(ticket.submittedAt)}</span>
+                        {ticket.emlFile && <span className="truncate max-w-[200px]">• {ticket.emlFile.name}</span>}
+                        {ticket.threadMessages && ticket.threadMessages.length > 0 && (
+                          <span className="whitespace-nowrap">• {ticket.threadMessages.length} message(s)</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mobile action bar */}
+                  <div className="sm:hidden flex items-center justify-between pt-2 border-t border-white/5">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Delete report ${ticket.id}?`)) {
+                          deleteTicket(ticket.id);
+                        }
+                      }}
+                      className="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                      title="Delete report"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-xs text-emerald-400 group-hover:text-emerald-300 transition-colors font-mono font-semibold flex items-center gap-1">
+                      View Details →
+                    </span>
+                  </div>
+
+                  {/* Desktop action bar */}
+                  <div className="hidden sm:flex items-center gap-2 shrink-0 self-center">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Delete report ${ticket.id}?`)) {
+                          deleteTicket(ticket.id);
+                        }
+                      }}
+                      className="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                      title="Delete report"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-xs text-gray-400 group-hover:text-white transition-colors">
+                      View Details →
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SlideIn>
 
       {/* Selected Ticket Modal */}
       {selectedTicket && (

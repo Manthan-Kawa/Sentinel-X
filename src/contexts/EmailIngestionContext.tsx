@@ -9,6 +9,7 @@ import { GmailIngestionService } from '@/services/gmailIngestionService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTickets } from '@/contexts/TicketContext';
 import { KEY_USER_INGESTED_EMAILS } from '@/utils/storageKeys';
+import { UserNotificationService } from '@/services/userNotificationService';
 
 export interface EmailFilterState {
   searchQuery: string;
@@ -57,7 +58,13 @@ export function EmailIngestionProvider({ children }: { children: React.ReactNode
   const [selectedEmail, setSelectedEmail] = useState<IngestedEmail | null>(null);
   const [googleProfile, setGoogleProfile] = useState<GoogleUserProfile | null>(() => GoogleAuthService.getUserProfile());
 
-  const isGoogleConnected = Boolean(googleProfile && GoogleAuthService.isConnected());
+  const isProfileMatching = Boolean(
+    googleProfile?.email &&
+    currentUser?.email &&
+    googleProfile.email.trim().toLowerCase() === currentUser.email.trim().toLowerCase()
+  );
+
+  const isGoogleConnected = Boolean(googleProfile && GoogleAuthService.isConnected() && isProfileMatching);
 
   // Listen to Google authentication status changes
   useEffect(() => {
@@ -85,20 +92,47 @@ export function EmailIngestionProvider({ children }: { children: React.ReactNode
     async function load() {
       setIsLoading(true);
       try {
+        const storedProfile = GoogleAuthService.getUserProfile();
         const googleToken = GoogleAuthService.getAccessToken();
-        if (googleToken) {
-          try {
-            const result = await GmailIngestionService.syncGmailEmails(googleToken, effectiveEmail);
-            if (mounted) {
-              setEmails(result.emails);
-              const now = new Date().toISOString();
-              setLastSyncedAt(now);
-              setIsLoading(false);
-              return;
-            }
-          } catch (gmailErr) {
-            console.warn('Initial live Gmail sync warning:', gmailErr);
+
+        // If the stored Google profile does NOT match the logged-in user, sign out immediately
+        if (storedProfile && currentUser?.email && storedProfile.email.trim().toLowerCase() !== currentUser.email.trim().toLowerCase()) {
+          GoogleAuthService.signOut();
+          if (mounted) {
+            setGoogleProfile(null);
+            setEmails([]);
+            setLastSyncedAt(null);
           }
+          return;
+        }
+
+        // Only load emails if Google is connected and matches current user — avoids leaking another
+        // user's locally-cached emails to a freshly signed-up account.
+        const matchesUser = Boolean(
+          storedProfile?.email &&
+          currentUser?.email &&
+          storedProfile.email.trim().toLowerCase() === currentUser.email.trim().toLowerCase()
+        );
+
+        if (!googleToken || !matchesUser) {
+          if (mounted) {
+            setEmails([]);
+            setLastSyncedAt(null);
+          }
+          return;
+        }
+
+        try {
+          const result = await GmailIngestionService.syncGmailEmails(googleToken, effectiveEmail);
+          if (mounted) {
+            setEmails(result.emails);
+            const now = new Date().toISOString();
+            setLastSyncedAt(now);
+            setIsLoading(false);
+            return;
+          }
+        } catch (gmailErr) {
+          console.warn('Initial live Gmail sync warning:', gmailErr);
         }
 
         const loaded = await EmailIngestionService.getEmails(effectiveEmail);
@@ -117,22 +151,30 @@ export function EmailIngestionProvider({ children }: { children: React.ReactNode
     return () => {
       mounted = false;
     };
-  }, [effectiveEmail]);
+  }, [currentUser?.email, effectiveEmail]);
 
-  // Sync function: Live Gmail API if connected, otherwise fallback
+  // Sync function: Live Gmail API if connected, otherwise return 0 and do not load emails
   const syncNow = useCallback(async (): Promise<number> => {
+    const googleToken = GoogleAuthService.getAccessToken();
+    const currentProfile = GoogleAuthService.getUserProfile();
+
+    const canUseGoogle = Boolean(
+      googleToken &&
+      currentProfile?.email &&
+      currentUser?.email &&
+      currentProfile.email.trim().toLowerCase() === currentUser.email.trim().toLowerCase()
+    );
+
+    if (!canUseGoogle || !googleToken) {
+      // Gmail is not connected yet; do not load or expose any emails
+      return 0;
+    }
+
     setIsSyncing(true);
     try {
-      const googleToken = GoogleAuthService.getAccessToken();
-      let result: { newEmailsCount: number; emails: IngestedEmail[] };
-
-      if (googleToken) {
-        result = await GmailIngestionService.syncGmailEmails(googleToken, effectiveEmail);
-      } else {
-        result = await EmailIngestionService.syncEmails(effectiveEmail);
-      }
-
-      setEmails(result.emails);
+      const result = await GmailIngestionService.syncGmailEmails(googleToken, effectiveEmail);
+      const onlyReal = result.emails.filter((e) => !e.id.startsWith('msg-seed-') && !e.id.startsWith('msg-live-'));
+      setEmails(onlyReal);
       const now = new Date().toISOString();
       setLastSyncedAt(now);
       return result.newEmailsCount;
@@ -142,35 +184,36 @@ export function EmailIngestionProvider({ children }: { children: React.ReactNode
     } finally {
       setIsSyncing(false);
     }
-  }, [effectiveEmail]);
+  }, [currentUser?.email, effectiveEmail]);
 
-  // Scheduled background poller (every 30s automatically)
+  // Scheduled background poller (every 30s automatically): ONLY runs when Google is connected
   useEffect(() => {
+    if (!isGoogleConnected) return;
+
     const timer = setInterval(() => {
       syncNow().catch((err) => {
         console.debug('Background 30s Gmail sync check:', err);
       });
     }, 30000);
     return () => clearInterval(timer);
-  }, [syncNow]);
+  }, [isGoogleConnected, syncNow]);
 
   // Listen for local storage email updates across components
   useEffect(() => {
     const handleEmailsUpdated = () => {
+      if (!isGoogleConnected) {
+        setEmails([]);
+        return;
+      }
       try {
         const stored =
           localStorage.getItem(KEY_USER_INGESTED_EMAILS) ||
           localStorage.getItem('sentinel_user_ingested_emails');
         if (stored) {
           const parsed = JSON.parse(stored) as IngestedEmail[];
-          const isGoogle = GoogleAuthService.isConnected();
-          if (isGoogle) {
-            setEmails(
-              parsed.filter((e) => !e.id.startsWith('msg-seed-') && !e.id.startsWith('msg-live-'))
-            );
-          } else {
-            setEmails(parsed);
-          }
+          setEmails(
+            parsed.filter((e) => !e.id.startsWith('msg-seed-') && !e.id.startsWith('msg-live-'))
+          );
         }
       } catch {}
     };
@@ -178,7 +221,7 @@ export function EmailIngestionProvider({ children }: { children: React.ReactNode
     return () => {
       window.removeEventListener('sentinel_emails_updated', handleEmailsUpdated);
     };
-  }, []);
+  }, [isGoogleConnected]);
 
   // Automatically clear escalated_to_soc if the SOC analyst has analyzed and reverted back the ticket
   useEffect(() => {
@@ -343,12 +386,12 @@ export function EmailIngestionProvider({ children }: { children: React.ReactNode
     setSelectedEmail((prev) => (prev?.id === emailId ? null : prev));
   }, []);
 
-  // Active email list: if Google is connected, strictly filter out any predefined seed emails
+  // Active email list: if Google is NOT connected, no emails should be displayed!
   const activeEmails = useMemo(() => {
-    if (isGoogleConnected) {
-      return emails.filter((e) => !e.id.startsWith('msg-seed-') && !e.id.startsWith('msg-live-'));
+    if (!isGoogleConnected) {
+      return [];
     }
-    return emails;
+    return emails.filter((e) => !e.id.startsWith('msg-seed-') && !e.id.startsWith('msg-live-'));
   }, [emails, isGoogleConnected]);
 
   // Stats calculation
@@ -375,8 +418,34 @@ export function EmailIngestionProvider({ children }: { children: React.ReactNode
 
   // Connect Google account and ingest real emails
   const connectGoogle = useCallback(async () => {
-    const { token, profile } = await GoogleAuthService.signInWithGoogle();
+    const requiredEmail = currentUser?.email?.trim();
+    if (!requiredEmail) {
+      throw new Error('Please sign in to your account before connecting Gmail.');
+    }
+
+    const { token, profile } = await GoogleAuthService.signInWithGoogle(requiredEmail);
+
+    // Strict account verification
+    if (profile.email.trim().toLowerCase() !== requiredEmail.toLowerCase()) {
+      GoogleAuthService.signOut();
+      setGoogleProfile(null);
+      throw new Error(
+        `Account mismatch: You signed up with "${requiredEmail}", but connected Google account "${profile.email}". Please connect using "${requiredEmail}".`
+      );
+    }
+
     setGoogleProfile(profile);
+
+    // Record and broadcast user activity notification
+    UserNotificationService.addUserNotification(requiredEmail, {
+      id: `notif-gmail-${Date.now()}`,
+      title: 'Gmail Connected',
+      msg: `Gmail account (${profile.email}) connected for automated threat monitoring.`,
+      sev: 'info',
+      category: 'system',
+      route: 'emails',
+    });
+
     setIsSyncing(true);
     try {
       const result = await GmailIngestionService.syncGmailEmails(token, profile.email);
@@ -386,7 +455,7 @@ export function EmailIngestionProvider({ children }: { children: React.ReactNode
     } finally {
       setIsSyncing(false);
     }
-  }, []);
+  }, [currentUser?.email]);
 
   // Disconnect Google
   const disconnectGoogle = useCallback(() => {

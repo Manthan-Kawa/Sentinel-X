@@ -14,6 +14,7 @@ import {
   EyeOff,
   Cpu,
   Trash2,
+  AlertTriangle,
   type LucideIcon,
 } from 'lucide-react';
 import { CLAUDE_KEY_STORAGE } from '@/services/claudeService';
@@ -22,48 +23,15 @@ import { useAnalysis } from '@/contexts/AnalysisContext';
 import { useAuth, deriveInitials, getSavedDisplayName } from '@/contexts/AuthContext';
 import { useTickets } from '@/contexts/TicketContext';
 import { SupabaseDataService } from '@/services/supabaseDataService';
+import { AuthAccountService } from '@/services/authAccountService';
+import { GoogleAuthService } from '@/services/googleAuthService';
+import { UserNotificationService } from '@/services/userNotificationService';
+import { AppearanceService, type ThemePreset } from '@/services/appearanceService';
+import { NotificationRulesService } from '@/services/notificationRulesService';
+import { SlideIn } from '@/components/SlideIn';
 import analystAvatar from '@/analyst.png';
 
-/* ─── Slide-in entrance wrapper ─── */
-function SlideIn({
-  children,
-  delay = 0,
-  direction = 'up',
-  className = '',
-}: {
-  children: React.ReactNode;
-  delay?: number;
-  direction?: 'up' | 'left' | 'right' | 'down';
-  className?: string;
-}) {
-  const [vis, setVis] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setVis(true), delay);
-    return () => clearTimeout(t);
-  }, [delay]);
-  const from =
-    direction === 'left'
-      ? 'translateX(-36px)'
-      : direction === 'right'
-      ? 'translateX(36px)'
-      : direction === 'down'
-      ? 'translateY(-20px)'
-      : 'translateY(24px)';
-  return (
-    <div
-      className={className}
-      style={{
-        opacity: vis ? 1 : 0,
-        transform: vis ? 'none' : from,
-        transition: 'opacity .5s cubic-bezier(.22,1,.36,1), transform .5s cubic-bezier(.22,1,.36,1)',
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-type TabType = 'profile' | 'appearance' | 'notifications' | 'data' | 'ai-engine';
+type TabType = 'profile' | 'appearance' | 'password' | 'notifications' | 'data' | 'ai-engine';
 
 interface SettingsTabConfig {
   id: TabType;
@@ -73,11 +41,12 @@ interface SettingsTabConfig {
 }
 
 const TABS: SettingsTabConfig[] = [
-  { id: 'profile',       label: 'Profile',       icon: User },
-  { id: 'appearance',    label: 'Appearance',    icon: Palette },
-  { id: 'notifications', label: 'Notifications', icon: Bell,      analystOnly: true },
-  { id: 'data',          label: 'Data Cache',    icon: RefreshCw, analystOnly: true },
-  { id: 'ai-engine',     label: 'AI Engine',     icon: Cpu,       analystOnly: true },
+  { id: 'profile', label: 'Profile', icon: User },
+  { id: 'appearance', label: 'Appearance', icon: Palette },
+  { id: 'password', label: 'Password Update', icon: Lock },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'data', label: 'Data Cache', icon: RefreshCw, analystOnly: true },
+  { id: 'ai-engine', label: 'AI Engine', icon: Cpu, analystOnly: true },
 ];
 
 export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole?: string | null }) {
@@ -131,12 +100,159 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
   }, [currentUser?.displayName, currentUser?.email, currentUser?.bio]);
 
   /* Toggles & Settings state */
-  const [themePreset, setThemePreset] = useState('Dark Cyber');
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [criticalAlerts, setCriticalAlerts] = useState(true);
-  const [weeklyDigest, setWeeklyDigest] = useState(false);
-  const [animationsEnabled, setAnimationsEnabled] = useState(true);
-  const [glowEffects, setGlowEffects] = useState(true);
+  const initialPrefs = AppearanceService.getPreferences();
+  const initialRules = NotificationRulesService.getRules();
+  const [themePreset, setThemePreset] = useState<string>(initialPrefs.themePreset);
+  const [emailNotifications, setEmailNotifications] = useState<boolean>(initialRules.emailNotifications);
+  const [criticalAlerts, setCriticalAlerts] = useState<boolean>(initialRules.criticalAlerts);
+  const [weeklyDigest, setWeeklyDigest] = useState<boolean>(initialRules.weeklyDigest);
+  const [animationsEnabled, setAnimationsEnabled] = useState<boolean>(initialPrefs.animationsEnabled);
+  const [glowEffects, setGlowEffects] = useState<boolean>(initialPrefs.glowEffects);
+  const [isTestingPush, setIsTestingPush] = useState(false);
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
+  const [isGeneratingDigest, setIsGeneratingDigest] = useState(false);
+
+  /* Password Update state */
+  const activeUserEmail = (email || currentUser?.email || localStorage.getItem('sentinel_user') || '').trim().toLowerCase();
+  const isGoogleAccount = AuthAccountService.isGoogleRegistered(activeUserEmail);
+  const [hasExistingPassword, setHasExistingPassword] = useState(() => AuthAccountService.hasPasswordSet(activeUserEmail));
+
+  useEffect(() => {
+    setHasExistingPassword(AuthAccountService.hasPasswordSet(activeUserEmail));
+  }, [activeUserEmail]);
+
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showOldPw, setShowOldPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isGoogleResetVerified, setIsGoogleResetVerified] = useState(false);
+  const [isVerifyingGoogle, setIsVerifyingGoogle] = useState(false);
+
+  const handleVerifyWithGoogleToReset = async () => {
+    setPasswordError('');
+    setPasswordSuccess('');
+    setIsVerifyingGoogle(true);
+    try {
+      const { profile } = await GoogleAuthService.signInWithGoogle(activeUserEmail);
+      if (profile.email.trim().toLowerCase() !== activeUserEmail.toLowerCase()) {
+        setPasswordError(`Google account mismatch: You must verify using "${activeUserEmail}".`);
+        return;
+      }
+      setIsGoogleResetVerified(true);
+      setPasswordSuccess('Google identity verified! Enter your new password below without entering your old password.');
+    } catch (err: any) {
+      setPasswordError(err?.message || 'Google verification failed.');
+    } finally {
+      setIsVerifyingGoogle(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (!newPassword.trim()) {
+      setPasswordError('Please enter a new password.');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters long.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New password and confirm password do not match.');
+      return;
+    }
+
+    if (hasExistingPassword && !isGoogleResetVerified && !oldPassword.trim()) {
+      setPasswordError('Please enter your current password.');
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      let result;
+      if (isGoogleResetVerified) {
+        result = await AuthAccountService.resetPasswordWithGoogleVerification(
+          activeUserEmail,
+          newPassword.trim()
+        );
+      } else {
+        result = await AuthAccountService.updatePassword(
+          activeUserEmail,
+          newPassword.trim(),
+          hasExistingPassword ? oldPassword.trim() : undefined
+        );
+      }
+
+      if (!result.success) {
+        setPasswordError(result.error || 'Failed to update password.');
+        return;
+      }
+
+      setHasExistingPassword(true);
+      const isReset = isGoogleResetVerified;
+      const hadPw = hasExistingPassword;
+      setIsGoogleResetVerified(false);
+      setPasswordSuccess(
+        isReset
+          ? 'Password reset successfully! You can now sign in using your email and new password.'
+          : hadPw
+            ? 'Password updated successfully! You can now sign in using your email and updated password.'
+            : 'Password set successfully! For security, your current password will be required for all future updates.'
+      );
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+
+      // Dispatch user notification
+      UserNotificationService.addUserNotification(activeUserEmail, {
+        id: `notif-pwd-${Date.now()}`,
+        title: 'Password Updated Successfully',
+        msg: isReset
+          ? 'Account password was reset and updated successfully.'
+          : hadPw
+            ? 'Account password was updated successfully.'
+            : 'Account password was created and set successfully.',
+        sev: 'info',
+        category: 'system',
+        route: 'settings',
+      });
+    } catch (err: any) {
+      setPasswordError(err?.message || 'An unexpected error occurred while updating your password.');
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
+  const handleTestPushAlert = async () => {
+    setIsTestingPush(true);
+    try {
+      await NotificationRulesService.sendTestAlert(activeUserEmail);
+    } finally {
+      setTimeout(() => setIsTestingPush(false), 2000);
+    }
+  };
+
+  const handleTestEmailNotice = () => {
+    setIsTestingEmail(true);
+    NotificationRulesService.sendSampleEmailNotification(activeUserEmail);
+    setTimeout(() => setIsTestingEmail(false), 2000);
+  };
+
+  const handleGenerateDigest = () => {
+    setIsGeneratingDigest(true);
+    NotificationRulesService.generateWeeklyDigest(activeUserEmail);
+    setTimeout(() => setIsGeneratingDigest(false), 2000);
+  };
 
   /* AI Engine (Gemini) state */
   const [claudeKey, setClaudeKey] = useState(() => localStorage.getItem(CLAUDE_KEY_STORAGE) ?? '');
@@ -156,9 +272,18 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
     if (targetEmail) {
       SupabaseDataService.fetchSettings(targetEmail, (userRole as any) || 'user').then((s) => {
         if (active && s) {
-          setThemePreset(s.themePreset || 'Dark Cyber');
-          setAnimationsEnabled(s.animationsEnabled ?? true);
-          setGlowEffects(s.glowEffects ?? true);
+          if (s.themePreset) {
+            setThemePreset(s.themePreset);
+            AppearanceService.applyPreferences({ themePreset: s.themePreset as ThemePreset }, targetEmail);
+          }
+          if (s.animationsEnabled !== undefined) {
+            setAnimationsEnabled(s.animationsEnabled);
+            AppearanceService.applyPreferences({ animationsEnabled: s.animationsEnabled }, targetEmail);
+          }
+          if (s.glowEffects !== undefined) {
+            setGlowEffects(s.glowEffects);
+            AppearanceService.applyPreferences({ glowEffects: s.glowEffects }, targetEmail);
+          }
           setEmailNotifications(s.emailNotifications ?? true);
           setCriticalAlerts(s.criticalAlerts ?? true);
           setWeeklyDigest(s.weeklyDigest ?? false);
@@ -202,6 +327,17 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
     setSaveMessage('Profile Saved!');
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);
+
+    if (newName) {
+      UserNotificationService.addUserNotification(targetEmail, {
+        id: `notif-name-${Date.now()}`,
+        title: 'Profile Name Updated',
+        msg: `Display name updated to "${newName}".`,
+        sev: 'info',
+        category: 'system',
+        route: 'settings',
+      });
+    }
 
     // 3. Persist to Supabase in background (resilient fallback)
     try {
@@ -289,7 +425,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
           <div>
             <h2 className="text-2xl font-black text-white tracking-tight">System Settings</h2>
             <p className="text-sm text-gray-400 mt-0.5">
-              Manage profile credentials, appearance themes, notification rules, and security keys
+              Manage profile credentials, appearance themes, notification settings, and security keys
             </p>
           </div>
           <div
@@ -327,14 +463,14 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                     style={
                       active
                         ? {
-                            background: 'linear-gradient(135deg, rgba(147,51,234,0.35) 0%, rgba(124,58,237,0.25) 100%)',
-                            border: '1px solid rgba(168,85,247,0.45)',
-                            boxShadow: '0 0 16px rgba(168,85,247,0.25)',
-                          }
+                          background: 'linear-gradient(135deg, rgba(147,51,234,0.35) 0%, rgba(124,58,237,0.25) 100%)',
+                          border: '1px solid rgba(168,85,247,0.45)',
+                          boxShadow: '0 0 16px rgba(168,85,247,0.25)',
+                        }
                         : {
-                            background: 'transparent',
-                            border: '1px solid transparent',
-                          }
+                          background: 'transparent',
+                          border: '1px solid transparent',
+                        }
                     }
                   >
                     <div className="flex items-center gap-3">
@@ -343,9 +479,8 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                         style={{ color: active ? '#c084fc' : '#9ca3af' }}
                       />
                       <span
-                        className={`text-xs font-semibold ${
-                          active ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'
-                        }`}
+                        className={`text-xs font-semibold ${active ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'
+                          }`}
                       >
                         {tab.label}
                       </span>
@@ -506,6 +641,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                       onChange={() => {
                         const next = !animationsEnabled;
                         setAnimationsEnabled(next);
+                        AppearanceService.applyPreferences({ animationsEnabled: next }, activeUserEmail);
                         handleSyncSetting({ animationsEnabled: next });
                       }}
                     />
@@ -516,6 +652,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                       onChange={() => {
                         const next = !glowEffects;
                         setGlowEffects(next);
+                        AppearanceService.applyPreferences({ glowEffects: next }, activeUserEmail);
                         handleSyncSetting({ glowEffects: next });
                       }}
                     />
@@ -538,16 +675,24 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                             key={t.name}
                             onClick={() => {
                               setThemePreset(t.name);
+                              AppearanceService.applyPreferences({ themePreset: t.name as ThemePreset }, activeUserEmail);
                               handleSyncSetting({ themePreset: t.name });
                             }}
                             className="rounded-xl p-3.5 flex items-center justify-between cursor-pointer transition-all hover:bg-white/5"
                             style={{
-                              background: 'rgba(255,255,255,0.03)',
+                              background: isPresetActive ? `${t.color}18` : 'rgba(255,255,255,0.03)',
                               border: `1px solid ${isPresetActive ? t.color : 'rgba(255,255,255,0.06)'}`,
+                              boxShadow: isPresetActive && glowEffects ? `0 0 16px ${t.color}35` : undefined,
                             }}
                           >
                             <div className="flex items-center gap-2.5">
-                              <span className="w-3 h-3 rounded-full" style={{ background: t.color }} />
+                              <span
+                                className="w-3 h-3 rounded-full"
+                                style={{
+                                  background: t.color,
+                                  boxShadow: glowEffects ? `0 0 8px ${t.color}` : undefined,
+                                }}
+                              />
                               <span className="text-xs text-white font-medium">{t.name}</span>
                             </div>
                             {isPresetActive && <Check className="w-3.5 h-3.5" style={{ color: t.color }} />}
@@ -559,12 +704,242 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                 </div>
               )}
 
+              {/* ── 2.5 Password Update Tab (Directly below Appearance) ── */}
+              {activeTab === 'password' && (
+                <div className="space-y-6 animate-fade-in">
+                  <div>
+                    <h3 className="text-lg font-bold text-white tracking-tight">Password Security</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {hasExistingPassword
+                        ? 'Update your account authentication password. Your current password is required.'
+                        : 'Set a custom password to enable direct email & password sign-in alongside Google OAuth.'}
+                    </p>
+                  </div>
+
+                  {/* Account authentication method banner */}
+                  <div
+                    className="p-3.5 rounded-2xl flex items-center justify-between gap-3 flex-wrap"
+                    style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-300 shrink-0">
+                        <Key className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-white">
+                          {isGoogleAccount ? 'Google OAuth Registered Account' : 'Email & Password Account'}
+                        </div>
+                        <div className="text-[11px] text-gray-400 font-mono">
+                          {activeUserEmail}
+                        </div>
+                      </div>
+                    </div>
+                    <span
+                      className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full border"
+                      style={
+                        isGoogleAccount
+                          ? {
+                            background: 'rgba(6,182,212,0.1)',
+                            borderColor: 'rgba(6,182,212,0.3)',
+                            color: '#22d3ee',
+                          }
+                          : {
+                            background: 'rgba(168,85,247,0.1)',
+                            borderColor: 'rgba(168,85,247,0.3)',
+                            color: '#c084fc',
+                          }
+                      }
+                    >
+                      {isGoogleAccount
+                        ? hasExistingPassword
+                          ? 'GOOGLE SIGN-IN (PASSWORD SET — 3 FIELDS)'
+                          : 'GOOGLE SIGN-IN (FIRST-TIME SETUP — 2 FIELDS)'
+                        : 'EMAIL SIGN-UP (3 FIELDS)'}
+                    </span>
+                  </div>
+
+                  {/* Security Notice */}
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-gray-400 flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-purple-400 shrink-0" />
+                    <span>
+                      {hasExistingPassword
+                        ? 'For security, your current password is required before updating to a new password.'
+                        : 'Creating a password allows you to sign in with your email and password directly without clicking "Continue with Google". Once set, your current password will be required for all future updates.'}
+                    </span>
+                  </div>
+
+                  {/* Feedback Banners */}
+                  {passwordError && (
+                    <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/25 text-xs text-red-300 flex items-start gap-2.5 animate-slide-down">
+                      <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                      <div className="flex-1 leading-relaxed">
+                        <span>{passwordError}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {passwordSuccess && (
+                    <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-xs text-emerald-300 flex items-center justify-between gap-3 animate-slide-down">
+                      <div className="flex items-center gap-2.5">
+                        <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span className="font-semibold leading-relaxed">{passwordSuccess}</span>
+                      </div>
+                      {isGoogleResetVerified && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsGoogleResetVerified(false);
+                            setPasswordSuccess('');
+                          }}
+                          className="text-[11px] text-gray-400 hover:text-white underline cursor-pointer shrink-0"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Password Form */}
+                  <form onSubmit={handleUpdatePassword} className="space-y-4 pt-1">
+
+                    {/* Show Current Password field if account already has a password configured and hasn't verified via Google */}
+                    {hasExistingPassword && !isGoogleResetVerified && (
+                      <div>
+                        <label className="block text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">
+                          CURRENT PASSWORD
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showOldPw ? 'text' : 'password'}
+                            value={oldPassword}
+                            onChange={(e) => {
+                              setOldPassword(e.target.value);
+                              setPasswordError('');
+                            }}
+                            placeholder="Enter current password"
+                            className="w-full rounded-xl px-4 py-3 pr-11 text-xs text-white font-mono placeholder-gray-600 focus:outline-none focus:border-purple-500/60 transition-all"
+                            style={{
+                              background: 'rgba(255,255,255,0.03)',
+                              border: '1px solid rgba(255,255,255,0.08)',
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowOldPw(!showOldPw)}
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 p-1 transition-colors"
+                            tabIndex={-1}
+                          >
+                            {showOldPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+
+                        {/* Hybrid Recovery: Verify via Google if user forgot old password */}
+                        <div className="flex justify-center sm:justify-end mt-2">
+                          <button
+                            type="button"
+                            onClick={handleVerifyWithGoogleToReset}
+                            disabled={isVerifyingGoogle}
+                            className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center justify-center text-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                            <span className="text-center">
+                              {isVerifyingGoogle ? 'Verifying with Google...' : 'Forgot current password? Verify with Google to reset'}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* New Password (both Google and Email accounts) */}
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">
+                        NEW PASSWORD
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showNewPw ? 'text' : 'password'}
+                          value={newPassword}
+                          onChange={(e) => {
+                            setNewPassword(e.target.value);
+                            setPasswordError('');
+                          }}
+                          placeholder="At least 6 characters"
+                          className="w-full rounded-xl px-4 py-3 pr-11 text-xs text-white font-mono placeholder-gray-600 focus:outline-none focus:border-purple-500/60 transition-all"
+                          style={{
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPw(!showNewPw)}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 p-1 transition-colors"
+                          tabIndex={-1}
+                        >
+                          {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Confirm New Password (both Google and Email accounts) */}
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">
+                        CONFIRM NEW PASSWORD
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPw ? 'text' : 'password'}
+                          value={confirmPassword}
+                          onChange={(e) => {
+                            setConfirmPassword(e.target.value);
+                            setPasswordError('');
+                          }}
+                          placeholder="Re-enter new password"
+                          className="w-full rounded-xl px-4 py-3 pr-11 text-xs text-white font-mono placeholder-gray-600 focus:outline-none focus:border-purple-500/60 transition-all"
+                          style={{
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPw(!showConfirmPw)}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 p-1 transition-colors"
+                          tabIndex={-1}
+                        >
+                          {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Save Button */}
+                    <div className="pt-2">
+                      <button
+                        type="submit"
+                        disabled={isUpdatingPassword}
+                        className="px-6 py-3 rounded-xl font-mono text-xs font-bold text-white transition-all flex items-center justify-center gap-2 cursor-pointer hover:opacity-90 active:scale-98 disabled:opacity-50"
+                        style={{
+                          background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                          boxShadow: '0 0 20px rgba(139,92,246,0.35)',
+                        }}
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>{isUpdatingPassword ? 'Saving Password...' : 'Save'}</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
               {/* ── 3. Notifications Tab ── */}
               {activeTab === 'notifications' && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-bold text-white tracking-tight">Notification Rules</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Configure alert notification dispatch thresholds</p>
+                    <h3 className="text-lg font-bold text-white tracking-tight">Notification Settings</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">Configure alert notification dispatch thresholds and automated channels</p>
                   </div>
 
                   <div className="space-y-4">
@@ -575,19 +950,71 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                       onChange={() => {
                         const next = !criticalAlerts;
                         setCriticalAlerts(next);
+                        NotificationRulesService.saveRules({ criticalAlerts: next }, activeUserEmail);
                         handleSyncSetting({ criticalAlerts: next });
                       }}
+                      action={
+                        <div className="flex items-center justify-between w-full gap-2 min-w-0">
+                          <span className="text-gray-400 flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono min-w-0 flex-1 truncate">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${criticalAlerts ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
+                            <span className="truncate">
+                              {criticalAlerts ? (
+                                <>Push alerts active<span className="hidden sm:inline"> (Browser + In-App)</span></>
+                              ) : (
+                                'Push alerts paused'
+                              )}
+                            </span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleTestPushAlert();
+                            }}
+                            disabled={!criticalAlerts || isTestingPush}
+                            className="px-2.5 py-1 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer text-[10px] font-mono shrink-0 whitespace-nowrap"
+                          >
+                            <Bell className="w-3 h-3 shrink-0" />
+                            <span>{isTestingPush ? 'Testing...' : 'Test Push Alert'}</span>
+                          </button>
+                        </div>
+                      }
                     />
-                    <ToggleRow
-                      label="Email Incident Notifications"
-                      detail="Dispatch automated email reports when a case status changes"
-                      checked={emailNotifications}
-                      onChange={() => {
-                        const next = !emailNotifications;
-                        setEmailNotifications(next);
-                        handleSyncSetting({ emailNotifications: next });
-                      }}
-                    />
+                    {isUser && (
+                      <ToggleRow
+                        label="Email Incident Notifications"
+                        detail="Dispatch automated email reports when a case status changes"
+                        checked={emailNotifications}
+                        onChange={() => {
+                          const next = !emailNotifications;
+                          setEmailNotifications(next);
+                          NotificationRulesService.saveRules({ emailNotifications: next }, activeUserEmail);
+                          handleSyncSetting({ emailNotifications: next });
+                        }}
+                        action={
+                          <div className="flex items-center justify-between w-full gap-2 min-w-0">
+                            <span className="text-gray-400 flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono min-w-0 flex-1 truncate">
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${emailNotifications ? 'bg-cyan-400' : 'bg-gray-500'}`} />
+                              <span className="truncate">
+                                {emailNotifications ? `Delivering to: ${activeUserEmail}` : 'Email dispatch disabled'}
+                              </span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTestEmailNotice();
+                              }}
+                              disabled={!emailNotifications || isTestingEmail}
+                              className="px-2.5 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer text-[10px] font-mono shrink-0 whitespace-nowrap"
+                            >
+                              <Check className="w-3 h-3 shrink-0" />
+                              <span>{isTestingEmail ? 'Notice Sent!' : (<>Send Sample <span className="hidden sm:inline">Incident </span>Notice</>)}</span>
+                            </button>
+                          </div>
+                        }
+                      />
+                    )}
                     <ToggleRow
                       label="Weekly Intelligence Digest"
                       detail="Weekly summary report of top campaigns and IOCs"
@@ -595,8 +1022,35 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                       onChange={() => {
                         const next = !weeklyDigest;
                         setWeeklyDigest(next);
+                        NotificationRulesService.saveRules({ weeklyDigest: next }, activeUserEmail);
                         handleSyncSetting({ weeklyDigest: next });
                       }}
+                      action={
+                        <div className="flex items-center justify-between w-full gap-2 min-w-0">
+                          <span className="text-gray-400 flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono min-w-0 flex-1 truncate">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${weeklyDigest ? 'bg-purple-400' : 'bg-gray-500'}`} />
+                            <span className="truncate">
+                              {weeklyDigest ? (
+                                <><span className="hidden sm:inline">Schedule: </span>Every Monday · 09:00 UTC</>
+                              ) : (
+                                'Weekly digest disabled'
+                              )}
+                            </span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleGenerateDigest();
+                            }}
+                            disabled={!weeklyDigest || isGeneratingDigest}
+                            className="px-2.5 py-1 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer text-[10px] font-mono shrink-0 whitespace-nowrap"
+                          >
+                            <Sparkles className="w-3 h-3 shrink-0" />
+                            <span>{isGeneratingDigest ? 'Generated!' : (<>Generate Digest<span className="hidden sm:inline"> Now</span></>)}</span>
+                          </button>
+                        </div>
+                      }
                     />
                   </div>
                 </div>
@@ -718,7 +1172,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                   >
                     <Key className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
                     <div className="text-xs text-gray-300 leading-relaxed">
-                      <span className="text-white font-semibold">Backend Integration:</span> Configured automatically through environment variables (<code className="font-mono text-purple-300">VITE_GEMINI_API_KEY</code>). End users do not need to provide their own keys.
+                      <span className="text-white font-semibold">Backend Integration:</span> Configured automatically through environment variables. (<code className="font-mono text-purple-300">End users do not need to provide their own keys.</code>)
                     </div>
                   </div>
 
@@ -784,8 +1238,8 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
           </div>
 
         </div>
-      </SlideIn>
-    </div>
+      </SlideIn >
+    </div >
   );
 }
 
@@ -794,34 +1248,42 @@ function ToggleRow({
   detail,
   checked,
   onChange,
+  action,
 }: {
   label: string;
   detail: string;
   checked: boolean;
   onChange: () => void;
+  action?: React.ReactNode;
 }) {
   return (
     <div
-      onClick={onChange}
-      className="rounded-xl p-4 flex items-center justify-between cursor-pointer transition-all hover:bg-white/[0.04]"
+      className="rounded-xl p-4 transition-all hover:bg-white/[0.04]"
       style={{
         background: 'rgba(255,255,255,0.03)',
         border: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      <div>
-        <h4 className="text-xs font-bold text-white">{label}</h4>
-        <p className="text-xs text-gray-400 mt-0.5">{detail}</p>
-      </div>
-      <div
-        className="w-11 h-6 rounded-full relative transition-colors shrink-0"
-        style={{ background: checked ? '#8b5cf6' : 'rgba(255,255,255,0.1)' }}
-      >
+      <div className="flex items-center justify-between cursor-pointer select-none" onClick={onChange}>
+        <div>
+          <h4 className="text-xs font-bold text-white">{label}</h4>
+          <p className="text-xs text-gray-400 mt-0.5">{detail}</p>
+        </div>
         <div
-          className="w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform"
-          style={{ transform: checked ? 'translateX(22px)' : 'translateX(2px)' }}
-        />
+          className="w-11 h-6 rounded-full relative transition-colors shrink-0 ml-3"
+          style={{ background: checked ? '#8b5cf6' : 'rgba(255,255,255,0.1)' }}
+        >
+          <div
+            className="w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform"
+            style={{ transform: checked ? 'translateX(22px)' : 'translateX(2px)' }}
+          />
+        </div>
       </div>
+      {action && (
+        <div className="mt-3 pt-3 border-t border-white/5">
+          {action}
+        </div>
+      )}
     </div>
   );
 }
