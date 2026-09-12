@@ -1138,8 +1138,10 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
 
   return (
     <header
-      className="h-16 flex items-center justify-between gap-3 px-4 lg:px-5 sticky top-0 z-30 shrink-0"
+      className="flex items-center justify-between gap-3 px-4 lg:px-5 sticky top-0 z-30 shrink-0"
       style={{
+        height: 'calc(4rem + env(safe-area-inset-top, 0px))',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
         background: '#0b0c11',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         boxShadow: '0 1px 0 rgba(255,255,255,0.04)',

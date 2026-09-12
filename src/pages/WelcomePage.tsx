@@ -620,7 +620,13 @@ export function WelcomePage({ onNavigate }: WelcomePageProps) {
       <div className="absolute inset-0 z-10 flex flex-col overflow-y-auto md:overflow-hidden touch-scroll" style={{ pointerEvents: 'none' }}>
 
         {/* ─ Top bar ─ */}
-        <div className="flex items-center gap-3 px-4 sm:px-7 pt-4 sm:pt-6" style={{ pointerEvents: 'auto' }}>
+        <div
+          className="flex items-center gap-3 px-4 sm:px-7"
+          style={{
+            pointerEvents: 'auto',
+            paddingTop: 'max(1.25rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))',
+          }}
+        >
           <TransparentLogo src="/Logo-SentinelX.png" alt="SENTINEL-X" className="h-9 sm:h-12 md:h-14 w-auto object-contain drop-shadow-xl" />
 
           {/* Auth controls — only shown when NOT logged in */}
