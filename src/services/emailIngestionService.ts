@@ -685,6 +685,34 @@ export class EmailIngestionService {
    * Reads from Supabase if active, otherwise reads from localStorage with seed fallback.
    */
   static async getEmails(userEmail: string): Promise<IngestedEmail[]> {
+    // 1. Read local storage first (authoritative for live Gmail ingested messages)
+    let localEmails: IngestedEmail[] = [];
+    try {
+      const stored = localStorage.getItem(KEY_USER_INGESTED_EMAILS);
+      if (stored) {
+        const parsed = JSON.parse(stored) as IngestedEmail[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          localEmails = parsed;
+        }
+      }
+    } catch {}
+
+    const isGoogleActive = Boolean(
+      sessionStorage.getItem('sentinel_google_access_token') ||
+      localStorage.getItem('sentinel_google_access_token')
+    );
+
+    // If Google is connected and we already have real live Gmail emails in localStorage,
+    // return them directly so newly synced emails never disappear during background syncs
+    if (isGoogleActive && localEmails.length > 0) {
+      const onlyReal = localEmails.filter(
+        (e) => !e.id.startsWith('msg-seed-') && !e.id.startsWith('msg-live-')
+      );
+      if (onlyReal.length > 0) {
+        return onlyReal;
+      }
+    }
+
     if (isSupabaseConfigured() && supabase) {
       try {
         const { data, error } = await supabase
@@ -697,12 +725,18 @@ export class EmailIngestionService {
 
         if (!error && data && data.length > 0) {
           const emails = data as IngestedEmail[];
+          // Merge local emails so fresh live Gmail emails are not dropped
+          const map = new Map<string, IngestedEmail>();
           for (const e of emails) {
-            if (e.analysis && (e.analysis.threat_score === 5 || !e.analysis.threat_score) && (e.analysis.threat_level === 'clean' || !e.analysis.threat_level)) {
-              e.analysis.threat_score = generateRealisticCleanScore(`${e.id}:${e.sender}:${e.subject}`);
-            }
+            map.set(e.gmail_message_id || e.id, e);
           }
-          return emails;
+          for (const le of localEmails) {
+            map.set(le.gmail_message_id || le.id, le);
+          }
+          const merged = Array.from(map.values()).sort(
+            (a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime()
+          );
+          return merged;
         }
       } catch (err) {
         console.warn('Supabase email fetch failed, falling back to local storage:', err);

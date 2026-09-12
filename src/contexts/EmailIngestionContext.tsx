@@ -179,24 +179,29 @@ export function EmailIngestionProvider({ children }: { children: React.ReactNode
       const now = new Date().toISOString();
       setLastSyncedAt(now);
 
-      // Check for incoming critical threat emails and fire push alert if enabled
+      // Check for incoming critical threat emails and fire push alert ONLY for newly ingested emails that haven't been notified yet
       if (result.newEmailsCount > 0 && NotificationRulesService.isCriticalAlertsEnabled(effectiveEmail)) {
-        const critThreat = onlyReal.find(
+        const freshThreats = (result.newlyIngested || []).filter(
           (e) => e.analysis?.threat_level === 'malicious' || (e.analysis?.threat_score ?? 0) >= 70
         );
-        if (critThreat) {
-          NotificationRulesService.sendBrowserPush(
-            `🚨 [CRITICAL THREAT] ${critThreat.subject}`,
-            `From ${critThreat.sender}: High-risk phishing payload detected (Score: ${critThreat.analysis?.threat_score || 85}/100)`
-          );
-          UserNotificationService.addUserNotification(effectiveEmail, {
-            id: `notif-crit-${Date.now()}`,
-            title: 'Critical Threat Detected',
-            msg: `Urgent: "${critThreat.subject}" contains malicious indicators (Score: ${critThreat.analysis?.threat_score || 85}/100)`,
-            sev: 'critical',
-            category: 'alerts',
-            route: 'emails',
-          });
+
+        for (const critThreat of freshThreats) {
+          if (!NotificationRulesService.isThreatAlreadyNotified(critThreat.id, critThreat.gmail_message_id)) {
+            NotificationRulesService.markThreatAsNotified(critThreat.id, critThreat.gmail_message_id);
+
+            NotificationRulesService.sendBrowserPush(
+              `🚨 [CRITICAL THREAT] ${critThreat.subject}`,
+              `From ${critThreat.sender}: High-risk phishing payload detected (Score: ${critThreat.analysis?.threat_score || 85}/100)`
+            );
+            UserNotificationService.addUserNotification(effectiveEmail, {
+              id: `notif-crit-${Date.now()}`,
+              title: 'Critical Threat Detected',
+              msg: `Urgent: "${critThreat.subject}" contains malicious indicators (Score: ${critThreat.analysis?.threat_score || 85}/100)`,
+              sev: 'critical',
+              category: 'alerts',
+              route: 'emails',
+            });
+          }
         }
       }
 

@@ -105,6 +105,36 @@ export class NotificationRulesService {
   }
 
   /**
+   * Checks whether a threat email has already triggered an OS push notification.
+   * Prevents repeated alerts when syncing or reopening the app.
+   */
+  static isThreatAlreadyNotified(id: string, gmailMessageId?: string): boolean {
+    try {
+      const raw = localStorage.getItem('sentinel_notified_threat_ids');
+      if (!raw) return false;
+      const set = new Set(JSON.parse(raw) as string[]);
+      return set.has(id) || (Boolean(gmailMessageId) && set.has(gmailMessageId!));
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Records a threat email as notified so it will never trigger another push alert.
+   */
+  static markThreatAsNotified(id: string, gmailMessageId?: string): void {
+    try {
+      const raw = localStorage.getItem('sentinel_notified_threat_ids');
+      const list: string[] = raw ? JSON.parse(raw) : [];
+      if (!list.includes(id)) list.push(id);
+      if (gmailMessageId && !list.includes(gmailMessageId)) list.push(gmailMessageId);
+      localStorage.setItem('sentinel_notified_threat_ids', JSON.stringify(list));
+    } catch {
+      // ignore
+    }
+  }
+
+  /**
    * Requests native HTML5 browser notification permission.
    */
   static async requestBrowserPushPermission(): Promise<boolean> {

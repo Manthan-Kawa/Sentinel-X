@@ -564,7 +564,7 @@ export class GmailIngestionService {
   static async syncGmailEmails(
     accessToken: string,
     userEmail: string
-  ): Promise<{ newEmailsCount: number; emails: IngestedEmail[] }> {
+  ): Promise<{ newEmailsCount: number; emails: IngestedEmail[]; newlyIngested: IngestedEmail[] }> {
     const existing = await EmailIngestionService.getEmails(userEmail);
     const existingMap = new Map<string, IngestedEmail>();
     for (const e of existing) {
@@ -572,25 +572,29 @@ export class GmailIngestionService {
       existingMap.set(e.id, e);
     }
 
-    // 1. Fetch real Gmail message details
-    const rawMessages = await this.fetchRecentGmailMessages(accessToken, 12);
+    // 1. Fetch real Gmail message details (fetch up to 25 recent emails)
+    const rawMessages = await this.fetchRecentGmailMessages(accessToken, 25);
 
     // Discard demo seed emails when live Gmail is synced
     const realExistingOnly = existing.filter((e) => !e.id.startsWith('msg-seed-'));
 
     if (rawMessages.length === 0) {
       EmailIngestionService.saveEmailsLocally(realExistingOnly);
-      return { newEmailsCount: 0, emails: realExistingOnly };
+      return { newEmailsCount: 0, emails: realExistingOnly, newlyIngested: [] };
     }
 
     // 2. Parse & run Gemini AI triage
     let newCount = 0;
+    const newlyIngested: IngestedEmail[] = [];
     const ingestedList: IngestedEmail[] = [];
 
     for (const raw of rawMessages) {
       const isNew = !existingMap.has(raw.id);
       const item = await this.parseGmailMessage(raw, userEmail, existingMap);
-      if (isNew) newCount++;
+      if (isNew) {
+        newCount++;
+        newlyIngested.push(item);
+      }
       ingestedList.push(item);
     }
 
