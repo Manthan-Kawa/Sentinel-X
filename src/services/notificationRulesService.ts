@@ -123,20 +123,47 @@ export class NotificationRulesService {
   }
 
   /**
-   * Sends a native browser desktop notification if permission is granted.
+   * Sends a native browser desktop/mobile notification if permission is granted.
+   * Supports iOS 16.4+ Home Screen Web Apps (PWAs) via Service Worker showNotification.
    */
   static sendBrowserPush(title: string, body: string, icon?: string): boolean {
-    if (typeof window === 'undefined' || !('Notification' in window)) {
+    if (typeof window === 'undefined') {
       return false;
     }
-    if (Notification.permission !== 'granted') {
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
       return false;
     }
+
+    const notifIcon = icon || '/Logo-Shield_SentinelX.png';
+
+    // 1. Service Worker push display (REQUIRED for iOS Home Screen PWAs & WebKit)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready
+        .then((reg) => {
+          reg.showNotification(title, {
+            body,
+            icon: notifIcon,
+            badge: notifIcon,
+            tag: 'sentinel-x-threat',
+            renotify: true,
+          } as NotificationOptions);
+        })
+        .catch(() => {
+          try {
+            new Notification(title, { body, icon: notifIcon });
+          } catch {
+            // ignore iOS unsupported constructor
+          }
+        });
+      return true;
+    }
+
+    // 2. Fallback to standard Window Notification API (Desktop Chrome / Safari desktop)
     try {
       new Notification(title, {
         body,
-        icon: icon || '/favicon.ico',
-        badge: '/favicon.ico',
+        icon: notifIcon,
+        badge: notifIcon,
       });
       return true;
     } catch {
