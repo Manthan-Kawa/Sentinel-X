@@ -1,0 +1,41 @@
+From: "Microsoft 365 Security Operations" <security-alert@micr0soft-account-verify.example.com>
+To: recipient@company.corp
+Subject: CRITICAL: Immediate Action Required - Unauthorized Login Detected on Your Account
+Date: Sat, 12 Sep 2026 17:05:00 +0000
+Message-ID: <threat-alert-20260912-sec99@micr0soft-account-verify.example.com>
+MIME-Version: 1.0
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Authentication-Results: mx.google.com; spf=fail (sender IP 185.220.101.5 is not designated); dkim=fail header.i=@micr0soft-account-verify.example.com; dmarc=fail action=quarantine
+X-Originating-IP: 185.220.101.5
+X-Priority: 1 (Highest)
+X-Spam-Flag: YES
+X-Spam-Score: 9.8
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Security Alert: Account Access Revoked</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 20px; color: #333;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e1e4e8; border-radius: 8px; padding: 30px;">
+    <h2 style="color: #d93025; margin-top: 0;">Urgent: Account Suspension Notice</h2>
+    <p>Dear User,</p>
+    <p>We detected an anomalous login attempt from an unrecognized IP address (<strong>185.220.101.5 - Moscow, Russia</strong>) accessing your corporate mailbox session.</p>
+    <p style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0;">
+      <strong>Security Status:</strong> Your credentials will expire within <strong>2 hours</strong> unless identity re-authentication is performed. Failure to verify will result in complete account lockout.
+    </p>
+    <p>Please review and verify your account credentials immediately:</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="https://micr0soft-account-verify.example.com/auth/login-verify" style="background-color: #d93025; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
+        Verify Credentials & Secure Account
+      </a>
+    </div>
+    <p style="font-size: 11px; color: #666; border-top: 1px solid #eaeaea; padding-top: 15px; margin-top: 30px;">
+      Reference ID: SEC-INCIDENT-994821<br>
+      Automated Security Gate | Microsoft Global Security Response
+    </p>
+  </div>
+</body>
+</html>
