@@ -505,45 +505,75 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
       {/* Stat Metric Cards */}
       <SlideIn delay={80} direction="up">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
-          {/* Total Scanned */}
-          <div className="p-3 sm:p-4 rounded-2xl bg-white/[0.03] border border-white/8 hover:border-white/15 transition-all">
-            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-              <span className="text-xs font-medium text-gray-400">Total Scanned</span>
-              <Inbox className="w-4 h-4 text-gray-400" />
-            </div>
-            <div className="text-xl sm:text-2xl font-bold text-white">{stats.total}</div>
-            <div className="text-[11px] text-gray-500 mt-1">Inbox messages monitored</div>
-          </div>
-
-          {/* Clean / Authentic */}
-          <div className="p-3 sm:p-4 rounded-2xl bg-emerald-950/15 border border-emerald-500/20 hover:border-emerald-500/40 transition-all">
-            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-              <span className="text-xs font-medium text-emerald-400">Clean & Authentic</span>
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div className="text-xl sm:text-2xl font-bold text-emerald-300">{stats.clean}</div>
-            <div className="text-[11px] text-emerald-500 mt-1">Verified safe communications</div>
-          </div>
-
-          {/* Suspicious */}
-          <div className="p-3 sm:p-4 rounded-2xl bg-amber-950/15 border border-amber-500/20 hover:border-amber-500/40 transition-all">
-            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-              <span className="text-xs font-medium text-amber-400">Suspicious Anomalies</span>
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
-            </div>
-            <div className="text-xl sm:text-2xl font-bold text-amber-300">{stats.suspicious}</div>
-            <div className="text-[11px] text-amber-500 mt-1">Require user caution</div>
-          </div>
-
-          {/* Malicious */}
-          <div className="p-3 sm:p-4 rounded-2xl bg-red-950/15 border border-red-500/20 hover:border-red-500/40 transition-all">
-            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-              <span className="text-xs font-medium text-red-400">Malicious Threats</span>
-              <ShieldAlert className="w-4 h-4 text-red-400" />
-            </div>
-            <div className="text-xl sm:text-2xl font-bold text-red-300">{stats.malicious}</div>
-            <div className="text-[11px] text-red-500 mt-1">Phishing & fraud intercepted</div>
-          </div>
+          {[
+            {
+              label: 'Total Scanned',
+              value: stats.total,
+              subtitle: 'Inbox messages monitored',
+              dotColor: 'bg-[#38bdf8] shadow-sm shadow-cyan-400/50',
+              numColor: 'text-[#38bdf8]',
+              filter: 'all' as const,
+              glow: 'shadow-[0_0_20px_rgba(56,189,248,0.22)]',
+            },
+            {
+              label: 'Clean & Authentic',
+              value: stats.clean,
+              subtitle: 'Verified safe communications',
+              dotColor: 'bg-[#4ade80] shadow-sm shadow-emerald-400/50',
+              numColor: 'text-[#4ade80]',
+              filter: 'clean' as const,
+              glow: 'shadow-[0_0_20px_rgba(74,222,128,0.22)]',
+            },
+            {
+              label: 'Suspicious Anomalies',
+              value: stats.suspicious,
+              subtitle: 'Require user caution',
+              dotColor: 'bg-[#fbbf24] shadow-sm shadow-amber-400/50',
+              numColor: 'text-[#fbbf24]',
+              filter: 'suspicious' as const,
+              glow: 'shadow-[0_0_20px_rgba(251,191,36,0.22)]',
+            },
+            {
+              label: 'Malicious Threats',
+              value: stats.malicious,
+              subtitle: 'Phishing & fraud intercepted',
+              dotColor: 'bg-[#f87171] shadow-sm shadow-rose-500/50',
+              numColor: 'text-[#f87171]',
+              filter: 'malicious' as const,
+              glow: 'shadow-[0_0_20px_rgba(248,113,113,0.22)]',
+            },
+          ].map((stat) => {
+            const isSelected = filterState.threatLevel === stat.filter;
+            return (
+              <div
+                key={stat.label}
+                onClick={() => {
+                  setFilterState((prev) => ({ ...prev, threatLevel: stat.filter }));
+                  setCurrentPage(1);
+                }}
+                className={`p-3.5 sm:p-4 rounded-2xl bg-[#0c0e18] border border-white/[0.08] hover:border-white/20 transition-all cursor-pointer flex flex-col justify-between min-h-[92px] sm:min-h-[102px] group ${
+                  isSelected
+                    ? `${stat.glow} border-white/20`
+                    : 'shadow-lg shadow-black/40 hover:shadow-black/60'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-mono text-[11px] sm:text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    {stat.label}
+                  </span>
+                  <span className={`w-2 h-2 rounded-full ${stat.dotColor}`} />
+                </div>
+                <div>
+                  <div className={`text-2xl sm:text-3xl font-bold font-mono tracking-tight ${stat.numColor}`}>
+                    {stat.value}
+                  </div>
+                  <div className="text-[10px] sm:text-[11px] text-gray-500 font-mono mt-0.5 truncate">
+                    {stat.subtitle}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </SlideIn>
 
