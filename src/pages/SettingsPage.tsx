@@ -29,7 +29,7 @@ import { UserNotificationService } from '@/services/userNotificationService';
 import { AppearanceService, type ThemePreset } from '@/services/appearanceService';
 import { NotificationRulesService } from '@/services/notificationRulesService';
 import { SlideIn } from '@/components/SlideIn';
-import analystAvatar from '@/analyst.png';
+const analystAvatar = '/analyst.png';
 
 type TabType = 'profile' | 'appearance' | 'password' | 'notifications' | 'data' | 'ai-engine';
 

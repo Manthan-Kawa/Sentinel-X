@@ -164,7 +164,7 @@ export class NotificationRulesService {
       return false;
     }
 
-    const notifIcon = icon || '/Logo-Shield_SentinelX.png';
+    const notifIcon = icon || '/Logo-SentinelX.PNG';
 
     // 1. Service Worker push display (REQUIRED for iOS Home Screen PWAs & WebKit)
     if ('serviceWorker' in navigator) {

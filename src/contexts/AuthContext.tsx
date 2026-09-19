@@ -16,7 +16,7 @@ import {
 } from '@/utils/storageKeys';
 import { SupabaseDataService } from '@/services/supabaseDataService';
 import { getSupabaseClient, isSupabaseConfigured } from '@/config/supabaseClient';
-import analystAvatar from '@/analyst.png';
+const analystAvatar = '/analyst.png';
 
 export type UserRole = 'analyst' | 'user';
 

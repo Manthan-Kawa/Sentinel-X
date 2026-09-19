@@ -38,7 +38,7 @@ import { SECURITY_ALERTS, type SecurityAlert } from '@/data/mockData';
 import { SupabaseDataService } from '@/services/supabaseDataService';
 import { UserNotificationService, type UserActivityNotification } from '@/services/userNotificationService';
 import { NotificationRulesService } from '@/services/notificationRulesService';
-import analystAvatar from '@/analyst.png';
+const analystAvatar = '/analyst.png';
 
 interface SearchableItem {
   id: string;
@@ -232,13 +232,13 @@ export function Sidebar({ activeId, onNavigate, onSignOut, mobileOpen, onMobileC
         style={{ background: '#08090e', borderRight: '1px solid rgba(255,255,255,0.06)' }}
       >
         <div
-          className="relative h-16 flex items-center justify-start pl-4 pr-2 shrink-0"
+          className="relative h-[88px] flex items-center justify-start pl-4 pr-2 shrink-0"
           style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
         >
           <TransparentLogo
-            src="/Logo-SentinelX.png"
+            src="/Logo-SentinelX.PNG"
             alt="SENTINEL-X"
-            className="h-10 max-w-[200px] w-auto object-contain drop-shadow-[0_0_14px_rgba(6,182,212,0.3)] transition-transform hover:scale-105"
+            className="h-[60px] max-w-[232px] w-auto object-contain drop-shadow-[0_0_12px_rgba(6,182,212,0.25)] transition-transform hover:scale-105"
           />
           <button
             onClick={onMobileClose}

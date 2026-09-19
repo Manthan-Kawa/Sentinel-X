@@ -17,7 +17,7 @@ export function TransparentLogo({
 
   useEffect(() => {
     // If image is already a transparent PNG or data URL, render directly
-    if (src.endsWith('.png') || src.startsWith('data:image/png')) {
+    if (src.toLowerCase().endsWith('.png') || src.startsWith('data:image/png')) {
       setProcessedSrc(src);
       return;
     }
