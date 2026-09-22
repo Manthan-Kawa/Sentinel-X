@@ -180,15 +180,15 @@ function CaseDetailModal({
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm font-black text-white font-mono">{ticket.id}</p>
+                <p className="text-sm font-black text-slate-900 dark:text-white font-mono">{ticket.id}</p>
                 <StatusBadge status={ticket.status} />
               </div>
-              <p className="text-[11px] text-gray-500 mt-0.5">Submitted {formatDate(ticket.submittedAt)}</p>
+              <p className="text-[11px] text-slate-400 dark:text-gray-500 mt-0.5">Submitted {formatDate(ticket.submittedAt)}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-all shrink-0"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-gray-500 hover:text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-white/10 transition-all shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -242,10 +242,10 @@ function CaseDetailModal({
             ].map(({ icon: Icon, label, value }) => (
               <div key={label} className="space-y-0.5">
                 <div className="flex items-center gap-1.5">
-                  <Icon className="w-3 h-3 text-gray-500" />
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">{label}</p>
+                  <Icon className="w-3 h-3 text-slate-400 dark:text-gray-500" />
+                  <p className="text-[10px] text-slate-400 dark:text-gray-500 uppercase tracking-wider">{label}</p>
                 </div>
-                <p className="text-xs text-gray-200 truncate">{value}</p>
+                <p className="text-xs text-slate-700 dark:text-gray-200 truncate">{value}</p>
               </div>
             ))}
           </div>
@@ -253,11 +253,11 @@ function CaseDetailModal({
           {/* User's Original Notes */}
           {ticket.userComment && (
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+              <label className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                 <MessageSquare className="w-3 h-3" /> Your Original Submission Notes
               </label>
               <p
-                className="text-sm text-gray-300 leading-relaxed p-3.5 rounded-xl text-xs"
+                className="text-sm text-slate-600 dark:text-gray-300 leading-relaxed p-3.5 rounded-xl text-xs"
                 style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
               >
                 {ticket.userComment}
@@ -281,7 +281,7 @@ function CaseDetailModal({
           {/* Uploaded EML file download */}
           {ticket.emlFile && (
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+              <label className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                 <FileText className="w-3 h-3" /> Submitted Email File (.eml)
               </label>
               <button
@@ -291,7 +291,7 @@ function CaseDetailModal({
               >
                 <Download className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
                 <span className="truncate">{ticket.emlFile.name}</span>
-                <span className="text-[11px] text-gray-500 font-normal ml-auto shrink-0">
+                <span className="text-[11px] text-slate-400 dark:text-gray-500 font-normal ml-auto shrink-0">
                   {formatBytes(ticket.emlFile.size)}
                 </span>
               </button>
@@ -358,7 +358,7 @@ function CaseDetailModal({
                   {ticket.analystComment}
                 </p>
               ) : (
-                <p className="text-xs text-gray-400 italic">No comments provided by the analyst.</p>
+                <p className="text-xs text-slate-500 dark:text-gray-400 italic">No comments provided by the analyst.</p>
               )}
 
               {/* Recommended Action Box */}
@@ -379,10 +379,10 @@ function CaseDetailModal({
               {/* Remediation Taken by SOC */}
               {ticket.remediationTaken && (
                 <div
-                  className="p-3 rounded-xl text-xs text-gray-300"
+                  className="p-3 rounded-xl text-xs text-slate-600 dark:text-gray-300"
                   style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
                 >
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider block mb-0.5">
                     Remediation Implemented by SOC:
                   </span>
                   {ticket.remediationTaken}
@@ -394,7 +394,7 @@ function CaseDetailModal({
                 <div className="pt-1">
                   <button
                     onClick={() => downloadAttachment(ticket.analystReport!.data, ticket.analystReport!.name)}
-                    className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl text-white font-bold text-sm transition-all hover:opacity-95 shadow-lg"
+                    className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl text-slate-900 dark:text-white font-bold text-sm transition-all hover:opacity-95 shadow-lg"
                     style={{
                       background: 'linear-gradient(135deg, #059669, #047857)',
                       boxShadow: '0 4px 20px rgba(5,150,105,0.3)',
@@ -436,11 +436,11 @@ function CaseDetailModal({
                   <CheckCircle2 className="w-4 h-4 text-purple-400" />
                   Confirm Resolution & Rate Response
                 </p>
-                <span className="text-[10px] text-gray-500">Closes the ticket loop</span>
+                <span className="text-[10px] text-slate-400 dark:text-gray-500">Closes the ticket loop</span>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">Rating:</span>
+                <span className="text-xs text-slate-500 dark:text-gray-400">Rating:</span>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
@@ -467,7 +467,7 @@ function CaseDetailModal({
               <button
                 onClick={handleResolve}
                 disabled={isSubmittingFeedback}
-                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 shadow"
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-slate-900 dark:text-white transition-all hover:opacity-90 shadow"
                 style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}
               >
                 Acknowledge & Mark Resolved
@@ -483,7 +483,7 @@ function CaseDetailModal({
             >
               <div>
                 <p className="text-xs font-bold text-purple-300">Case Resolved by You</p>
-                {ticket.userFeedback && <p className="text-xs text-gray-300 mt-0.5 italic">"{ticket.userFeedback}"</p>}
+                {ticket.userFeedback && <p className="text-xs text-slate-600 dark:text-gray-300 mt-0.5 italic">"{ticket.userFeedback}"</p>}
               </div>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((s) => (
@@ -498,8 +498,8 @@ function CaseDetailModal({
 
           {/* Threaded Discussion Messages (Only shown prior to analysis/resolution) */}
           {!isAnalyzed && !isResolved && (
-            <div className="space-y-3 pt-2 border-t border-white/5">
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+            <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-white/5">
+              <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                 <MessageSquare className="w-3 h-3" /> Ticket Activity & Messages
               </p>
 
@@ -513,14 +513,14 @@ function CaseDetailModal({
                         className={`p-3 rounded-xl text-xs leading-relaxed max-w-[85%] sm:max-w-[70%] min-w-[180px] ${
                           isAnalyst
                             ? 'mr-auto bg-purple-950/30 border border-purple-500/20 text-purple-100'
-                            : 'ml-auto bg-white/[0.06] border border-white/10 text-gray-200'
+                            : 'ml-auto bg-white/[0.06] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-200'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <span className="font-bold text-[10px] text-gray-400 font-mono truncate" title={isAnalyst ? '🛡️ SOC Analyst' : '👤 You'}>
+                          <span className="font-bold text-[10px] text-slate-500 dark:text-gray-400 font-mono truncate" title={isAnalyst ? '🛡️ SOC Analyst' : '👤 You'}>
                             {isAnalyst ? '🛡️ SOC Analyst' : '👤 You'}
                           </span>
-                          <span className="text-[10px] text-gray-500 font-mono shrink-0 text-[9px]">{formatDate(msg.timestamp)}</span>
+                          <span className="text-[10px] text-slate-400 dark:text-gray-500 font-mono shrink-0 text-[9px]">{formatDate(msg.timestamp)}</span>
                         </div>
                         <p className="whitespace-pre-wrap break-words">{msg.message}</p>
                       </div>
@@ -528,7 +528,7 @@ function CaseDetailModal({
                   })}
                 </div>
               ) : (
-                <p className="text-xs text-gray-500 italic">No additional messages yet.</p>
+                <p className="text-xs text-slate-400 dark:text-gray-500 italic">No additional messages yet.</p>
               )}
 
               {/* Follow-up question input */}
@@ -545,7 +545,7 @@ function CaseDetailModal({
                 <button
                   onClick={handleSendMessage}
                   disabled={!replyText.trim() || isSendingMessage}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all disabled:opacity-40 hover:opacity-90 flex items-center gap-1.5"
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-900 dark:text-white transition-all disabled:opacity-40 hover:opacity-90 flex items-center gap-1.5"
                   style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}
                 >
                   <Send className="w-3 h-3" />
@@ -563,7 +563,7 @@ function CaseDetailModal({
         >
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl text-xs font-bold text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 transition-all"
+            className="px-5 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:text-white bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-all"
           >
             Close
           </button>
@@ -641,7 +641,7 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
               >
                 <ClipboardList className="w-4.5 h-4.5 text-green-400" />
               </div>
-              <h1 className="text-2xl font-black text-white">Check Status</h1>
+              <h1 className="text-2xl font-black text-slate-900 dark:text-white">Check Status</h1>
               {pending > 0 && (
                 <>
                   {/* Mobile View: Yellow circle with number only */}
@@ -663,7 +663,7 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                 </>
               )}
             </div>
-            <p className="text-gray-400 text-sm">
+            <p className="text-slate-500 dark:text-gray-400 text-sm">
               Track submitted suspicious email reports, view SOC verdicts, and communicate with security analysts.
             </p>
           </div>
@@ -678,7 +678,7 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                     }
                   }
                 }}
-                className="px-3 py-2 rounded-xl text-xs font-mono font-bold text-gray-400 hover:text-rose-400 bg-white/[0.03] hover:bg-rose-500/10 border border-white/10 hover:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3 py-2 rounded-xl text-xs font-mono font-bold text-slate-500 dark:text-gray-400 hover:text-rose-400 bg-slate-50 dark:bg-white/[0.03] hover:bg-rose-500/10 border border-slate-200 dark:border-white/10 hover:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
                 title="Clear all your submitted reports"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -688,7 +688,7 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
 
             <button
               onClick={() => onNavigate('submit-report')}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-lg hover:opacity-90 flex items-center gap-2"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-900 dark:text-white transition-all shadow-lg hover:opacity-90 flex items-center gap-2"
               style={{
                 background: 'linear-gradient(135deg, #059669, #047857)',
                 boxShadow: '0 4px 16px rgba(5,150,105,0.25)',
@@ -745,12 +745,12 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
               <div
                 key={stat.label}
                 onClick={() => setFilterStatus(stat.filter)}
-                className={`p-3.5 sm:p-4 rounded-2xl bg-[#0c0e18] border border-white/[0.08] hover:border-white/20 transition-all cursor-pointer flex flex-col justify-between min-h-[82px] sm:min-h-[92px] group ${
-                  isActive ? `${stat.glow} border-white/20` : ''
+                className={`p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#0c0e18] border border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-slate-300 dark:border-white/20 shadow-sm dark:shadow-none transition-all cursor-pointer flex flex-col justify-between min-h-[82px] sm:min-h-[92px] group ${
+                  isActive ? `${stat.glow} border-slate-300 dark:border-white/20` : ''
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-mono text-[11px] sm:text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  <span className="font-mono text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">
                     {stat.label}
                   </span>
                   <span className={`w-2 h-2 rounded-full ${stat.dotColor}`} />
@@ -778,7 +778,7 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
               overscrollBehaviorY: 'none',
             }}
           >
-            <Filter className="w-3.5 h-3.5 text-gray-500 ml-2 mr-1 shrink-0" />
+            <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500 ml-2 mr-1 shrink-0" />
             {(['all', 'pending', 'in_review', 'analyzed', 'resolved'] as const).map((s) => (
               <button
                 key={s}
@@ -797,19 +797,18 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
 
           {/* Search */}
           <div
-            className="h-10 flex-1 min-w-[200px] flex items-center gap-2.5 px-3.5 rounded-xl"
-            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+            className="h-10 flex-1 min-w-[200px] flex items-center gap-2.5 px-3.5 rounded-xl bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] shadow-sm dark:shadow-none"
           >
-            <Search className="w-4 h-4 text-gray-500 shrink-0" />
+            <Search className="w-4 h-4 text-slate-400 dark:text-gray-500 shrink-0" />
             <input
               type="text"
               placeholder="Search by case ID, filename, or comment..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs text-white bg-transparent placeholder-gray-500 focus:outline-none"
+              className="w-full text-xs text-slate-900 dark:text-white bg-transparent placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="text-gray-500 hover:text-white">
+              <button onClick={() => setSearchQuery('')} className="text-slate-400 dark:text-gray-500 hover:text-slate-900 dark:text-white">
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
@@ -821,11 +820,10 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
       <SlideIn delay={140} direction="up">
         {filtered.length === 0 ? (
           <div
-            className="rounded-2xl p-12 text-center"
-            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
+            className="rounded-2xl p-12 text-center bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] shadow-sm dark:shadow-none"
           >
             <ClipboardList className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-sm font-bold text-gray-400">No reports found</p>
+            <p className="text-sm font-bold text-slate-500 dark:text-gray-400">No reports found</p>
             <p className="text-xs text-gray-600 mt-1 max-w-sm mx-auto">
               {tickets.length === 0
                 ? 'You have not submitted any reports yet. Click "Submit New Report" to upload a suspicious email.'
@@ -834,7 +832,7 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
             {tickets.length === 0 && (
               <button
                 onClick={() => onNavigate('submit-report')}
-                className="mt-4 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90"
+                className="mt-4 px-4 py-2 rounded-xl text-xs font-bold text-slate-900 dark:text-white transition-all hover:opacity-90"
                 style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}
               >
                 Submit Your First Report
@@ -847,18 +845,15 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
               <div
                 key={ticket.id}
                 onClick={() => setSelectedTicket(ticket)}
-                className="rounded-2xl p-4 transition-all duration-200 hover:scale-[1.007] cursor-pointer group"
-                style={{
-                  background: 'linear-gradient(145deg, #0d1118, #0a0c14)',
-                  border: ticket.status === 'analyzed'
-                    ? '1px solid rgba(34,197,94,0.25)'
+                className={`rounded-2xl p-4 transition-all duration-200 hover:scale-[1.007] cursor-pointer group bg-white dark:bg-[#0a0c14] shadow-sm dark:shadow-xl ${
+                  ticket.status === 'analyzed'
+                    ? 'border border-green-500/25'
                     : ticket.status === 'resolved'
-                    ? '1px solid rgba(168,85,247,0.25)'
+                    ? 'border border-purple-500/25'
                     : ticket.status === 'in_review'
-                    ? '1px solid rgba(6,182,212,0.25)'
-                    : '1px solid rgba(255,255,255,0.07)',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-                }}
+                    ? 'border border-cyan-500/25'
+                    : 'border border-slate-200 dark:border-white/10'
+                }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -894,20 +889,20 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
 
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-mono font-bold text-white whitespace-nowrap">{ticket.id}</span>
+                        <span className="text-xs font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">{ticket.id}</span>
                         <StatusBadge status={ticket.status} />
                         {ticket.verdict && (
-                          <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-white/5 text-gray-300">
+                          <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-white/5 text-slate-600 dark:text-gray-300">
                             {ticket.verdict}
                           </span>
                         )}
                       </div>
 
-                      <p className="text-xs text-gray-300 break-words leading-snug">
+                      <p className="text-xs text-slate-600 dark:text-gray-300 break-words leading-snug">
                         {ticket.userComment || (ticket.emlFile ? `File: ${ticket.emlFile.name}` : 'No description')}
                       </p>
 
-                      <div className="flex items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-gray-500 flex-wrap font-mono">
+                      <div className="flex items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-slate-400 dark:text-gray-500 flex-wrap font-mono">
                         <span className="whitespace-nowrap">Submitted: {formatDate(ticket.submittedAt)}</span>
                         {ticket.emlFile && <span className="truncate max-w-[200px]">• {ticket.emlFile.name}</span>}
                         {ticket.threadMessages && ticket.threadMessages.length > 0 && (
@@ -918,7 +913,7 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                   </div>
 
                   {/* Mobile action bar */}
-                  <div className="sm:hidden flex items-center justify-between pt-2 border-t border-white/5">
+                  <div className="sm:hidden flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/5">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -926,7 +921,7 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                           deleteTicket(ticket.id);
                         }
                       }}
-                      className="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-slate-400 dark:text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
                       title="Delete report"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -945,12 +940,12 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                           deleteTicket(ticket.id);
                         }
                       }}
-                      className="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-slate-400 dark:text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
                       title="Delete report"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                    <span className="text-xs text-gray-400 group-hover:text-white transition-colors">
+                    <span className="text-xs text-slate-500 dark:text-gray-400 group-hover:text-slate-900 dark:text-white transition-colors">
                       View Details →
                     </span>
                   </div>
