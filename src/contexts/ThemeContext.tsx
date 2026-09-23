@@ -105,6 +105,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   });
 
   const activeTransitionRef = useRef<any>(null);
+  // Always reflects latest theme — updated at render time so closures never go stale
+  const themeRef = useRef<Theme>(theme);
+  themeRef.current = theme;
 
   const setTheme = (newTheme: Theme, e?: React.MouseEvent | MouseEvent) => {
     if (newTheme === theme) return;
@@ -198,7 +201,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyThemeDom(theme, true);
   }, [theme]);
 
-  // Re-assert full theme on every page navigation so the topbar never gets stuck
+  // Re-assert full theme on every page navigation so the topbar never gets stuck.
+  // Uses themeRef (not theme from closure) to avoid stale-closure bug:
+  // hashchange can fire while React is mid-update, before setThemeState re-renders,
+  // so reading `theme` from the closure would give the OLD value and revert the theme.
   useEffect(() => {
     const handleNavChange = () => {
       // Cancel any orphaned transition
@@ -207,8 +213,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         activeTransitionRef.current = null;
       }
       document.documentElement.removeAttribute('data-theme-transitioning');
-      // Full re-assert: dark class + inline style clear + meta tags
-      applyThemeDom(theme, true);
+      // Read from ref — always the current theme, even mid-React-render
+      applyThemeDom(themeRef.current, true);
     };
     window.addEventListener('hashchange', handleNavChange);
     window.addEventListener('popstate', handleNavChange);
@@ -216,7 +222,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('hashchange', handleNavChange);
       window.removeEventListener('popstate', handleNavChange);
     };
-  }, [theme]);
+  }, []); // Empty deps — handler reads themeRef, not stale closure value
 
   return (
     <ThemeContext.Provider value={{ theme, isDark: theme === 'dark', toggleTheme, setTheme }}>
