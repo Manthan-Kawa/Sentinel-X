@@ -238,7 +238,7 @@ export function Sidebar({ activeId, onNavigate, onSignOut, mobileOpen, onMobileC
           <TransparentLogo
             src={isDark ? "/Logo-SentinelX.PNG" : "/Logo-SentinelX-black.png"}
             alt="SENTINEL-X"
-            className="h-[42px] lg:h-[60px] max-w-[190px] lg:max-w-[232px] w-auto object-contain drop-shadow-[0_0_12px_rgba(6,182,212,0.25)] transition-transform hover:scale-105"
+            className="h-[60px] max-w-[232px] w-auto object-contain drop-shadow-[0_0_12px_rgba(6,182,212,0.25)] transition-transform hover:scale-105"
           />
           <button
             onClick={onMobileClose}
