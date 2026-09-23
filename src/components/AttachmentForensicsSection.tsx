@@ -279,8 +279,9 @@ export function AttachmentForensicsSection({
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-md" title={item.filename}>
                   {item.filename}
                 </h3>
+                {/* Desktop: badge beside filename */}
                 <span
-                  className="text-[10px] font-semibold px-2 py-0.5 rounded border"
+                  className="hidden sm:inline-flex text-[10px] font-semibold px-2 py-0.5 rounded border whitespace-nowrap shrink-0"
                   style={{
                     backgroundColor: config.badgeBg,
                     borderColor: config.badgeBorder,
@@ -302,24 +303,38 @@ export function AttachmentForensicsSection({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            {showIndividualDownload ? (
-              <button
-                onClick={() => handleDownloadSingle(item)}
-                disabled={isDownloading}
-                className="h-8 px-3 rounded-xl bg-cyan-600/20 border border-cyan-500/40 text-cyan-700 dark:text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-transform duration-150 ease-out active:scale-95 disabled:opacity-60 cursor-pointer shadow-sm"
-                title={`Download ${item.filename}`}
-              >
-                <Download className={`w-3.5 h-3.5 ${isDownloading ? 'animate-bounce' : ''}`} />
-                <span>{isDownloading ? 'Downloading...' : 'Download File'}</span>
-              </button>
-            ) : (
-              <span className="text-[11px] px-2.5 py-1 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-700 dark:text-purple-300 font-medium flex items-center gap-1.5">
-                <FolderArchive className="w-3.5 h-3.5" />
-                Bundled in Image ZIP
-              </span>
-            )}
-            {renderVerdictBadge(item.verdict)}
+          <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 flex-wrap w-full sm:w-auto pt-2 sm:pt-0 border-t border-slate-200/60 dark:border-white/5 sm:border-t-0">
+            {/* Mobile: badge on the same line as download button and verdict */}
+            <span
+              className="sm:hidden inline-flex text-[10px] font-semibold px-2 py-0.5 rounded border whitespace-nowrap shrink-0"
+              style={{
+                backgroundColor: config.badgeBg,
+                borderColor: config.badgeBorder,
+                color: config.color,
+              }}
+            >
+              {config.label}
+            </span>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {showIndividualDownload ? (
+                <button
+                  onClick={() => handleDownloadSingle(item)}
+                  disabled={isDownloading}
+                  className="h-8 px-3 rounded-xl bg-cyan-600/20 border border-cyan-500/40 text-cyan-700 dark:text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-transform duration-150 ease-out active:scale-95 disabled:opacity-60 cursor-pointer shadow-sm"
+                  title={`Download ${item.filename}`}
+                >
+                  <Download className={`w-3.5 h-3.5 ${isDownloading ? 'animate-bounce' : ''}`} />
+                  <span>{isDownloading ? 'Downloading...' : 'Download File'}</span>
+                </button>
+              ) : (
+                <span className="text-[11px] px-2.5 py-1 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-700 dark:text-purple-300 font-medium flex items-center gap-1.5 whitespace-nowrap">
+                  <FolderArchive className="w-3.5 h-3.5" />
+                  Bundled in Image ZIP
+                </span>
+              )}
+              {renderVerdictBadge(item.verdict)}
+            </div>
           </div>
         </div>
 
@@ -571,8 +586,9 @@ export function AttachmentForensicsSection({
                           <span className="font-bold text-slate-900 dark:text-white truncate max-w-sm" title={item.filename}>
                             {item.filename}
                           </span>
+                          {/* Desktop: badge beside filename */}
                           <span
-                            className="text-[10px] font-semibold px-2 py-0.5 rounded border"
+                            className="hidden sm:inline-flex text-[10px] font-semibold px-2 py-0.5 rounded border whitespace-nowrap shrink-0"
                             style={{
                               backgroundColor: config.badgeBg,
                               borderColor: config.badgeBorder,
@@ -593,37 +609,51 @@ export function AttachmentForensicsSection({
                     </div>
 
                     {/* Actions & Verdict */}
-                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                      {/* SHA-256 copy shortcut */}
-                      <button
-                        onClick={() => handleCopy(item.sha256, `list-sha-${item.id}`)}
-                        className="p-1.5 rounded-lg bg-slate-200/80 hover:bg-slate-300 text-slate-700 hover:text-black dark:bg-white/5 dark:hover:bg-white/10 dark:text-gray-400 dark:hover:text-white transition-colors text-[11px] font-mono flex items-center gap-1 cursor-pointer"
-                        title={`Copy SHA-256: ${item.sha256}`}
+                    <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 flex-wrap w-full sm:w-auto pt-2 sm:pt-0 border-t border-slate-200/60 dark:border-white/5 sm:border-t-0">
+                      {/* Mobile: badge on the same line as download button */}
+                      <span
+                        className="sm:hidden inline-flex text-[10px] font-semibold px-2 py-0.5 rounded border whitespace-nowrap shrink-0"
+                        style={{
+                          backgroundColor: config.badgeBg,
+                          borderColor: config.badgeBorder,
+                          color: config.color,
+                        }}
                       >
-                        {copiedKey === `list-sha-${item.id}` ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                        <span className="hidden md:inline font-bold">{item.sha256.slice(0, 8)}…</span>
-                      </button>
+                        {config.label}
+                      </span>
 
-                      {/* Individual download button (suppressed for images if Condition C applies) */}
-                      {!isImageWithMultiple ? (
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* SHA-256 copy shortcut */}
                         <button
-                          onClick={() => handleDownloadSingle(item)}
-                          disabled={isDownloading}
-                          className="px-2.5 py-1.5 rounded-lg bg-cyan-600/20 border border-cyan-500/40 text-cyan-700 dark:text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-transform duration-150 ease-out active:scale-95 cursor-pointer"
-                          title={`Download ${item.filename}`}
+                          onClick={() => handleCopy(item.sha256, `list-sha-${item.id}`)}
+                          className="p-1.5 rounded-lg bg-slate-200/80 hover:bg-slate-300 text-slate-700 hover:text-black dark:bg-white/5 dark:hover:bg-white/10 dark:text-gray-400 dark:hover:text-white transition-colors text-[11px] font-mono flex items-center gap-1 cursor-pointer"
+                          title={`Copy SHA-256: ${item.sha256}`}
                         >
-                          <Download className={`w-3 h-3 ${isDownloading ? 'animate-bounce' : ''}`} />
-                          <span className="hidden sm:inline">{isDownloading ? 'Saving...' : 'Download'}</span>
+                          {copiedKey === `list-sha-${item.id}` ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                          <span className="hidden md:inline font-bold">{item.sha256.slice(0, 8)}…</span>
                         </button>
-                      ) : (
-                        <span className="text-[10px] px-2 py-1 rounded bg-pink-500/10 border border-pink-500/20 text-pink-700 dark:text-pink-300 font-medium">
-                          In Images ZIP
-                        </span>
-                      )}
+
+                        {/* Individual download button (suppressed for images if Condition C applies) */}
+                        {!isImageWithMultiple ? (
+                          <button
+                            onClick={() => handleDownloadSingle(item)}
+                            disabled={isDownloading}
+                            className="px-2.5 py-1.5 rounded-lg bg-cyan-600/20 border border-cyan-500/40 text-cyan-700 dark:text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-transform duration-150 ease-out active:scale-95 cursor-pointer shadow-sm"
+                            title={`Download ${item.filename}`}
+                          >
+                            <Download className={`w-3 h-3 ${isDownloading ? 'animate-bounce' : ''}`} />
+                            <span className="inline">{isDownloading ? 'Saving...' : 'Download'}</span>
+                          </button>
+                        ) : (
+                          <span className="text-[10px] px-2 py-1 rounded bg-pink-500/10 border border-pink-500/20 text-pink-700 dark:text-pink-300 font-medium whitespace-nowrap">
+                            In Images ZIP
+                          </span>
+                        )}
+                      </div>
 
                       {/* Verdict */}
                       {renderVerdictBadge(item.verdict)}

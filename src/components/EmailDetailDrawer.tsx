@@ -695,7 +695,7 @@ export function EmailDetailDrawer({
                         return (
                           <div
                             key={att.id}
-                            className="p-3 rounded-xl bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 flex items-center justify-between gap-3 text-xs"
+                            className="p-3 rounded-xl bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 text-xs"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <div
@@ -708,13 +708,14 @@ export function EmailDetailDrawer({
                               >
                                 <FileText className="w-3.5 h-3.5" />
                               </div>
-                              <div className="min-w-0">
+                              <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
                                   <div className="font-semibold text-slate-900 dark:text-white truncate max-w-sm" title={att.filename}>
                                     {att.filename}
                                   </div>
+                                  {/* On desktop: badge is beside the filename */}
                                   <span
-                                    className="text-[10px] font-semibold px-1.5 py-0.2 rounded border"
+                                    className="hidden sm:inline-flex text-[10px] font-semibold px-1.5 py-0.5 rounded border whitespace-nowrap shrink-0"
                                     style={{
                                       backgroundColor: config.badgeBg,
                                       borderColor: config.badgeBorder,
@@ -724,26 +725,41 @@ export function EmailDetailDrawer({
                                     {config.label}
                                   </span>
                                 </div>
-                                <div className="text-[11px] text-slate-500 dark:text-gray-400">
+                                <div className="text-[11px] text-slate-500 dark:text-gray-400 mt-0.5">
                                   {att.mimeType} · {att.formattedSize}
                                 </div>
                               </div>
                             </div>
 
-                            {!isImageWithMultiple ? (
-                              <button
-                                onClick={() => handleDownloadAttachment(att)}
-                                className="p-1.5 px-2.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-cyan-700 dark:text-cyan-300 transition-colors shrink-0 flex items-center gap-1.5 text-[11px] cursor-pointer"
-                                title={`Download ${att.filename}`}
+                            {/* Actions line: on mobile, badge + download button on the same line */}
+                            <div className="flex items-center justify-between sm:justify-end gap-2 pt-1.5 sm:pt-0 border-t border-slate-200/60 dark:border-white/5 sm:border-t-0 shrink-0">
+                              {/* On mobile: badge is on the same line as the download button */}
+                              <span
+                                className="sm:hidden inline-flex text-[10px] font-semibold px-2 py-0.5 rounded border whitespace-nowrap shrink-0"
+                                style={{
+                                  backgroundColor: config.badgeBg,
+                                  borderColor: config.badgeBorder,
+                                  color: config.color,
+                                }}
                               >
-                                <Download className="w-3.5 h-3.5" />
-                                <span>Download</span>
-                              </button>
-                            ) : (
-                              <span className="text-[10px] px-2 py-1 rounded bg-pink-500/15 border border-pink-500/30 text-pink-700 dark:text-pink-300 font-medium">
-                                In Images ZIP
+                                {config.label}
                               </span>
-                            )}
+
+                              {!isImageWithMultiple ? (
+                                <button
+                                  onClick={() => handleDownloadAttachment(att)}
+                                  className="p-1.5 px-3 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-cyan-700 dark:text-cyan-300 transition-colors shrink-0 flex items-center gap-1.5 text-[11px] font-medium cursor-pointer"
+                                  title={`Download ${att.filename}`}
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  <span>Download</span>
+                                </button>
+                              ) : (
+                                <span className="text-[10px] px-2 py-1 rounded bg-pink-500/15 border border-pink-500/30 text-pink-700 dark:text-pink-300 font-medium whitespace-nowrap">
+                                  In Images ZIP
+                                </span>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
