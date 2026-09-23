@@ -204,7 +204,7 @@ body,
   html.dark,
   html.dark body {
     color: #f1f5f9;
-    background-color: #000000;
+    background-color: #0b0c11;
   }
 
   *,
@@ -859,12 +859,12 @@ html[data-animations="false"] * {
    SYNCHRONIZED THEME TRANSITION
    ══════════════════════════════════════════════════════════════════ */
 html.dark {
-  background-color: #08090e;
+  background-color: #0b0c11;
   color-scheme: dark;
 }
 
 html:not(.dark) {
-  background-color: #f8fafc;
+  background-color: #ffffff;
   color-scheme: light;
 }
 

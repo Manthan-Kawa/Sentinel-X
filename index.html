@@ -5,7 +5,28 @@
     <link rel="icon" type="image/png" href="/Logo-Shield_SentinelX.png" />
     <link rel="apple-touch-icon" href="/Logo-Shield_SentinelX.png" />
     <link rel="manifest" href="/manifest.json" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, shrink-to-fit=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0c11" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <script>
+      (function() {
+        try {
+          var t = localStorage.getItem('app-theme') || localStorage.getItem('sentinel_theme');
+          var isDark = t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.setAttribute('data-mode', 'dark');
+          } else if (t === 'light') {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.setAttribute('data-mode', 'light');
+          }
+          var color = isDark ? '#0b0c11' : '#ffffff';
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', color);
+        } catch(e) {}
+      })();
+    </script>
     <meta name="google-site-verification" content="7Arg8M3KKjBOiqA9ZmvgbPkKKHcGBKj3x5DEv18EBmk" />
     
     <title>SENTINEL-X | Enterprise Email Forensics &amp; Threat Intelligence Platform</title>

@@ -27,13 +27,23 @@ const applyThemeDom = (newTheme: Theme) => {
     root.setAttribute('data-mode', 'light');
   }
 
-  let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-  if (!metaThemeColor) {
-    metaThemeColor = document.createElement('meta');
+  const topbarColor = newTheme === 'dark' ? '#0b0c11' : '#ffffff';
+
+  const metaThemeColors = document.querySelectorAll('meta[name="theme-color"]');
+  if (metaThemeColors.length > 0) {
+    metaThemeColors.forEach((m) => m.setAttribute('content', topbarColor));
+  } else {
+    const metaThemeColor = document.createElement('meta');
     metaThemeColor.setAttribute('name', 'theme-color');
+    metaThemeColor.setAttribute('content', topbarColor);
     document.head.appendChild(metaThemeColor);
   }
-  metaThemeColor.setAttribute('content', newTheme === 'dark' ? '#000000' : '#f8fafc');
+
+  // Ensure root background directly matches topbar color for mobile status bar area
+  root.style.backgroundColor = topbarColor;
+  if (document.body) {
+    document.body.style.backgroundColor = topbarColor;
+  }
 };
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
