@@ -199,12 +199,40 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const handleNavChange = () => {
       applyThemeDom(themeRef.current);
       updateThemeColorMeta(themeRef.current);
+      // Delayed re-assert: some page components may mount after hashchange
+      // and override the meta tag — this catches that case
+      setTimeout(() => {
+        applyThemeDom(themeRef.current);
+        updateThemeColorMeta(themeRef.current);
+      }, 80);
     };
+
+    // Re-assert on every user interaction — trivially cheap,
+    // guarantees topbar is always correct when user touches the screen
+    const handleInteraction = () => {
+      applyThemeDom(themeRef.current);
+      updateThemeColorMeta(themeRef.current);
+    };
+
+    // Re-assert when app comes back to foreground (e.g. switching apps on iPhone)
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        applyThemeDom(themeRef.current);
+        updateThemeColorMeta(themeRef.current);
+      }
+    };
+
     window.addEventListener('hashchange', handleNavChange);
     window.addEventListener('popstate', handleNavChange);
+    document.addEventListener('click', handleInteraction, { passive: true });
+    document.addEventListener('touchstart', handleInteraction, { passive: true });
+    document.addEventListener('visibilitychange', handleVisibility);
     return () => {
       window.removeEventListener('hashchange', handleNavChange);
       window.removeEventListener('popstate', handleNavChange);
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('touchstart', handleInteraction);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []); // empty — reads from themeRef, never stale
 
