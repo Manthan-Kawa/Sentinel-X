@@ -26,7 +26,7 @@ import {
   Trash2,
   Mail,
 } from 'lucide-react';
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import { getNavItemsForRole, type NavRole } from '@/config/navigation';
 import type { LucideIcon } from 'lucide-react';
 import { TransparentLogo } from '@/components/TransparentLogo';
@@ -38,6 +38,7 @@ import { SECURITY_ALERTS, type SecurityAlert } from '@/data/mockData';
 import { SupabaseDataService } from '@/services/supabaseDataService';
 import { UserNotificationService, type UserActivityNotification } from '@/services/userNotificationService';
 import { NotificationRulesService } from '@/services/notificationRulesService';
+import { useTheme } from '@/context/ThemeContext';
 const analystAvatar = '/analyst.png';
 
 interface SearchableItem {
@@ -209,6 +210,7 @@ interface SidebarProps {
 export function Sidebar({ activeId, onNavigate, onSignOut, mobileOpen, onMobileClose }: SidebarProps) {
   const { currentUser } = useAuth();
   const { tickets } = useTickets();
+  const { isDark } = useTheme();
   const role = currentUser?.role ?? 'analyst';
 
   const navList = getNavItemsForRole(role as NavRole);
@@ -227,22 +229,20 @@ export function Sidebar({ activeId, onNavigate, onSignOut, mobileOpen, onMobileC
         />
       )}
       <aside
-        className={`soc-sidebar fixed lg:static inset-y-0 left-0 z-[9999] lg:z-auto w-64 flex flex-col transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        className={`soc-sidebar fixed lg:static inset-y-0 left-0 z-[9999] lg:z-auto w-64 flex flex-col transition-transform duration-300 bg-white dark:bg-[#08090e] border-r border-slate-200 dark:border-white/[0.06] ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
           }`}
-        style={{ background: '#08090e', borderRight: '1px solid rgba(255,255,255,0.06)' }}
       >
         <div
-          className="relative h-[88px] flex items-center justify-start pl-4 pr-2 shrink-0"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+          className="relative h-[88px] flex items-center justify-start pl-4 pr-2 shrink-0 border-b border-slate-200 dark:border-white/[0.06]"
         >
           <TransparentLogo
-            src="/Logo-SentinelX.PNG"
+            src={isDark ? "/Logo-SentinelX.PNG" : "/Logo-SentinelX-black.png"}
             alt="SENTINEL-X"
             className="h-[60px] max-w-[232px] w-auto object-contain drop-shadow-[0_0_12px_rgba(6,182,212,0.25)] transition-transform hover:scale-105"
           />
           <button
             onClick={onMobileClose}
-            className="absolute right-4 lg:hidden text-base-400 hover:text-white"
+            className="absolute right-4 lg:hidden text-slate-400 hover:text-slate-900 dark:text-base-400 dark:hover:text-white"
           >
             <X className="w-5 h-5" />
           </button>
@@ -261,34 +261,25 @@ export function Sidebar({ activeId, onNavigate, onSignOut, mobileOpen, onMobileC
                   onMobileClose();
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 text-left ${active
-                  ? 'text-white'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
+                  ? 'bg-sky-50 dark:bg-blue-500/15 text-sky-600 dark:text-white border border-sky-200 dark:border-blue-500/25 shadow-sm'
+                  : 'text-slate-900 dark:text-gray-400 hover:text-black dark:hover:text-gray-200 hover:bg-slate-100 dark:hover:bg-white/[0.04] border border-transparent'
                   }`}
-                style={
-                  active
-                    ? {
-                      background: 'rgba(59,130,246,0.12)',
-                      border: '1px solid rgba(59,130,246,0.25)',
-                      boxShadow: '0 0 16px rgba(59,130,246,0.15)',
-                    }
-                    : { border: '1px solid transparent' }
-                }
               >
                 <Icon
-                  className={`w-4 h-4 shrink-0 transition-colors ${active ? 'text-blue-400' : 'text-gray-400'
+                  className={`w-4 h-4 shrink-0 transition-colors ${active ? 'text-sky-600 dark:text-blue-400' : 'text-slate-700 dark:text-gray-400'
                     }`}
                 />
-                <span className="truncate">{item.label}</span>
+                <span className="truncate text-slate-900 dark:text-inherit font-semibold">{item.label}</span>
                 {showBadge && (
                   <span
-                    className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center bg-violet-500/25 text-violet-300 border border-violet-500/40 shrink-0"
+                    className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center bg-violet-500/25 text-violet-600 dark:text-violet-300 border border-violet-500/40 shrink-0"
                   >
                     {pendingCount}
                   </span>
                 )}
                 {active && !showBadge && (
                   <span
-                    className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"
+                    className="ml-auto w-1.5 h-1.5 rounded-full bg-sky-500 dark:bg-blue-400 shrink-0"
                     style={{ boxShadow: '0 0 6px #60a5fa' }}
                   />
                 )}
@@ -297,17 +288,17 @@ export function Sidebar({ activeId, onNavigate, onSignOut, mobileOpen, onMobileC
           })}
         </nav>
 
-        <div className="p-3 border-t border-white/[0.06] space-y-1">
+        <div className="p-3 border-t border-slate-200 dark:border-white/[0.06] space-y-1">
           <button
             onClick={onSignOut}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-gray-500 hover:text-red-400 hover:bg-red-500/[0.06] transition-all duration-150 group"
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-800 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/[0.06] transition-all duration-150 group font-medium"
           >
-            <LogOut className="w-4 h-4 text-gray-500 group-hover:text-red-400 transition-colors shrink-0" />
-            <span>Sign Out</span>
+            <LogOut className="w-4 h-4 text-slate-700 dark:text-gray-500 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors shrink-0" />
+            <span className="text-slate-900 dark:text-inherit">Sign Out</span>
           </button>
         </div>
 
-        <div className="border-t border-[#1a1a1a] p-4">
+        <div className="border-t border-slate-200 dark:border-[#1a1a1a] p-4">
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0 overflow-hidden"
@@ -338,8 +329,8 @@ export function Sidebar({ activeId, onNavigate, onSignOut, mobileOpen, onMobileC
               )}
             </div>
             <div className="min-w-0">
-              <p className="text-sm text-white font-medium truncate">{currentUser?.displayName ?? 'User'}</p>
-              <p className="text-xs truncate" style={{ color: role === 'analyst' ? '#60a5fa' : '#4ade80' }}>
+              <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{currentUser?.displayName ?? 'User'}</p>
+              <p className="text-xs truncate font-medium" style={{ color: role === 'analyst' ? '#0284c7' : '#16a34a' }}>
                 {role === 'analyst' ? 'Cybersecurity Analyst' : 'Standard User'}
               </p>
             </div>
@@ -714,6 +705,37 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
   }, []);
 
   const [notifCategory, setNotifCategory] = useState<'all' | 'requests' | 'alerts' | 'intel' | 'system' | 'ticket'>('all');
+  const notifTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [notifIndicatorStyle, setNotifIndicatorStyle] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    opacity: number;
+  }>({ left: 0, top: 0, width: 0, height: 0, opacity: 0 });
+
+  useLayoutEffect(() => {
+    const updateIndicator = () => {
+      const currentTabEl = notifTabRefs.current[notifCategory];
+      if (currentTabEl) {
+        setNotifIndicatorStyle({
+          left: currentTabEl.offsetLeft,
+          top: currentTabEl.offsetTop,
+          width: currentTabEl.offsetWidth,
+          height: currentTabEl.offsetHeight,
+          opacity: 1,
+        });
+      }
+    };
+    updateIndicator();
+    const rafId = requestAnimationFrame(updateIndicator);
+    window.addEventListener('resize', updateIndicator);
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', updateIndicator);
+    };
+  }, [notifCategory, notifOpen]);
+
   const [activeToast, setActiveToast] = useState<SystemNotification | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const prevReportsCountRef = useRef(analyzedReports.length);
@@ -1138,19 +1160,16 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
 
   return (
     <header
-      className="flex items-center justify-between gap-3 px-4 lg:px-5 sticky top-0 z-30 shrink-0"
+      className="flex items-center justify-between gap-3 px-4 lg:px-5 shrink-0 bg-white dark:bg-[#0b0c11] border-b border-slate-200 dark:border-white/[0.06] shadow-sm transition-colors select-none touch-none lg:touch-auto overflow-x-hidden overscroll-none z-20"
       style={{
         height: 'calc(4rem + env(safe-area-inset-top, 0px))',
         paddingTop: 'env(safe-area-inset-top, 0px)',
-        background: '#0b0c11',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        boxShadow: '0 1px 0 rgba(255,255,255,0.04)',
       }}
     >
       <div className="flex items-center gap-3 relative" ref={searchContainerRef}>
         <button
           onClick={onMenuClick}
-          className="lg:hidden text-gray-500 hover:text-white transition-colors shrink-0 p-1.5 rounded-lg hover:bg-white/5"
+          className="lg:hidden text-slate-500 hover:text-slate-900 dark:text-gray-500 dark:hover:text-white transition-colors shrink-0 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 touch-auto cursor-pointer"
           title="Open Menu"
         >
           <Menu className="w-5 h-5" />
@@ -1162,21 +1181,16 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
             setSearchOpen(!searchOpen);
             if (!searchOpen) setTimeout(() => searchInputRef.current?.focus(), 100);
           }}
-          className="md:hidden text-gray-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5 shrink-0"
+          className="md:hidden text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 shrink-0 touch-auto cursor-pointer"
           title="Search tools and telemetry"
         >
           <Search className="w-4 h-4" />
         </button>
 
         <div
-          className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl w-80 transition-all duration-200"
-          style={{
-            background: searchOpen ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
-            border: searchOpen ? '1px solid rgba(139,92,246,0.5)' : '1px solid rgba(255,255,255,0.08)',
-            boxShadow: searchOpen ? '0 0 20px rgba(139,92,246,0.15)' : 'none',
-          }}
+          className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl w-80 transition-all duration-200 bg-slate-100 dark:bg-white border border-slate-200 dark:border-slate-200 shadow-sm"
         >
-          <Search className={`w-3.5 h-3.5 shrink-0 transition-colors ${searchOpen ? 'text-purple-400' : 'text-gray-500'}`} />
+          <Search className={`w-3.5 h-3.5 shrink-0 transition-colors ${searchOpen ? 'text-sky-500 dark:text-slate-400' : 'text-slate-400 dark:text-slate-400'}`} />
           <input
             ref={searchInputRef}
             type="text"
@@ -1188,7 +1202,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
             onFocus={() => setSearchOpen(true)}
             onKeyDown={handleSearchKeyDown}
             placeholder="Search pages, tools, telemetry..."
-            className="bg-transparent text-xs text-gray-200 placeholder-gray-500 focus:outline-none w-full font-mono"
+            className="bg-transparent text-xs text-slate-900 dark:text-slate-900 placeholder-slate-400 dark:placeholder-slate-400 focus:outline-none w-full font-mono"
           />
           {searchQuery ? (
             <button
@@ -1196,14 +1210,13 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                 setSearchQuery('');
                 searchInputRef.current?.focus();
               }}
-              className="text-gray-500 hover:text-gray-300 p-0.5 text-[10px]"
+              className="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-600 p-0.5 text-[10px]"
             >
               ✕
             </button>
           ) : (
             <kbd
-              className="shrink-0 flex items-center gap-0.5 text-[10px] text-gray-500 font-mono px-1.5 py-0.5 rounded"
-              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}
+              className="shrink-0 flex items-center gap-0.5 text-[10px] text-slate-400 dark:text-slate-400 font-mono px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-100 border border-slate-300/60 dark:border-slate-200"
             >
               ⌘K
             </kbd>
@@ -1212,34 +1225,29 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
 
         {searchOpen && (
           <div
-            className="fixed md:absolute top-16 md:top-12 left-3 right-3 md:left-0 md:right-auto w-auto md:w-96 rounded-2xl p-2.5 md:p-2 z-50 shadow-2xl backdrop-blur-xl animate-fade-in"
-            style={{
-              background: 'rgba(12, 15, 24, 0.98)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              boxShadow: '0 16px 40px rgba(0,0,0,0.8), 0 0 30px rgba(139,92,246,0.12)',
-            }}
+            className="fixed md:absolute top-16 md:top-12 left-3 right-3 md:left-0 md:right-auto w-auto md:w-96 rounded-2xl p-2.5 md:p-2 z-50 shadow-2xl backdrop-blur-xl animate-fade-in bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-zinc-100"
           >
             {/* Mobile-only Search input field */}
-            <div className="md:hidden flex items-center gap-2 px-3 py-2 rounded-xl mb-2 bg-white/5 border border-white/10">
-              <Search className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+            <div className="md:hidden flex items-center gap-2 px-3 py-2 rounded-xl mb-2 bg-slate-100 dark:bg-white border border-slate-200 dark:border-slate-200 shadow-sm">
+              <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-400 shrink-0" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search pages, tools, telemetry..."
                 autoFocus
-                className="bg-transparent text-xs text-gray-200 placeholder-gray-500 focus:outline-none w-full font-mono"
+                className="bg-transparent text-xs text-slate-900 dark:text-slate-900 placeholder-slate-400 dark:placeholder-slate-400 focus:outline-none w-full font-mono"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="text-gray-400 text-xs p-0.5">✕</button>
+                <button onClick={() => setSearchQuery('')} className="text-slate-400 dark:text-slate-400 text-xs p-0.5">✕</button>
               )}
             </div>
 
-            <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/5 mb-1">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-gray-400">
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-slate-100 dark:border-white/5 mb-1">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
                 {searchQuery.trim() ? `Search Results (${filteredSearchItems.length})` : 'Quick Navigation & Modules'}
               </span>
-              <span className="text-[10px] font-mono text-gray-500 flex items-center gap-1">
+              <span className="text-[10px] font-mono text-slate-400 dark:text-gray-500 flex items-center gap-1">
                 <span>↑↓ Navigate</span>
                 <span>↵ Open</span>
               </span>
@@ -1247,7 +1255,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
 
             <div className="max-h-80 overflow-y-auto scrollbar-thin space-y-1">
               {filteredSearchItems.length === 0 ? (
-                <div className="p-6 text-center text-xs text-gray-500 font-mono">
+                <div className="p-6 text-center text-xs text-slate-400 dark:text-gray-500 font-mono">
                   No matching pages or modules found for "{searchQuery}".
                 </div>
               ) : (
@@ -1261,34 +1269,30 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                       onMouseEnter={() => setSelectedSearchIdx(idx)}
                       className={`flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-all duration-150 ${
                         isSelected
-                          ? 'bg-purple-500/15 border border-purple-500/35 shadow-sm'
-                          : 'border border-transparent hover:bg-white/[0.04]'
+                          ? 'bg-sky-50 dark:bg-purple-500/15 border border-sky-200 dark:border-purple-500/35 shadow-sm'
+                          : 'border border-transparent hover:bg-slate-50 dark:hover:bg-white/[0.04]'
                       }`}
                     >
                       <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                        style={{
-                          background: isSelected ? 'rgba(168,85,247,0.25)' : 'rgba(255,255,255,0.05)',
-                          border: '1px solid rgba(255,255,255,0.08)',
-                        }}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10"
                       >
-                        <Icon className={`w-4 h-4 ${isSelected ? 'text-purple-300' : 'text-gray-400'}`} />
+                        <Icon className={`w-4 h-4 ${isSelected ? 'text-sky-600 dark:text-purple-300' : 'text-slate-500 dark:text-gray-400'}`} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <span className={`text-xs font-bold font-mono ${isSelected ? 'text-white' : 'text-gray-200'}`}>
+                          <span className={`text-xs font-bold font-mono ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-gray-200'}`}>
                             {item.title}
                           </span>
                           <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase border ${item.badgeColor}`}>
                             {item.category}
                           </span>
                         </div>
-                        <p className="text-[11px] text-gray-400 truncate mt-0.5 leading-snug">
+                        <p className="text-[11px] text-slate-500 dark:text-gray-400 truncate mt-0.5 leading-snug">
                           {item.description}
                         </p>
                       </div>
                       {isSelected && (
-                        <ArrowRight className="w-3.5 h-3.5 text-purple-400 shrink-0 self-center" />
+                        <ArrowRight className="w-3.5 h-3.5 text-sky-500 dark:text-purple-400 shrink-0 self-center" />
                       )}
                     </div>
                   );
@@ -1329,8 +1333,8 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
               >
                 {currentAlert.relatedCase || currentAlert.id}
               </span>
-              <span className="text-gray-600 text-[11px]">·</span>
-              <span className="text-[11px] text-gray-300 font-mono font-medium truncate max-w-[190px]">
+              <span className="text-slate-400 dark:text-gray-600 text-[11px]">·</span>
+              <span className="text-[11px] text-slate-700 dark:text-gray-300 font-mono font-medium truncate max-w-[190px]">
                 {currentAlert.type || currentAlert.summary}
               </span>
             </div>
@@ -1341,9 +1345,9 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
         <button
           onClick={() => onNavigate('settings')}
           title="Settings"
-          className="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-150 group hover:bg-white/10"
+          className="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-150 group text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-white/10 touch-auto cursor-pointer"
         >
-          <Settings className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
+          <Settings className="w-4 h-4 text-slate-500 dark:text-gray-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
         </button>
 
         {/* Bell */}
@@ -1356,12 +1360,10 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
               }
               setNotifOpen(!notifOpen);
             }}
-            className="relative w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-150 group"
-            style={{ background: notifOpen ? 'rgba(255,255,255,0.08)' : 'transparent' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)'; }}
-            onMouseLeave={e => { if (!notifOpen) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            className="relative w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-150 group text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-white/10 touch-auto cursor-pointer"
+            style={{ background: notifOpen ? 'rgba(147,51,234,0.1)' : undefined }}
           >
-            <Bell className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
+            <Bell className="w-4 h-4 text-slate-500 dark:text-gray-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
             {unreadCount > 0 && (
               <span
                 className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"
@@ -1370,24 +1372,19 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
             )}
           </button>
 
-          {/* Notif dropdown */}
+          {/* Notif dropdown — exact Attendify notification specs */}
           {notifOpen && (
             <div
               ref={notifDropdownRef}
-              className="fixed sm:absolute top-14 sm:top-full left-3 sm:left-auto right-3 sm:right-0 sm:mt-2 w-auto sm:w-96 max-w-none sm:max-w-sm rounded-2xl shadow-2xl z-50 border overflow-hidden animate-fade-in"
-              style={{
-                background: 'linear-gradient(180deg, #0f121d 0%, #0a0c14 100%)',
-                borderColor: 'rgba(255,255,255,0.1)',
-                boxShadow: '0 25px 60px rgba(0,0,0,0.85), 0 0 30px rgba(168,85,247,0.1)',
-              }}
+              className="fixed sm:absolute top-14 sm:top-full left-3 sm:left-auto right-3 sm:right-0 sm:mt-2 w-auto sm:w-96 max-w-none sm:max-w-sm rounded-2xl z-50 overflow-hidden animate-fade-in bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-zinc-100 shadow-[0_20px_50px_rgba(0,0,0,0.12)] touch-auto"
             >
-              {/* Header */}
-              <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+              {/* Notification Header */}
+              <div className="px-4 py-3 bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Bell className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                  <p className="text-xs font-bold text-white uppercase tracking-wider font-mono">Notifications</p>
+                  <Bell className="w-3.5 h-3.5 text-sky-500 dark:text-purple-400 shrink-0" />
+                  <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">Notifications</p>
                   {unreadCount > 0 && (
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-red-500/20 text-red-400 border border-red-500/30 shrink-0">
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-red-50 text-red-600 border border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30 shrink-0">
                       {unreadCount} NEW
                     </span>
                   )}
@@ -1395,24 +1392,40 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllRead}
-                    className="text-[10px] font-mono font-semibold text-purple-400 hover:text-purple-300 transition-colors shrink-0"
+                    className="text-[10px] font-mono font-semibold text-sky-600 hover:text-sky-700 dark:text-purple-400 dark:hover:text-purple-300 transition-colors shrink-0"
                   >
                     Mark all read
                   </button>
                 )}
               </div>
 
-              {/* Category Filter Tabs */}
+              {/* Notification subheader / tab bar */}
               {isAnalyst ? (
-                <div className="px-3 py-1.5 border-b border-white/5 flex items-center gap-1.5 bg-white/[0.02] overflow-x-auto scrollbar-none touch-scroll">
+                <div className="relative isolate px-3 py-1.5 bg-slate-50 dark:bg-zinc-900/90 border-b border-slate-200 dark:border-zinc-800 flex items-center gap-1.5 overflow-x-auto scrollbar-none touch-scroll text-slate-600 dark:text-zinc-400">
+                  {/* Smooth sliding indicator pill */}
+                  <div
+                    className="absolute z-0 pointer-events-none rounded-lg bg-sky-500/15 border border-sky-400/50 dark:bg-purple-500/25 dark:border-purple-500/40 shadow-sm"
+                    style={{
+                      transform: `translate3d(${notifIndicatorStyle.left}px, ${notifIndicatorStyle.top}px, 0)`,
+                      width: notifIndicatorStyle.width,
+                      height: notifIndicatorStyle.height,
+                      opacity: notifIndicatorStyle.opacity,
+                      transition: 'transform 300ms cubic-bezier(0.25, 1, 0.5, 1), width 300ms cubic-bezier(0.25, 1, 0.5, 1), height 300ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
+                      left: 0,
+                      top: 0,
+                      zIndex: 0,
+                    }}
+                  />
                   {(['all', 'requests', 'alerts', 'intel', 'system'] as const).map((cat) => (
                     <button
                       key={cat}
+                      ref={(el) => { notifTabRefs.current[cat] = el; }}
                       onClick={() => setNotifCategory(cat as any)}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase whitespace-nowrap shrink-0 transition-all ${
+                      style={{ zIndex: 10 }}
+                      className={`relative z-10 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase whitespace-nowrap shrink-0 transition-colors duration-200 ${
                         notifCategory === cat
-                          ? 'bg-purple-500/25 text-purple-200 border border-purple-500/40 shadow-sm'
-                          : 'text-gray-400 hover:text-white border border-transparent'
+                          ? 'text-sky-950 dark:text-purple-200'
+                          : 'text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white'
                       }`}
                     >
                       {cat === 'requests' ? 'USER REQUESTS' : cat}
@@ -1420,20 +1433,20 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                   ))}
                 </div>
               ) : (
-                <div className="px-4 py-1.5 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-                  <span className="text-[10px] font-mono font-bold uppercase text-gray-400">
+                <div className="px-4 py-1.5 bg-slate-50 dark:bg-zinc-900/90 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between text-slate-600 dark:text-zinc-400">
+                  <span className="text-[10px] font-mono font-bold uppercase text-slate-600 dark:text-gray-400">
                     Activity &amp; Updates ({filteredNotifs.length})
                   </span>
-                  <span className="text-[9px] font-mono text-emerald-400/90 font-semibold">
+                  <span className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400/90 font-semibold">
                     Security &amp; Account
                   </span>
                 </div>
               )}
 
-              {/* List */}
-              <div className="max-h-72 overflow-y-auto scrollbar-thin divide-y divide-white/5">
+              {/* Notification items list */}
+              <div className="max-h-72 overflow-y-auto scrollbar-thin divide-y divide-slate-100 dark:divide-zinc-800/60">
                 {filteredNotifs.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-gray-500 font-mono">
+                  <div className="p-8 text-center text-xs text-slate-400 dark:text-gray-500 font-mono">
                     {isAnalyst
                       ? 'No notifications in this category.'
                       : 'No notifications yet. Account activity and report reviews will appear here.'}
@@ -1445,7 +1458,9 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                       <div
                         key={n.id}
                         className={`px-3.5 sm:px-4 py-3 flex items-start gap-2.5 sm:gap-3 transition-all duration-150 ${
-                          !n.read ? 'bg-white/[0.03] hover:bg-white/[0.07]' : 'hover:bg-white/[0.04]'
+                          !n.read
+                            ? 'bg-emerald-50/70 border-b border-emerald-200/60 dark:bg-zinc-900 dark:border-zinc-800'
+                            : 'hover:bg-slate-50 dark:hover:bg-zinc-900/60'
                         }`}
                       >
                         <div
@@ -1460,29 +1475,29 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
                           onClick={() => handleNotificationClick(n)}
                         >
                           <div className="flex items-center gap-2">
-                            <p className={`text-xs font-bold font-mono truncate ${!n.read ? 'text-white' : 'text-gray-300'}`}>
+                            <p className={`text-xs font-mono truncate text-black dark:text-zinc-100 font-bold`}>
                               {n.title}
                             </p>
                             {!n.read && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-purple-400 shrink-0" />
                             )}
                           </div>
-                          <p className="text-[11px] text-gray-400 leading-snug mt-0.5 line-clamp-2 pr-1">
+                          <p className="text-[11px] text-slate-600 dark:text-zinc-400 leading-snug mt-0.5 line-clamp-2 pr-1">
                             {n.msg}
                           </p>
-                          <div className="flex items-center gap-1 text-[9px] text-purple-400/80 font-mono font-medium mt-1">
+                          <div className="flex items-center gap-1 text-[9px] text-sky-600 dark:text-purple-400/80 font-mono font-medium mt-1">
                             <span>Open module</span>
                             <ArrowRight className="w-2.5 h-2.5 shrink-0" />
                           </div>
                         </div>
                         <div className="flex flex-col items-center gap-1 shrink-0 pt-0.5">
-                          <span className="text-[9px] text-gray-500 font-mono">{n.time}</span>
+                          <span className="text-[9px] text-slate-400 dark:text-gray-500 font-mono">{n.time}</span>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               dismissNotification(n.id);
                             }}
-                            className="w-6 h-6 rounded-lg flex items-center justify-center text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 group mt-0.5 cursor-pointer"
+                            className="w-6 h-6 rounded-lg flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400/60 dark:hover:text-red-400 dark:hover:bg-red-500/10 transition-all duration-200 group mt-0.5 cursor-pointer"
                             title="Delete notification"
                           >
                             <Trash2 className="w-3 h-3 group-hover:drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]" />
@@ -1498,7 +1513,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
         </div>
 
         {/* Divider (desktop/tablet only, hidden on mobile) */}
-        <div className="hidden sm:block w-px h-5" style={{ background: 'rgba(255,255,255,0.08)' }} />
+        <div className="hidden sm:block w-px h-5 bg-slate-200 dark:bg-white/[0.08]" />
 
         {/* User profile for Mobile (compact avatar only, tap to open profile in settings) */}
         <button
@@ -1519,7 +1534,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
             onNavigate('settings');
           }}
           title="Update Profile"
-          className="sm:hidden w-8 h-8 flex items-center justify-center rounded-full transition-all duration-150 cursor-pointer hover:opacity-85 focus:outline-none"
+          className="sm:hidden w-8 h-8 flex items-center justify-center rounded-full transition-all duration-150 cursor-pointer hover:opacity-85 focus:outline-none touch-auto"
         >
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 overflow-hidden"
@@ -1570,7 +1585,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
             onNavigate('settings');
           }}
           title={`${currentUser?.displayName ?? 'User'} (${isAnalyst ? 'Cybersecurity Analyst' : 'Standard User'}) — Click to edit profile`}
-          className="hidden sm:flex items-center gap-2.5 cursor-pointer px-2 py-1 rounded-lg transition-all duration-150 hover:bg-white/[0.05]"
+          className="hidden sm:flex items-center gap-2.5 cursor-pointer px-2 py-1 rounded-lg transition-all duration-150 hover:bg-slate-100 dark:hover:bg-white/[0.05]"
         >
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 overflow-hidden"
@@ -1601,12 +1616,12 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
             )}
           </div>
           <div className="flex flex-col justify-center">
-            <p className="text-[12px] font-semibold text-white whitespace-nowrap leading-tight">
+            <p className="text-[12px] font-semibold text-slate-900 dark:text-white whitespace-nowrap leading-tight">
               {currentUser?.displayName ?? 'User'}
             </p>
             <p
               className="text-[10px] mt-0.5 whitespace-nowrap leading-none font-medium tracking-wide"
-              style={{ color: isAnalyst ? '#9ca3af' : '#4ade80' }}
+              style={{ color: isAnalyst ? '#0284c7' : '#16a34a' }}
             >
               {isAnalyst ? 'Cybersecurity Analyst' : 'Standard User'}
             </p>
@@ -1622,26 +1637,13 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
             setToastVisible(false);
             setTimeout(() => setActiveToast(null), 350);
           }}
-          className={`fixed top-3 left-3 right-3 sm:left-auto sm:right-6 z-50 max-w-sm w-auto sm:w-96 p-3.5 rounded-2xl cursor-pointer shadow-2xl transition-all duration-500 ease-out flex items-start gap-3 border ${
+          className={`fixed top-3 left-3 right-3 sm:left-auto sm:right-6 z-50 max-w-sm w-auto sm:w-96 p-3.5 rounded-2xl cursor-pointer shadow-2xl transition-all duration-500 ease-out flex items-start gap-3 border bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 ${
             toastVisible
               ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto'
               : '-translate-y-8 opacity-0 scale-95 pointer-events-none'
           }`}
           style={{
-            background: 'linear-gradient(135deg, rgba(15,18,28,0.98), rgba(9,11,18,0.98))',
-            borderColor:
-              activeToast.title.includes('Investigation')
-                ? 'rgba(6,182,212,0.5)'
-                : activeToast.sev === 'critical'
-                ? 'rgba(239,68,68,0.45)'
-                : activeToast.sev === 'high'
-                ? 'rgba(249,115,22,0.45)'
-                : activeToast.category === 'ticket'
-                ? 'rgba(139,92,246,0.45)'
-                : 'rgba(168,85,247,0.45)',
-            boxShadow: activeToast.title.includes('Investigation')
-              ? '0 20px 50px rgba(0,0,0,0.8), 0 0 24px rgba(6,182,212,0.22)'
-              : '0 20px 50px rgba(0,0,0,0.8), 0 0 24px rgba(139,92,246,0.18)',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
             backdropFilter: 'blur(16px)',
           }}
         >
@@ -1668,47 +1670,47 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
             }}
           >
             {activeToast.title.includes('Investigation') ? (
-              <Clock className="w-4 h-4 text-cyan-400 animate-spin" />
+              <Clock className="w-4 h-4 text-cyan-500 animate-spin" />
             ) : activeToast.title.includes('Gmail') ? (
-              <Mail className="w-4 h-4 text-emerald-400" />
+              <Mail className="w-4 h-4 text-emerald-500" />
             ) : activeToast.title.includes('Password') ? (
-              <Lock className="w-4 h-4 text-cyan-400" />
+              <Lock className="w-4 h-4 text-cyan-500" />
             ) : activeToast.title.includes('Profile') || activeToast.title.includes('Name') ? (
-              <CheckCircle2 className="w-4 h-4 text-purple-400" />
+              <CheckCircle2 className="w-4 h-4 text-purple-500" />
             ) : activeToast.title.includes('Message') ? (
-              <MessageSquare className="w-4 h-4 text-purple-400" />
+              <MessageSquare className="w-4 h-4 text-purple-500" />
             ) : activeToast.sev === 'critical' ? (
-              <AlertTriangle className="w-4 h-4 text-red-400 animate-pulse" />
+              <AlertTriangle className="w-4 h-4 text-red-500 animate-pulse" />
             ) : activeToast.sev === 'high' ? (
-              <Bell className="w-4 h-4 text-orange-400" />
+              <Bell className="w-4 h-4 text-orange-500" />
             ) : (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             )}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-white font-mono flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-900 dark:text-white font-mono flex items-center gap-1.5">
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
                     activeToast.title.includes('Investigation')
-                      ? 'bg-cyan-400 animate-pulse'
+                      ? 'bg-cyan-500 animate-pulse'
                       : activeToast.title.includes('Message')
-                      ? 'bg-purple-400 animate-ping'
+                      ? 'bg-purple-500 animate-ping'
                       : activeToast.sev === 'critical'
                       ? 'bg-red-500 animate-ping'
                       : activeToast.sev === 'high'
                       ? 'bg-orange-500 animate-ping'
-                      : 'bg-emerald-400 animate-pulse'
+                      : 'bg-emerald-500 animate-pulse'
                   }`}
                 />
                 {activeToast.title}
               </span>
-              <span className="text-[9px] text-gray-500 font-mono">Just now</span>
+              <span className="text-[9px] text-slate-400 dark:text-gray-500 font-mono">Just now</span>
             </div>
-            <p className="text-[11px] text-gray-300 mt-0.5 leading-snug font-mono line-clamp-2">
+            <p className="text-[11px] text-slate-600 dark:text-gray-300 mt-0.5 leading-snug font-mono line-clamp-2">
               {activeToast.msg}
             </p>
-            <div className="flex items-center gap-1 text-[10px] text-purple-400 font-mono font-semibold mt-1">
+            <div className="flex items-center gap-1 text-[10px] text-sky-600 dark:text-purple-400 font-mono font-semibold mt-1">
               <span>
                 {activeToast.title.includes('Message') && activeToast.route === 'user-requests'
                   ? 'Reply to User'

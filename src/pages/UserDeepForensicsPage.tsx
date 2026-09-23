@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   ArrowLeft,
   Download,
@@ -42,6 +42,7 @@ import { AttachmentForensicsSection } from '@/components/AttachmentForensicsSect
 import { ANALYSIS_STAGES, type AnalysisStage } from '@/data/mockData';
 import { useAuth } from '@/contexts/AuthContext';
 import { SlideIn } from '@/components/SlideIn';
+import { useTheme } from '@/context/ThemeContext';
 
 const ANALYSIS_STEPS = [
   { stage: 'Email',       label: 'Parsing email structure',              detail: 'Extracting headers, body, MIME parts, and attachments' },
@@ -62,12 +63,47 @@ interface UserDeepForensicsPageProps {
 export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensicsPageProps) {
   const { currentUser } = useAuth();
   const { emails, selectedEmail } = useEmailIngestion();
+  const { isDark } = useTheme();
   const [report, setReport] = useState<DeepForensicsReport | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [progressStep, setProgressStep] = useState(0);
   const [activeStage, setActiveStage] = useState<AnalysisStage>('Email');
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'synthesis' | 'headers' | 'threat-intel' | 'origin' | 'attack-graph' | 'attachments'>('all');
+  const reportTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [reportIndicatorStyle, setReportIndicatorStyle] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    opacity: number;
+  }>({ left: 0, top: 0, width: 0, height: 0, opacity: 0 });
+
+  useLayoutEffect(() => {
+    const updateIndicator = () => {
+      const currentTabEl = reportTabRefs.current[activeTab];
+      if (currentTabEl) {
+        setReportIndicatorStyle({
+          left: currentTabEl.offsetLeft,
+          top: currentTabEl.offsetTop,
+          width: currentTabEl.offsetWidth,
+          height: currentTabEl.offsetHeight,
+          opacity: 1,
+        });
+      }
+    };
+    updateIndicator();
+    const rafId = requestAnimationFrame(updateIndicator);
+    const t1 = setTimeout(updateIndicator, 50);
+    const t2 = setTimeout(updateIndicator, 150);
+    window.addEventListener('resize', updateIndicator);
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener('resize', updateIndicator);
+    };
+  }, [activeTab, report, isAnalyzing]);
 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -279,11 +315,11 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
     const progressPercent = Math.round(((progressStep + 1) / ANALYSIS_STEPS.length) * 100);
 
     return (
-      <div className="space-y-6 text-white pb-20 animate-fade-in" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <div className="space-y-6 text-slate-900 dark:text-white pb-20 animate-fade-in" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
         {/* ── Page Header ── */}
         <div>
-          <h2 className="text-2xl font-black text-white tracking-tight">Deep Forensics</h2>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Deep Forensics</h2>
+          <p className="text-sm text-slate-600 dark:text-gray-400 mt-0.5">
             Automated multi-stage forensic analysis and threat intelligence pipeline
           </p>
         </div>
@@ -292,9 +328,9 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
         <div
           className="rounded-2xl p-4"
           style={{
-            background: 'linear-gradient(145deg, #0a0d15, #080b14)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+            background: isDark ? 'linear-gradient(145deg, #0a0d15, #080b14)' : '#ffffff',
+            border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0',
+            boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.5)' : '0 1px 3px rgba(0,0,0,0.05)',
           }}
         >
           <div className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-none no-scrollbar touch-scroll pb-1">
@@ -305,21 +341,21 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
                 <div key={stage} className="flex items-center shrink-0">
                   <div
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-300 ${
-                      isActive ? 'text-purple-300' : isDone ? 'text-green-400' : 'text-gray-500'
+                      isActive ? (isDark ? 'text-purple-300' : 'text-purple-700') : isDone ? (isDark ? 'text-green-400' : 'text-emerald-700') : (isDark ? 'text-gray-500' : 'text-slate-500')
                     }`}
                     style={
                       isActive
-                        ? { background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.4)', boxShadow: '0 0 12px rgba(139,92,246,0.3)' }
+                        ? { background: isDark ? 'rgba(139,92,246,0.2)' : 'rgba(139,92,246,0.15)', border: isDark ? '1px solid rgba(139,92,246,0.4)' : '1px solid rgba(139,92,246,0.3)', boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.4)' : '0 1px 2px rgba(0,0,0,0.05)' }
                         : isDone
-                        ? { background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }
-                        : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }
+                        ? { background: isDark ? 'rgba(34,197,94,0.1)' : 'rgba(34,197,94,0.1)', border: isDark ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(34,197,94,0.25)' }
+                        : { background: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #e2e8f0' }
                     }
                   >
-                    <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-purple-400 animate-pulse' : isDone ? 'bg-green-400' : 'bg-gray-600'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-purple-500 animate-pulse' : isDone ? 'bg-green-500' : (isDark ? 'bg-gray-600' : 'bg-slate-300')}`} />
                     {stage}
                   </div>
                   {i < ANALYSIS_STAGES.length - 1 && (
-                    <ChevronRight className={`w-3.5 h-3.5 mx-1 ${isDone ? 'text-green-500' : 'text-gray-700'}`} />
+                    <ChevronRight className={`w-3.5 h-3.5 mx-1 ${isDone ? (isDark ? 'text-green-500' : 'text-emerald-600') : (isDark ? 'text-gray-700' : 'text-slate-300')}`} />
                   )}
                 </div>
               );
@@ -331,9 +367,9 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
         <div
           className="rounded-2xl p-8 flex flex-col items-center justify-center py-12 text-center"
           style={{
-            background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            background: isDark ? 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)' : '#ffffff',
+            border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0',
+            boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.5)' : '0 4px 20px rgba(0,0,0,0.06)',
           }}
         >
           <div className="mb-6">
@@ -343,8 +379,8 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
             />
           </div>
 
-          <h3 className="text-lg font-bold text-white mb-1">{current.label}</h3>
-          <p className="text-xs text-gray-400 mb-8 max-w-md">{current.detail}</p>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{current.label}</h3>
+          <p className="text-xs text-slate-600 dark:text-gray-400 mb-8 max-w-md">{current.detail}</p>
 
           <div className="w-full max-w-md space-y-2">
             {ANALYSIS_STEPS.map((s, i) => {
@@ -355,23 +391,23 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
                   key={s.stage}
                   className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-300"
                   style={{
-                    background: isActive ? 'rgba(139,92,246,0.12)' : isDone ? 'rgba(34,197,94,0.05)' : 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${isActive ? 'rgba(139,92,246,0.3)' : isDone ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)'}`,
+                    background: isActive ? (isDark ? 'rgba(139,92,246,0.12)' : 'rgba(139,92,246,0.08)') : isDone ? (isDark ? 'rgba(34,197,94,0.05)' : 'rgba(34,197,94,0.06)') : (isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc'),
+                    border: `1px solid ${isActive ? (isDark ? 'rgba(139,92,246,0.3)' : 'rgba(139,92,246,0.3)') : isDone ? (isDark ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.25)') : (isDark ? 'rgba(255,255,255,0.04)' : '#e2e8f0')}`,
                   }}
                 >
                   <div
                     className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-                    style={{ background: isDone ? 'rgba(34,197,94,0.2)' : isActive ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.05)' }}
+                    style={{ background: isDone ? (isDark ? 'rgba(34,197,94,0.2)' : 'rgba(34,197,94,0.15)') : isActive ? (isDark ? 'rgba(139,92,246,0.2)' : 'rgba(139,92,246,0.15)') : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)') }}
                   >
                     {isDone ? (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-green-400" />
                     ) : isActive ? (
-                      <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" />
+                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
                     ) : (
-                      <div className="w-2 h-2 bg-gray-600 rounded-full" />
+                      <div className="w-2 h-2 bg-slate-300 dark:bg-gray-600 rounded-full" />
                     )}
                   </div>
-                  <span className={`text-xs ${isDone ? 'text-gray-400' : isActive ? 'text-white font-semibold' : 'text-gray-600'}`}>
+                  <span className={`text-xs ${isDone ? (isDark ? 'text-gray-400' : 'text-slate-600') : isActive ? (isDark ? 'text-white' : 'text-slate-900') + ' font-semibold' : (isDark ? 'text-gray-600' : 'text-slate-400')}`}>
                     {s.stage} — {s.label}
                   </span>
                 </div>
@@ -379,7 +415,7 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
             })}
           </div>
 
-          <p className="text-[11px] text-gray-600 mt-6 font-mono">Calling Claude AI… this may take 10-20 seconds</p>
+          <p className="text-[11px] text-slate-500 dark:text-gray-600 mt-6 font-mono">Calling Claude AI… this may take 10-20 seconds</p>
         </div>
       </div>
     );
@@ -422,17 +458,116 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
   const { email, threatLevel, threatScore, confidence, aiSynthesis, headerForensics, threatIntel, origin, attachmentForensics } = report;
 
   return (
-    <div className="space-y-6 text-white pb-20 animate-fade-in">
-      {/* ── Top Header Navigation Bar ────────────────────────────────────────── */}
+    <div className="space-y-6 text-slate-900 dark:text-white pb-20 animate-fade-in">
+      {/* ── Top Header Navigation & Threat Score Card ──────────────────────────── */}
       <SlideIn delay={0} direction="down">
-        <div className="p-5 rounded-2xl bg-[#11121b] border border-white/10 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Mobile View (Phone/Tablet: block md:hidden) matching requested card UI */}
+        <div className="block md:hidden p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#0c0e18] border border-slate-200 dark:border-white/[0.08] shadow-sm space-y-3">
+          {/* Row 1: Badges - Case ID + Time on left, Read-Only Forensic Report on far right */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-cyan-50 text-cyan-700 border border-cyan-200/80 dark:bg-cyan-950/40 dark:text-cyan-300 dark:border-cyan-800/50 font-mono shrink-0">
+                {report.caseId}
+              </span>
+              <span className="text-[11px] font-mono text-slate-500 dark:text-gray-400 truncate">
+                {new Date(report.analyzedAt).toLocaleString()}
+              </span>
+            </div>
+            <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/80 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/50 shrink-0">
+              Read-Only Forensic Report
+            </span>
+          </div>
+
+          {/* Row 2: Arrow + Title on same line */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                EmailIngestionService.removeEscalation(emailId);
+                onNavigate('emails', { role: 'user' });
+              }}
+              className="p-1 -ml-1 text-slate-700 dark:text-gray-300 hover:text-black dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors shrink-0 cursor-pointer flex items-center justify-center"
+              title="Back to Emails"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h1 className="text-lg font-black text-slate-900 dark:text-white leading-normal break-words flex-1">
+              {decodeMimeHeader(email.subject)}
+            </h1>
+          </div>
+
+          {/* Row 3: From Info */}
+          <p className="text-xs text-slate-500 dark:text-gray-400 break-all leading-normal">
+            From: <span className="text-slate-800 dark:text-gray-200 font-medium">{email.sender_name ? decodeMimeHeader(email.sender_name) : ''}</span>{' '}
+            <span className="font-mono text-slate-500 dark:text-gray-400">{email.sender_name ? `<${email.sender}>` : email.sender}</span>
+          </p>
+
+          {/* Row 4: Threat Score & Action Bar */}
+          <div className="pt-3 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div>
+                <div
+                  className={`text-xl font-bold font-mono leading-none ${threatLevel === 'malicious'
+                    ? 'text-red-500 dark:text-red-400'
+                    : threatLevel === 'suspicious'
+                      ? 'text-amber-500 dark:text-amber-400'
+                      : 'text-emerald-600 dark:text-emerald-400'
+                    }`}
+                >
+                  {threatScore}/100
+                </div>
+                <div className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-gray-500 font-mono mt-1 font-semibold leading-none">
+                  THREAT SCORE
+                </div>
+              </div>
+
+              <div className="w-px h-8 bg-slate-200 dark:bg-white/15 shrink-0" />
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {threatLevel === 'malicious' ? (
+                  <>
+                    <ShieldAlert className="w-4 h-4 text-red-500 dark:text-red-400 shrink-0" />
+                    <span className="text-xs font-bold font-mono tracking-wider text-red-500 dark:text-red-400 uppercase">
+                      MALICIOUS
+                    </span>
+                  </>
+                ) : threatLevel === 'suspicious' ? (
+                  <>
+                    <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
+                    <span className="text-xs font-bold font-mono tracking-wider text-amber-500 dark:text-amber-400 uppercase">
+                      SUSPICIOUS
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="text-xs font-bold font-mono tracking-wider text-emerald-600 dark:text-emerald-400 uppercase">
+                      CLEAN
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={handleExportPdf}
+              className="h-10 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-purple-900/20 flex items-center gap-2 transition-transform duration-150 ease-out active:scale-95 cursor-pointer shrink-0"
+              title="Download complete forensic PDF dossier"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export PDF</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Laptop / Desktop View (PC/Laptop: hidden md:flex) - original desktop layout */}
+        <div className="hidden md:flex p-5 rounded-2xl bg-white dark:bg-[#11121b] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-xl items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
             <button
               onClick={() => {
                 EmailIngestionService.removeEscalation(emailId);
                 onNavigate('emails', { role: 'user' });
               }}
-              className="p-2 rounded-xl bg-transparent hover:bg-white/10 text-gray-400 hover:text-white transition-colors shrink-0 flex items-center justify-center cursor-pointer"
+              className="p-2 rounded-xl bg-transparent hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white transition-colors shrink-0 flex items-center justify-center cursor-pointer"
               title="Back to Emails"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -440,63 +575,63 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
 
             <div className="min-w-0 space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-white/10 text-cyan-300 border border-white/10">
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-cyan-700 border border-slate-200 dark:bg-white/10 dark:text-cyan-300 dark:border-white/10 font-mono">
                   {report.caseId}
                 </span>
-                <span className="text-[11px] text-gray-400">
+                <span className="text-[11px] text-slate-500 dark:text-gray-400">
                   {new Date(report.analyzedAt).toLocaleString()}
                 </span>
-                <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30">
                   Read-Only Forensic Report
                 </span>
               </div>
-              <h1 className="text-xl font-black text-white truncate max-w-2xl">
+              <h1 className="text-xl font-black text-slate-900 dark:text-white truncate max-w-2xl">
                 {decodeMimeHeader(email.subject)}
               </h1>
-              <p className="text-xs text-gray-400 truncate">
-                From: <span className="text-gray-200">{decodeMimeHeader(email.sender_name ? `${email.sender_name} <${email.sender}>` : email.sender)}</span>
+              <p className="text-xs text-slate-500 dark:text-gray-400 truncate">
+                From: <span className="text-slate-700 dark:text-gray-200">{decodeMimeHeader(email.sender_name ? `${email.sender_name} <${email.sender}>` : email.sender)}</span>
               </p>
             </div>
           </div>
 
           {/* Action buttons & threat badge */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="h-11 px-3.5 flex items-center gap-3 rounded-xl bg-black/50 border border-white/10">
+            <div className="h-11 px-3.5 flex items-center gap-3 rounded-xl bg-slate-50 dark:bg-black/50 border border-slate-200 dark:border-white/10">
               <div className="text-right">
                 <div
                   className={`text-base font-bold font-mono leading-none ${threatLevel === 'malicious'
-                    ? 'text-red-400'
+                    ? 'text-red-500 dark:text-red-400'
                     : threatLevel === 'suspicious'
-                      ? 'text-amber-400'
-                      : 'text-emerald-400'
+                      ? 'text-amber-500 dark:text-amber-400'
+                      : 'text-emerald-600 dark:text-emerald-400'
                     }`}
                 >
                   {threatScore}/100
                 </div>
-                <div className="text-[8.5px] uppercase tracking-widest text-gray-400 font-mono mt-1 leading-none">
+                <div className="text-[8.5px] uppercase tracking-widest text-slate-500 dark:text-gray-400 font-mono mt-1 leading-none">
                   THREAT SCORE
                 </div>
               </div>
-              <div className="w-px h-6 bg-white/15" />
+              <div className="w-px h-6 bg-slate-200 dark:bg-white/15" />
               <div className="flex items-center gap-1.5 pl-0.5">
                 {threatLevel === 'malicious' ? (
                   <>
-                    <ShieldAlert className="w-4 h-4 text-red-400" />
-                    <span className="text-xs font-bold font-mono tracking-wider text-red-400 uppercase">
+                    <ShieldAlert className="w-4 h-4 text-red-500 dark:text-red-400" />
+                    <span className="text-xs font-bold font-mono tracking-wider text-red-500 dark:text-red-400 uppercase">
                       MALICIOUS
                     </span>
                   </>
                 ) : threatLevel === 'suspicious' ? (
                   <>
-                    <AlertTriangle className="w-4 h-4 text-amber-400" />
-                    <span className="text-xs font-bold font-mono tracking-wider text-amber-400 uppercase">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                    <span className="text-xs font-bold font-mono tracking-wider text-amber-500 dark:text-amber-400 uppercase">
                       SUSPICIOUS
                     </span>
                   </>
                 ) : (
                   <>
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs font-bold font-mono tracking-wider text-emerald-400 uppercase">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-xs font-bold font-mono tracking-wider text-emerald-600 dark:text-emerald-400 uppercase">
                       CLEAN
                     </span>
                   </>
@@ -518,7 +653,21 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
 
       {/* ── Quick Navigation Tabs ─────────────────────────────────────────── */}
       <SlideIn delay={60} direction="up">
-        <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-3 scrollbar-none border-b border-white/10">
+        <div className="relative isolate flex items-center gap-2 overflow-x-auto pb-4 mb-3 scrollbar-none border-b border-slate-200 dark:border-white/10">
+          {/* Smooth sliding indicator pill */}
+          <div
+            className="absolute z-0 pointer-events-none rounded-xl bg-cyan-500/15 dark:bg-cyan-500/20 border border-cyan-400/50 dark:border-cyan-500/40 shadow-sm shadow-cyan-900/10"
+            style={{
+              transform: `translate3d(${reportIndicatorStyle.left}px, ${reportIndicatorStyle.top}px, 0)`,
+              width: reportIndicatorStyle.width,
+              height: reportIndicatorStyle.height,
+              opacity: reportIndicatorStyle.opacity,
+              transition: 'transform 300ms cubic-bezier(0.25, 1, 0.5, 1), width 300ms cubic-bezier(0.25, 1, 0.5, 1), height 300ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
+              left: 0,
+              top: 0,
+              zIndex: 0,
+            }}
+          />
           {[
             { id: 'all', label: 'Complete Forensic Report', icon: Shield },
             { id: 'synthesis', label: 'AI Synthesis', icon: Sparkles },
@@ -533,13 +682,26 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
             return (
               <button
                 key={tab.id}
+                ref={(el) => {
+                  reportTabRefs.current[tab.id] = el;
+                  if (tab.id === activeTab && el && reportIndicatorStyle.opacity === 0) {
+                    setReportIndicatorStyle({
+                      left: el.offsetLeft,
+                      top: el.offsetTop,
+                      width: el.offsetWidth,
+                      height: el.offsetHeight,
+                      opacity: 1,
+                    });
+                  }
+                }}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${active
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                  : 'bg-white/[0.02] text-gray-400 hover:text-white hover:bg-white/[0.05] border border-white/5'
+                style={{ zIndex: 10 }}
+                className={`relative z-10 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors duration-200 cursor-pointer ${active
+                  ? 'text-cyan-950 dark:text-cyan-200 font-bold'
+                  : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
               >
-                <Icon className="w-3.5 h-3.5" />
+                <Icon className={`w-3.5 h-3.5 ${active ? 'text-cyan-700 dark:text-cyan-300' : 'text-slate-500 dark:text-gray-400'}`} />
                 {tab.label}
               </button>
             );
@@ -554,65 +716,65 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
         <SlideIn delay={100} direction="up">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-cyan-400" />
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-gray-300 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
                 1. Final AI Synthesis & Plain-Language Risk Narrative
               </h2>
-              <span className="text-xs text-gray-500">Confidence: {confidence}%</span>
+              <span className="text-xs text-slate-500 dark:text-gray-500">Confidence: {confidence}%</span>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Executive Summary & Narrative */}
-              <div className="lg:col-span-2 p-5 rounded-2xl bg-[#11121b] border border-white/10 space-y-4">
+              <div className="lg:col-span-2 p-5 rounded-2xl bg-white dark:bg-[#11121b] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-none space-y-4">
                 <div>
-                  <div className="text-[11px] text-cyan-400 uppercase tracking-wider font-semibold mb-1">
+                  <div className="text-[11px] text-cyan-700 dark:text-cyan-400 uppercase tracking-wider font-semibold mb-1">
                     Executive AI Summary
                   </div>
-                  <p className="text-sm text-gray-200 leading-relaxed font-sans font-medium">
+                  <p className="text-sm text-slate-800 dark:text-gray-200 leading-relaxed font-sans font-medium">
                     {aiSynthesis.executiveSummary}
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl bg-black/40 border border-white/5 space-y-2">
-                  <div className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 space-y-2">
+                  <div className="text-xs font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
                     <Eye className="w-4 h-4" />
                     Plain-Language Risk Explanation
                   </div>
-                  <p className="text-xs text-gray-300 leading-relaxed">
+                  <p className="text-xs text-slate-700 dark:text-gray-300 leading-relaxed">
                     {aiSynthesis.riskNarrative}
                   </p>
                 </div>
               </div>
 
               {/* Mitigation Checklist */}
-              <div className="p-5 rounded-2xl bg-[#11121b] border border-white/10 space-y-3">
-                <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-emerald-400" />
+              <div className="p-5 rounded-2xl bg-white dark:bg-[#11121b] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-none space-y-3">
+                <div className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   User Mitigation Checklist
                 </div>
                 <div className="space-y-2.5">
                   {aiSynthesis.mitigationChecklist.map((item, idx) => (
                     <div
                       key={idx}
-                      className="p-3 rounded-xl bg-white/[0.03] border border-white/5 space-y-1"
+                      className="p-3 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 space-y-1"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                        <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
                           {item.action}
                         </span>
                         <span
                           className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${item.urgency === 'immediate'
-                            ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                            ? 'bg-red-500/20 text-red-600 dark:text-red-300 border border-red-500/30'
                             : item.urgency === 'recommended'
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                              : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                              ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                              : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
                             }`}
                         >
                           {item.urgency}
                         </span>
                       </div>
-                      <p className="text-[11px] text-gray-400 pl-5">{item.reason}</p>
+                      <p className="text-[11px] text-slate-600 dark:text-gray-400 pl-5">{item.reason}</p>
                     </div>
                   ))}
                 </div>
@@ -628,8 +790,8 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
       {(activeTab === 'all' || activeTab === 'headers') && (
         <SlideIn delay={140} direction="up">
           <div className="space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-              <FileCode className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-gray-300 flex items-center gap-2">
+              <FileCode className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
               2. Header Forensics & Hop-by-Hop Authentication
             </h2>
 
@@ -647,41 +809,41 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
               ].map((auth, i) => {
                 const pass = auth.val === 'PASS' || auth.val === 'ALIGNED';
                 return (
-                  <div key={i} className="p-4 rounded-2xl bg-[#11121b] border border-white/10 space-y-1.5">
-                    <div className="text-xs text-gray-400">{auth.title}</div>
+                  <div key={i} className="p-4 rounded-2xl bg-white dark:bg-[#11121b] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-none space-y-1.5">
+                    <div className="text-xs text-slate-500 dark:text-gray-400">{auth.title}</div>
                     <div className="flex items-center gap-2">
                       {pass ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       ) : (
-                        <XCircle className="w-4 h-4 text-red-400" />
+                        <XCircle className="w-4 h-4 text-red-500 dark:text-red-400" />
                       )}
                       <span
-                        className={`text-sm font-black ${pass ? 'text-emerald-400' : 'text-red-400'
+                        className={`text-sm font-black ${pass ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'
                           }`}
                       >
                         {auth.val}
                       </span>
                     </div>
-                    <div className="text-[11px] text-gray-400 line-clamp-2">{auth.detail}</div>
+                    <div className="text-[11px] text-slate-600 dark:text-gray-400 line-clamp-2">{auth.detail}</div>
                   </div>
                 );
               })}
             </div>
 
             {/* Hop-by-Hop Relay Route Table */}
-            <div className="p-5 rounded-2xl bg-[#11121b] border border-white/10 space-y-3">
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#11121b] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-none space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                  <Server className="w-4 h-4 text-purple-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                  <Server className="w-4 h-4 text-purple-500 dark:text-purple-400" />
                   SMTP Relay Route Hop Breakdown
                 </h3>
-                <span className="text-[11px] text-gray-500">{headerForensics.hops.length} Network Hops Traced</span>
+                <span className="text-[11px] text-slate-500 dark:text-gray-500">{headerForensics.hops.length} Network Hops Traced</span>
               </div>
 
               <div className="overflow-x-auto scrollbar-thin touch-scroll">
                 <table className="w-full text-left text-xs min-w-[580px] md:min-w-0">
                   <thead>
-                    <tr className="border-b border-white/10 text-gray-400 uppercase text-[10px]">
+                    <tr className="border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-gray-400 uppercase text-[10px]">
                       <th className="py-2.5 px-3">Hop</th>
                       <th className="py-2.5 px-3">Server IP & Reverse DNS</th>
                       <th className="py-2.5 px-3">Location</th>
@@ -689,25 +851,25 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
                       <th className="py-2.5 px-3">Ingress Classification</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                     {headerForensics.hops.map((hop) => (
-                      <tr key={hop.hop} className="hover:bg-white/[0.02]">
-                        <td className="py-3 px-3 font-bold text-cyan-400">#{hop.hop}</td>
+                      <tr key={hop.hop} className="hover:bg-slate-50 dark:hover:bg-white/[0.02]">
+                        <td className="py-3 px-3 font-bold text-cyan-600 dark:text-cyan-400">#{hop.hop}</td>
                         <td className="py-3 px-3">
-                          <div className="font-mono text-white font-semibold">{hop.ip}</div>
-                          <div className="text-[11px] text-gray-400 font-mono">{hop.reverseDns}</div>
+                          <div className="font-mono text-slate-900 dark:text-white font-semibold">{hop.ip}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-gray-400 font-mono">{hop.reverseDns}</div>
                         </td>
-                        <td className="py-3 px-3 text-gray-300 font-sans">{hop.location}</td>
-                        <td className="py-3 px-3 text-gray-400">{hop.delay}</td>
+                        <td className="py-3 px-3 text-slate-700 dark:text-gray-300 font-sans">{hop.location}</td>
+                        <td className="py-3 px-3 text-slate-500 dark:text-gray-400">{hop.delay}</td>
                         <td className="py-3 px-3">
                           <span
                             className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${hop.status === 'malicious'
-                              ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                              ? 'bg-red-500/20 text-red-600 dark:text-red-300 border border-red-500/30'
                               : hop.status === 'suspicious'
-                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
                                 : hop.status === 'internal'
-                                  ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                                  : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                  ? 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30'
+                                  : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
                               }`}
                           >
                             {hop.status}
@@ -729,46 +891,46 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
       {(activeTab === 'all' || activeTab === 'threat-intel') && (
         <SlideIn delay={180} direction="up">
           <div className="space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-              <Globe className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-gray-300 flex items-center gap-2">
+              <Globe className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
               3. Threat Intelligence & External Blacklists
             </h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Reputation Overview */}
-              <div className="p-5 rounded-2xl bg-[#11121b] border border-white/10 space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+              <div className="p-5 rounded-2xl bg-white dark:bg-[#11121b] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-none space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                   Entity Reputation Assessment
                 </h3>
 
                 <div className="space-y-3">
-                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 flex items-center justify-between">
                     <div>
-                      <div className="text-[11px] text-gray-400">Sending IP Reputation</div>
-                      <div className="text-xs font-mono font-bold text-white">{threatIntel.sendingIp}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-gray-400">Sending IP Reputation</div>
+                      <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">{threatIntel.sendingIp}</div>
                     </div>
                     <span
                       className={`text-xs uppercase font-bold px-2.5 py-1 rounded ${threatIntel.ipReputation === 'malicious'
-                        ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                        ? 'bg-red-500/20 text-red-600 dark:text-red-300 border border-red-500/30'
                         : threatIntel.ipReputation === 'suspicious'
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                          : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
                         }`}
                     >
                       {threatIntel.ipReputation}
                     </span>
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 flex items-center justify-between">
                     <div>
-                      <div className="text-[11px] text-gray-400">Sender Domain Age</div>
-                      <div className="text-xs font-semibold text-white">{threatIntel.domain}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-gray-400">Sender Domain Age</div>
+                      <div className="text-xs font-semibold text-slate-900 dark:text-white">{threatIntel.domain}</div>
                     </div>
                     <div className="text-right">
-                      <span className="text-xs font-semibold text-cyan-300">
+                      <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-300">
                         {threatIntel.domainAgeDays} days
                       </span>
-                      <div className="text-[10px] text-gray-400">
+                      <div className="text-[10px] text-slate-500 dark:text-gray-400">
                         {threatIntel.domainAgeDays < 30 ? 'High Risk (<30d)' : 'Established'}
                       </div>
                     </div>
@@ -777,12 +939,12 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
 
                 {threatIntel.threatTags.length > 0 && (
                   <div className="space-y-1.5 pt-2">
-                    <div className="text-[11px] text-gray-400">Threat Classification Tags:</div>
+                    <div className="text-[11px] text-slate-500 dark:text-gray-400">Threat Classification Tags:</div>
                     <div className="flex flex-wrap gap-1.5">
                       {threatIntel.threatTags.map((tag, i) => (
                         <span
                           key={i}
-                          className="text-[10px] font-medium px-2 py-0.5 rounded bg-white/10 text-gray-200 border border-white/10"
+                          className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-700 border-slate-200 dark:bg-white/10 dark:text-gray-200 dark:border-white/10"
                         >
                           {tag}
                         </span>
@@ -793,12 +955,12 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
               </div>
 
               {/* Blacklists Grid */}
-              <div className="lg:col-span-2 p-5 rounded-2xl bg-[#11121b] border border-white/10 space-y-3">
+              <div className="lg:col-span-2 p-5 rounded-2xl bg-white dark:bg-[#11121b] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-none space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                     6-Engine Reputation & Blacklist Scanner
                   </h3>
-                  <span className="text-[10px] text-gray-500">Live Feeds Queried</span>
+                  <span className="text-[10px] text-slate-500 dark:text-gray-500">Live Feeds Queried</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -807,18 +969,18 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
                     return (
                       <div
                         key={i}
-                        className="p-3 rounded-xl bg-black/30 border border-white/5 flex items-start justify-between gap-3"
+                        className="p-3 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 flex items-start justify-between gap-3"
                       >
                         <div className="space-y-0.5">
-                          <div className="text-xs font-bold text-white">{bl.engine}</div>
-                          <div className="text-[11px] text-gray-400">{bl.detail}</div>
+                          <div className="text-xs font-bold text-slate-900 dark:text-white">{bl.engine}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-gray-400">{bl.detail}</div>
                         </div>
                         <span
                           className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded shrink-0 ${isClean
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
                             : bl.status === 'warning'
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                              : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                              ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                              : 'bg-red-500/20 text-red-600 dark:text-red-300 border border-red-500/30'
                             }`}
                         >
                           {bl.status}
@@ -839,50 +1001,50 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
       {(activeTab === 'all' || activeTab === 'origin') && (
         <SlideIn delay={220} direction="up">
           <div className="space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-gray-300 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
               4. Origin Investigation & Infrastructure Geolocation
             </h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Telemetry info */}
-              <div className="p-5 rounded-2xl bg-[#11121b] border border-white/10 space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+              <div className="p-5 rounded-2xl bg-white dark:bg-[#11121b] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-none space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                   Physical & Autonomous Origin
                 </h3>
 
                 <div className="space-y-3 text-xs">
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
-                    <div className="text-[10px] text-gray-400 uppercase">Originating Public IP</div>
-                    <div className="font-bold text-cyan-300 font-mono text-sm tracking-wide">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5">
+                    <div className="text-[10px] text-slate-500 dark:text-gray-400 uppercase">Originating Public IP</div>
+                    <div className="font-bold text-cyan-600 dark:text-cyan-300 font-mono text-sm tracking-wide">
                       {origin.sendingIp}
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
-                    <div className="text-[10px] text-gray-400 uppercase">Originating Location</div>
-                    <div className="font-bold text-white text-sm">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5">
+                    <div className="text-[10px] text-slate-500 dark:text-gray-400 uppercase">Originating Location</div>
+                    <div className="font-bold text-slate-900 dark:text-white text-sm">
                       {origin.city}, {origin.country}
                     </div>
-                    <div className="text-[11px] font-mono text-cyan-400 mt-0.5">
+                    <div className="text-[11px] font-mono text-cyan-600 dark:text-cyan-400 mt-0.5">
                       Lat: {origin.latitude.toFixed(4)}, Lng: {origin.longitude.toFixed(4)}
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
-                    <div className="text-[10px] text-gray-400 uppercase">Routing Autonomous System</div>
-                    <div className="font-bold text-white truncate">{origin.asn}</div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5">
+                    <div className="text-[10px] text-slate-500 dark:text-gray-400 uppercase">Routing Autonomous System</div>
+                    <div className="font-bold text-slate-900 dark:text-white truncate">{origin.asn}</div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
-                    <div className="text-[10px] text-gray-400 uppercase">Hosting Infrastructure</div>
-                    <div className="font-bold text-white">{origin.hostingProvider}</div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5">
+                    <div className="text-[10px] text-slate-500 dark:text-gray-400 uppercase">Hosting Infrastructure</div>
+                    <div className="font-bold text-slate-900 dark:text-white">{origin.hostingProvider}</div>
                   </div>
                 </div>
               </div>
 
               {/* Dark Cyber Map */}
-              <div className="lg:col-span-2 rounded-2xl border border-white/10 overflow-hidden bg-[#0a0b10]">
+              <div className="lg:col-span-2 rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden bg-slate-950 dark:bg-[#0a0b10]">
                 <DarkCyberMap
                   markers={[origin.mapMarker]}
                   height="320px"
@@ -901,14 +1063,14 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
         <SlideIn delay={260} direction="up">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-                <Share2 className="w-4 h-4 text-cyan-400" />
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-gray-300 flex items-center gap-2">
+                <Share2 className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
                 5. Interactive Attack Graph Topology (Read-Only)
               </h2>
-              <span className="text-[11px] text-gray-500">Attacker → Relays → Gateway → Target</span>
+              <span className="text-[11px] text-slate-500 dark:text-gray-500">Attacker → Relays → Gateway → Target</span>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-[#0d0e16] overflow-hidden shadow-xl">
+            <div className="lg:rounded-2xl lg:border lg:border-slate-200 dark:lg:border-white/10 lg:bg-white dark:lg:bg-[#0d0e16] lg:overflow-hidden lg:shadow-none dark:lg:shadow-xl">
               <AttackGraphCanvas
                 result={report.rawAnalysisResult}
                 height={440}

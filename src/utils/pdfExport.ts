@@ -153,12 +153,12 @@ export function generateFormattedPdfHtml(
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
     
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
     body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       color: #0f172a;
       background: #f8fafc;
       padding: 30px;
@@ -187,7 +187,7 @@ export function generateFormattedPdfHtml(
     }
     .leaflet-container {
       background: #06070a !important;
-      font-family: 'Inter', system-ui, sans-serif !important;
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     }
     .leaflet-tile {
       filter: brightness(0.95) contrast(1.15) saturate(1.2);
@@ -226,7 +226,7 @@ export function generateFormattedPdfHtml(
       display: flex;
       align-items: center;
       gap: 8px;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
     .report-container {
@@ -371,7 +371,7 @@ export function generateFormattedPdfHtml(
       color: #334155;
     }
     .mono-val {
-      font-family: 'JetBrains Mono', monospace;
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       color: #0f172a;
       font-weight: 500;
     }

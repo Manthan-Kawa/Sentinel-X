@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import {
   User,
   Palette,
@@ -29,6 +29,8 @@ import { UserNotificationService } from '@/services/userNotificationService';
 import { AppearanceService, type ThemePreset } from '@/services/appearanceService';
 import { NotificationRulesService } from '@/services/notificationRulesService';
 import { SlideIn } from '@/components/SlideIn';
+import { AppearanceCard } from '@/components/AppearanceCard';
+import { useTheme } from '@/context/ThemeContext';
 const analystAvatar = '/analyst.png';
 
 type TabType = 'profile' | 'appearance' | 'password' | 'notifications' | 'data' | 'ai-engine';
@@ -49,12 +51,15 @@ const TABS: SettingsTabConfig[] = [
   { id: 'ai-engine', label: 'AI Engine', icon: Cpu, analystOnly: true },
 ];
 
+const USER_TABS = TABS.filter((t) => !t.analystOnly);
+
 export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole?: string | null }) {
+  const { isDark } = useTheme();
   const { resetActiveAnalysis } = useAnalysis();
   const { currentUser, updateUserProfile } = useAuth();
   const isUser = userRole === 'user';
 
-  const visibleTabs = isUser ? TABS.filter((t) => !t.analystOnly) : TABS;
+  const visibleTabs = isUser ? USER_TABS : TABS;
 
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     const savedTab = typeof sessionStorage !== 'undefined' ? (sessionStorage.getItem('settings_active_tab') as TabType) : null;
@@ -64,6 +69,48 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
     }
     return 'profile';
   });
+
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [indicatorStyle, setIndicatorStyle] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    opacity: number;
+  }>({ left: 0, top: 0, width: 0, height: 0, opacity: 0 });
+
+  useLayoutEffect(() => {
+    const updateIndicator = () => {
+      const currentTabEl = tabRefs.current[activeTab];
+      if (currentTabEl) {
+        setIndicatorStyle((prev) => {
+          if (
+            prev.left === currentTabEl.offsetLeft &&
+            prev.top === currentTabEl.offsetTop &&
+            prev.width === currentTabEl.offsetWidth &&
+            prev.height === currentTabEl.offsetHeight &&
+            prev.opacity === 1
+          ) {
+            return prev;
+          }
+          return {
+            left: currentTabEl.offsetLeft,
+            top: currentTabEl.offsetTop,
+            width: currentTabEl.offsetWidth,
+            height: currentTabEl.offsetHeight,
+            opacity: 1,
+          };
+        });
+      }
+    };
+    updateIndicator();
+    const rafId = requestAnimationFrame(updateIndicator);
+    window.addEventListener('resize', updateIndicator);
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', updateIndicator);
+    };
+  }, [activeTab, isUser]);
 
   useEffect(() => {
     const handleOpenTab = (e: any) => {
@@ -417,23 +464,22 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
   };
 
   return (
-    <div className="space-y-6" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div className="space-y-6">
 
       {/* ── Page Header ── */}
       <SlideIn delay={0} direction="down">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-black text-white tracking-tight">System Settings</h2>
-            <p className="text-sm text-gray-400 mt-0.5">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">System Settings</h2>
+            <p className="text-sm text-slate-500 dark:text-gray-400 mt-0.5">
               Manage profile credentials, appearance themes, notification settings, and security keys
             </p>
           </div>
           <div
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl self-start sm:self-auto"
-            style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)' }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl self-start sm:self-auto bg-purple-500/10 border border-purple-500/30"
           >
-            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-            <span className="text-xs font-semibold text-purple-300 font-mono">SYSTEM READY</span>
+            <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+            <span className="text-xs font-semibold text-purple-700 dark:text-purple-300 font-mono">SYSTEM READY</span>
           </div>
         </div>
       </SlideIn>
@@ -445,48 +491,48 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
           {/* ── Left Sidebar Navigation ── */}
           <div className="lg:col-span-1">
             <div
-              className="rounded-2xl p-2 lg:p-3 flex lg:flex-col overflow-x-auto lg:overflow-visible scrollbar-none gap-1.5 touch-scroll"
-              style={{
-                background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-              }}
+              className="relative isolate rounded-2xl p-2 lg:p-3 flex lg:flex-col overflow-x-auto lg:overflow-visible scrollbar-none gap-1.5 touch-scroll bg-white dark:bg-[#0c0f1a] border border-slate-200 dark:border-white/[0.08] shadow-sm"
             >
+              {/* Smooth sliding indicator pill */}
+              <div
+                className="absolute z-0 pointer-events-none rounded-xl bg-sky-500/15 dark:bg-purple-500/20 border border-sky-400/50 dark:border-purple-500/40 shadow-sm"
+                style={{
+                  transform: `translate3d(${indicatorStyle.left}px, ${indicatorStyle.top}px, 0)`,
+                  width: indicatorStyle.width,
+                  height: indicatorStyle.height,
+                  opacity: indicatorStyle.opacity,
+                  transition: 'transform 300ms cubic-bezier(0.25, 1, 0.5, 1), width 300ms cubic-bezier(0.25, 1, 0.5, 1), height 300ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
+                  left: 0,
+                  top: 0,
+                  zIndex: 0,
+                }}
+              />
+
               {visibleTabs.map((tab) => {
                 const Icon = tab.icon;
                 const active = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
+                    ref={(el) => { tabRefs.current[tab.id] = el; }}
                     onClick={() => setActiveTab(tab.id)}
-                    className="shrink-0 lg:w-full flex items-center justify-between gap-3 px-3.5 py-2.5 lg:px-4 lg:py-3 rounded-xl transition-all duration-200 group text-left whitespace-nowrap"
-                    style={
+                    style={{ zIndex: 10 }}
+                    className={`relative z-10 shrink-0 lg:w-full flex items-center justify-between gap-3 px-3.5 py-2.5 lg:px-4 lg:py-3 rounded-xl transition-colors duration-200 group text-left whitespace-nowrap ${
                       active
-                        ? {
-                          background: 'linear-gradient(135deg, rgba(147,51,234,0.35) 0%, rgba(124,58,237,0.25) 100%)',
-                          border: '1px solid rgba(168,85,247,0.45)',
-                          boxShadow: '0 0 16px rgba(168,85,247,0.25)',
-                        }
-                        : {
-                          background: 'transparent',
-                          border: '1px solid transparent',
-                        }
-                    }
+                        ? 'text-sky-950 dark:text-white font-bold'
+                        : 'text-slate-700 dark:text-gray-400 hover:text-black dark:hover:text-gray-200'
+                    }`}
                   >
                     <div className="flex items-center gap-3">
                       <Icon
-                        className="w-4 h-4 transition-colors"
-                        style={{ color: active ? '#c084fc' : '#9ca3af' }}
+                        className={`w-4 h-4 transition-colors duration-200 ${active ? 'text-sky-700 dark:text-purple-300' : 'text-slate-500 dark:text-gray-400 group-hover:text-slate-900 dark:group-hover:text-gray-200'}`}
                       />
-                      <span
-                        className={`text-xs font-semibold ${active ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'
-                          }`}
-                      >
+                      <span className="text-xs font-semibold">
                         {tab.label}
                       </span>
                     </div>
                     {active && (
-                      <span className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.8)] shrink-0" />
+                      <span className="w-2 h-2 rounded-full bg-sky-600 dark:bg-purple-400 shrink-0 transition-opacity duration-200" />
                     )}
                   </button>
                 );
@@ -497,19 +543,15 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
           {/* ── Right Content Area ── */}
           <div className="lg:col-span-3">
             <div
-              className="rounded-2xl p-4 sm:p-7 min-h-[500px]"
-              style={{
-                background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-              }}
+              key={activeTab}
+              className="rounded-2xl p-4 sm:p-7 min-h-[500px] bg-white dark:bg-[#0c0f1a] border border-slate-200 dark:border-white/[0.08] shadow-sm transition-all duration-300 animate-in fade-in-50 slide-in-from-bottom-2"
             >
               {/* ── 1. Profile Tab ── */}
               {activeTab === 'profile' && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-bold text-white tracking-tight">Profile Information</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Profile Information</h3>
+                    <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
                       Personal identity credentials and operational focus
                     </p>
                   </div>
@@ -517,10 +559,12 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                   {/* Avatar Card */}
                   <div className="flex items-center gap-4">
                     <div
-                      className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold text-white shrink-0 overflow-hidden"
+                      className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold text-white shrink-0 overflow-hidden border border-slate-200 dark:border-white/10"
                       style={{
-                        background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-                        boxShadow: '0 0 25px rgba(139,92,246,0.4)',
+                        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                        boxShadow: isDark
+                          ? '0 4px 16px rgba(0,0,0,0.5)'
+                          : '0 2px 8px rgba(0,0,0,0.08)',
                       }}
                     >
                       {currentUser?.role === 'analyst' ? (
@@ -532,11 +576,11 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                       )}
                     </div>
                     <div>
-                      <h4 className="text-base font-bold text-white">{displayName || currentUser?.displayName || 'User'}</h4>
-                      <p className="text-xs text-gray-400 font-mono">
+                      <h4 className="text-base font-bold text-slate-900 dark:text-white">{displayName || currentUser?.displayName || 'User'}</h4>
+                      <p className="text-xs text-slate-500 dark:text-gray-400 font-mono">
                         {userRole === 'analyst' ? 'Cybersecurity Analyst · Sentinel-X SOC' : 'Standard Organization User'}
                       </p>
-                      <span className="inline-block mt-1 text-[10px] font-mono font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+                      <span className="inline-block mt-1 text-[10px] font-mono font-bold text-purple-700 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
                         {userRole === 'analyst' ? 'ANALYST ACCOUNT' : 'USER ACCOUNT'}
                       </span>
                     </div>
@@ -546,29 +590,25 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                   <div className="space-y-4 pt-2">
                     {/* Display Name */}
                     <div>
-                      <label className="block text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">
+                      <label className="block text-[10px] font-mono font-bold text-slate-500 dark:text-gray-500 uppercase tracking-widest mb-2">
                         DISPLAY NAME
                       </label>
                       <input
                         type="text"
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
-                        className="w-full rounded-xl px-4 py-3 text-xs text-white font-mono placeholder-gray-600 focus:outline-none transition-all"
-                        style={{
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.08)',
-                        }}
+                        className="w-full rounded-xl px-4 py-3 text-xs text-slate-900 dark:text-white font-mono placeholder-slate-400 dark:placeholder-gray-600 focus:outline-none transition-all bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08]"
                       />
                     </div>
 
                     {/* Email (Read Only) */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <label className="block text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest">
+                        <label className="block text-[10px] font-mono font-bold text-slate-500 dark:text-gray-500 uppercase tracking-widest">
                           EMAIL ADDRESS
                         </label>
-                        <span className="flex items-center gap-1 text-[10px] font-mono font-semibold text-gray-500 bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                          <Lock className="w-2.5 h-2.5 text-gray-400" />
+                        <span className="flex items-center gap-1 text-[10px] font-mono font-semibold text-slate-500 dark:text-gray-500 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded border border-slate-200 dark:border-white/10">
+                          <Lock className="w-2.5 h-2.5 text-slate-400 dark:text-gray-400" />
                           LOCKED
                         </span>
                       </div>
@@ -577,20 +617,16 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                         value={email || currentUser?.email || localStorage.getItem('sentinel_user') || ''}
                         readOnly
                         disabled
-                        className="w-full rounded-xl px-4 py-3 text-xs text-gray-400 font-mono cursor-not-allowed select-none focus:outline-none transition-all"
-                        style={{
-                          background: 'rgba(255,255,255,0.015)',
-                          border: '1px solid rgba(255,255,255,0.05)',
-                        }}
+                        className="w-full rounded-xl px-4 py-3 text-xs text-slate-400 dark:text-gray-400 font-mono cursor-not-allowed select-none focus:outline-none transition-all bg-slate-100 dark:bg-white/[0.015] border border-slate-200 dark:border-white/[0.05]"
                       />
-                      <p className="text-[10px] text-gray-500 font-mono mt-1.5">
+                      <p className="text-[10px] text-slate-400 dark:text-gray-500 font-mono mt-1.5">
                         Account email is tied to your authentication credentials and cannot be changed.
                       </p>
                     </div>
 
                     {/* Bio */}
                     <div>
-                      <label className="block text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">
+                      <label className="block text-[10px] font-mono font-bold text-slate-500 dark:text-gray-500 uppercase tracking-widest mb-2">
                         BIO / ROLE FOCUS
                       </label>
                       <textarea
@@ -598,11 +634,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                         onChange={(e) => setBio(e.target.value)}
                         rows={4}
                         placeholder="Describe your security focus or operational role..."
-                        className="w-full rounded-xl p-4 text-xs text-white font-mono placeholder-gray-600 focus:outline-none resize-none transition-all scrollbar-thin"
-                        style={{
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.08)',
-                        }}
+                        className="w-full rounded-xl p-4 text-xs text-slate-900 dark:text-white font-mono placeholder-slate-400 dark:placeholder-gray-600 focus:outline-none resize-none transition-all scrollbar-thin bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08]"
                       />
                     </div>
                   </div>
@@ -611,14 +643,13 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                   <div className="pt-2 flex items-center gap-3">
                     <button
                       onClick={handleSaveProfile}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105"
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-transform duration-150 ease-out active:scale-95 shadow-lg cursor-pointer"
                       style={{
-                        background: 'linear-gradient(135deg, rgba(168,85,247,0.4), rgba(124,58,237,0.4))',
-                        border: '1px solid rgba(168,85,247,0.5)',
-                        boxShadow: '0 0 20px rgba(168,85,247,0.25)',
+                        background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
+                        boxShadow: '0 4px 16px rgba(59, 130, 246, 0.35)',
                       }}
                     >
-                      {savedSuccess ? <Check className="w-4 h-4 text-green-400" /> : <Save className="w-4 h-4" />}
+                      {savedSuccess ? <Check className="w-4 h-4 text-emerald-300" /> : <Save className="w-4 h-4" />}
                       {savedSuccess ? saveMessage : 'Save Changes'}
                     </button>
                   </div>
@@ -628,9 +659,12 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
               {/* ── 2. Appearance Tab ── */}
               {activeTab === 'appearance' && (
                 <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-bold text-white tracking-tight">Appearance Settings</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Customize interface theme and animation behavior</p>
+                  {/* The Exact Attendify Appearance Card */}
+                  <AppearanceCard />
+
+                  <div className="pt-4 border-t border-slate-200 dark:border-white/10">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Display & Animation Preferences</h3>
+                    <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Customize interface animations and visual enhancements</p>
                   </div>
 
                   <div className="space-y-4">
@@ -658,9 +692,9 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                     />
                   </div>
 
-                  <div className="pt-4 border-t border-white/10">
-                    <h4 className="text-xs font-mono font-bold text-gray-500 uppercase tracking-widest mb-3">
-                      Theme Presets
+                  <div className="pt-4 border-t border-slate-200 dark:border-white/10">
+                    <h4 className="text-xs font-mono font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest mb-3">
+                      Theme Accent Presets
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
                       {[
@@ -678,10 +712,12 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                               AppearanceService.applyPreferences({ themePreset: t.name as ThemePreset }, activeUserEmail);
                               handleSyncSetting({ themePreset: t.name });
                             }}
-                            className="rounded-xl p-3.5 flex items-center justify-between cursor-pointer transition-all hover:bg-white/5"
+                            className={`rounded-xl p-3.5 flex items-center justify-between cursor-pointer transition-all ${
+                              isPresetActive
+                                ? 'bg-sky-50 dark:bg-purple-500/15 border border-sky-300 dark:border-purple-500/40 shadow-sm'
+                                : 'bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] hover:bg-slate-100 dark:hover:bg-white/5'
+                            }`}
                             style={{
-                              background: isPresetActive ? `${t.color}18` : 'rgba(255,255,255,0.03)',
-                              border: `1px solid ${isPresetActive ? t.color : 'rgba(255,255,255,0.06)'}`,
                               boxShadow: isPresetActive && glowEffects ? `0 0 16px ${t.color}35` : undefined,
                             }}
                           >
@@ -693,7 +729,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                                   boxShadow: glowEffects ? `0 0 8px ${t.color}` : undefined,
                                 }}
                               />
-                              <span className="text-xs text-white font-medium">{t.name}</span>
+                              <span className="text-xs font-medium text-slate-900 dark:text-white">{t.name}</span>
                             </div>
                             {isPresetActive && <Check className="w-3.5 h-3.5" style={{ color: t.color }} />}
                           </div>
@@ -708,8 +744,8 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
               {activeTab === 'password' && (
                 <div className="space-y-6 animate-fade-in">
                   <div>
-                    <h3 className="text-lg font-bold text-white tracking-tight">Password Security</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Password Security</h3>
+                    <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
                       {hasExistingPassword
                         ? 'Update your account authentication password. Your current password is required.'
                         : 'Set a custom password to enable direct email & password sign-in alongside Google OAuth.'}
@@ -718,21 +754,17 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
 
                   {/* Account authentication method banner */}
                   <div
-                    className="p-3.5 rounded-2xl flex items-center justify-between gap-3 flex-wrap"
-                    style={{
-                      background: 'rgba(255,255,255,0.03)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                    }}
+                    className="p-3.5 rounded-2xl flex items-center justify-between gap-3 flex-wrap bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08]"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-300 shrink-0">
+                      <div className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-600 dark:text-purple-300 shrink-0">
                         <Key className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-xs font-semibold text-white">
+                        <div className="text-xs font-semibold text-slate-900 dark:text-white">
                           {isGoogleAccount ? 'Google OAuth Registered Account' : 'Email & Password Account'}
                         </div>
-                        <div className="text-[11px] text-gray-400 font-mono">
+                        <div className="text-[11px] text-slate-500 dark:text-gray-400 font-mono">
                           {activeUserEmail}
                         </div>
                       </div>
@@ -744,12 +776,12 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                           ? {
                             background: 'rgba(6,182,212,0.1)',
                             borderColor: 'rgba(6,182,212,0.3)',
-                            color: '#22d3ee',
+                            color: '#0891b2',
                           }
                           : {
                             background: 'rgba(168,85,247,0.1)',
                             borderColor: 'rgba(168,85,247,0.3)',
-                            color: '#c084fc',
+                            color: '#7e22ce',
                           }
                       }
                     >
@@ -762,8 +794,8 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                   </div>
 
                   {/* Security Notice */}
-                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-gray-400 flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-purple-400 shrink-0" />
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 text-xs text-slate-600 dark:text-gray-400 flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
                     <span>
                       {hasExistingPassword
                         ? 'For security, your current password is required before updating to a new password.'
@@ -773,8 +805,8 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
 
                   {/* Feedback Banners */}
                   {passwordError && (
-                    <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/25 text-xs text-red-300 flex items-start gap-2.5 animate-slide-down">
-                      <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                    <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/25 text-xs text-red-600 dark:text-red-300 flex items-start gap-2.5 animate-slide-down">
+                      <AlertTriangle className="w-4 h-4 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
                       <div className="flex-1 leading-relaxed">
                         <span>{passwordError}</span>
                       </div>
@@ -782,9 +814,9 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                   )}
 
                   {passwordSuccess && (
-                    <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-xs text-emerald-300 flex items-center justify-between gap-3 animate-slide-down">
+                    <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-xs text-emerald-700 dark:text-emerald-300 flex items-center justify-between gap-3 animate-slide-down">
                       <div className="flex items-center gap-2.5">
-                        <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <Check className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
                         <span className="font-semibold leading-relaxed">{passwordSuccess}</span>
                       </div>
                       {isGoogleResetVerified && (
@@ -794,7 +826,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                             setIsGoogleResetVerified(false);
                             setPasswordSuccess('');
                           }}
-                          className="text-[11px] text-gray-400 hover:text-white underline cursor-pointer shrink-0"
+                          className="text-[11px] text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white underline cursor-pointer shrink-0"
                         >
                           Cancel
                         </button>
@@ -808,7 +840,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                     {/* Show Current Password field if account already has a password configured and hasn't verified via Google */}
                     {hasExistingPassword && !isGoogleResetVerified && (
                       <div>
-                        <label className="block text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">
+                        <label className="block text-[10px] font-mono font-bold text-slate-500 dark:text-gray-500 uppercase tracking-widest mb-2">
                           CURRENT PASSWORD
                         </label>
                         <div className="relative">
@@ -820,16 +852,12 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                               setPasswordError('');
                             }}
                             placeholder="Enter current password"
-                            className="w-full rounded-xl px-4 py-3 pr-11 text-xs text-white font-mono placeholder-gray-600 focus:outline-none focus:border-purple-500/60 transition-all"
-                            style={{
-                              background: 'rgba(255,255,255,0.03)',
-                              border: '1px solid rgba(255,255,255,0.08)',
-                            }}
+                            className="w-full rounded-xl px-4 py-3 pr-11 text-xs text-slate-900 dark:text-white font-mono placeholder-slate-400 dark:placeholder-gray-600 focus:outline-none transition-all bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08]"
                           />
                           <button
                             type="button"
                             onClick={() => setShowOldPw(!showOldPw)}
-                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 p-1 transition-colors"
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500 hover:text-slate-600 dark:hover:text-gray-300 p-1 transition-colors"
                             tabIndex={-1}
                           >
                             {showOldPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -842,9 +870,9 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                             type="button"
                             onClick={handleVerifyWithGoogleToReset}
                             disabled={isVerifyingGoogle}
-                            className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center justify-center text-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                            className="text-[11px] text-sky-600 dark:text-cyan-400 hover:text-sky-700 dark:hover:text-cyan-300 flex items-center justify-center text-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                           >
-                            <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                            <Sparkles className="w-3.5 h-3.5 text-sky-500 dark:text-cyan-400 shrink-0" />
                             <span className="text-center">
                               {isVerifyingGoogle ? 'Verifying with Google...' : 'Forgot current password? Verify with Google to reset'}
                             </span>
@@ -855,7 +883,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
 
                     {/* New Password (both Google and Email accounts) */}
                     <div>
-                      <label className="block text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">
+                      <label className="block text-[10px] font-mono font-bold text-slate-500 dark:text-gray-500 uppercase tracking-widest mb-2">
                         NEW PASSWORD
                       </label>
                       <div className="relative">
@@ -867,16 +895,12 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                             setPasswordError('');
                           }}
                           placeholder="At least 6 characters"
-                          className="w-full rounded-xl px-4 py-3 pr-11 text-xs text-white font-mono placeholder-gray-600 focus:outline-none focus:border-purple-500/60 transition-all"
-                          style={{
-                            background: 'rgba(255,255,255,0.03)',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                          }}
+                          className="w-full rounded-xl px-4 py-3 pr-11 text-xs text-slate-900 dark:text-white font-mono placeholder-slate-400 dark:placeholder-gray-600 focus:outline-none transition-all bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08]"
                         />
                         <button
                           type="button"
                           onClick={() => setShowNewPw(!showNewPw)}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 p-1 transition-colors"
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500 hover:text-slate-600 dark:hover:text-gray-300 p-1 transition-colors"
                           tabIndex={-1}
                         >
                           {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -886,7 +910,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
 
                     {/* Confirm New Password (both Google and Email accounts) */}
                     <div>
-                      <label className="block text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">
+                      <label className="block text-[10px] font-mono font-bold text-slate-500 dark:text-gray-500 uppercase tracking-widest mb-2">
                         CONFIRM NEW PASSWORD
                       </label>
                       <div className="relative">
@@ -898,16 +922,12 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                             setPasswordError('');
                           }}
                           placeholder="Re-enter new password"
-                          className="w-full rounded-xl px-4 py-3 pr-11 text-xs text-white font-mono placeholder-gray-600 focus:outline-none focus:border-purple-500/60 transition-all"
-                          style={{
-                            background: 'rgba(255,255,255,0.03)',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                          }}
+                          className="w-full rounded-xl px-4 py-3 pr-11 text-xs text-slate-900 dark:text-white font-mono placeholder-slate-400 dark:placeholder-gray-600 focus:outline-none transition-all bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08]"
                         />
                         <button
                           type="button"
                           onClick={() => setShowConfirmPw(!showConfirmPw)}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 p-1 transition-colors"
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500 hover:text-slate-600 dark:hover:text-gray-300 p-1 transition-colors"
                           tabIndex={-1}
                         >
                           {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -920,10 +940,10 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                       <button
                         type="submit"
                         disabled={isUpdatingPassword}
-                        className="px-6 py-3 rounded-xl font-mono text-xs font-bold text-white transition-all flex items-center justify-center gap-2 cursor-pointer hover:opacity-90 active:scale-98 disabled:opacity-50"
+                        className="px-6 py-2.5 rounded-xl font-mono text-xs font-bold text-white transition-transform duration-150 ease-out active:scale-95 disabled:opacity-50 shadow-lg flex items-center justify-center gap-2 cursor-pointer"
                         style={{
-                          background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-                          boxShadow: '0 0 20px rgba(139,92,246,0.35)',
+                          background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
+                          boxShadow: '0 4px 16px rgba(59, 130, 246, 0.35)',
                         }}
                       >
                         <Save className="w-3.5 h-3.5" />
@@ -938,8 +958,8 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
               {activeTab === 'notifications' && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-bold text-white tracking-tight">Notification Settings</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Configure alert notification dispatch thresholds and automated channels</p>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Notification Settings</h3>
+                    <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Configure alert notification dispatch thresholds and automated channels</p>
                   </div>
 
                   <div className="space-y-4">
@@ -955,8 +975,8 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                       }}
                       action={
                         <div className="flex items-center justify-between w-full gap-2 min-w-0">
-                          <span className="text-gray-400 flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono min-w-0 flex-1 truncate">
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${criticalAlerts ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
+                          <span className="text-slate-500 dark:text-gray-400 flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono min-w-0 flex-1 truncate">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${criticalAlerts ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
                             <span className="truncate">
                               {criticalAlerts ? (
                                 <>Push alerts active<span className="hidden sm:inline"> (Browser + In-App)</span></>
@@ -972,7 +992,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                               handleTestPushAlert();
                             }}
                             disabled={!criticalAlerts || isTestingPush}
-                            className="px-2.5 py-1 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer text-[10px] font-mono shrink-0 whitespace-nowrap"
+                            className="px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-200 text-sky-700 dark:bg-purple-500/15 dark:border-purple-500/30 dark:text-purple-300 font-bold transition-transform duration-150 ease-out active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer text-[10px] font-mono shrink-0 whitespace-nowrap"
                           >
                             <Bell className="w-3 h-3 shrink-0" />
                             <span>{isTestingPush ? 'Testing...' : 'Test Push Alert'}</span>
@@ -993,8 +1013,8 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                         }}
                         action={
                           <div className="flex items-center justify-between w-full gap-2 min-w-0">
-                            <span className="text-gray-400 flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono min-w-0 flex-1 truncate">
-                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${emailNotifications ? 'bg-cyan-400' : 'bg-gray-500'}`} />
+                            <span className="text-slate-500 dark:text-gray-400 flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono min-w-0 flex-1 truncate">
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${emailNotifications ? 'bg-cyan-500' : 'bg-gray-400'}`} />
                               <span className="truncate">
                                 {emailNotifications ? `Delivering to: ${activeUserEmail}` : 'Email dispatch disabled'}
                               </span>
@@ -1006,7 +1026,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                                 handleTestEmailNotice();
                               }}
                               disabled={!emailNotifications || isTestingEmail}
-                              className="px-2.5 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer text-[10px] font-mono shrink-0 whitespace-nowrap"
+                              className="px-2.5 py-1 rounded-lg bg-cyan-50 border border-cyan-200 text-cyan-700 dark:bg-cyan-500/15 dark:border-cyan-500/30 dark:text-cyan-300 font-bold transition-transform duration-150 ease-out active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer text-[10px] font-mono shrink-0 whitespace-nowrap"
                             >
                               <Check className="w-3 h-3 shrink-0" />
                               <span>{isTestingEmail ? 'Notice Sent!' : (<>Send Sample <span className="hidden sm:inline">Incident </span>Notice</>)}</span>
@@ -1027,8 +1047,8 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                       }}
                       action={
                         <div className="flex items-center justify-between w-full gap-2 min-w-0">
-                          <span className="text-gray-400 flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono min-w-0 flex-1 truncate">
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${weeklyDigest ? 'bg-purple-400' : 'bg-gray-500'}`} />
+                          <span className="text-slate-500 dark:text-gray-400 flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono min-w-0 flex-1 truncate">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${weeklyDigest ? 'bg-purple-500' : 'bg-gray-400'}`} />
                             <span className="truncate">
                               {weeklyDigest ? (
                                 <><span className="hidden sm:inline">Schedule: </span>Every Monday · 09:00 UTC</>
@@ -1044,7 +1064,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                               handleGenerateDigest();
                             }}
                             disabled={!weeklyDigest || isGeneratingDigest}
-                            className="px-2.5 py-1 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer text-[10px] font-mono shrink-0 whitespace-nowrap"
+                            className="px-2.5 py-1 rounded-lg bg-purple-50 border border-purple-200 text-purple-700 dark:bg-purple-500/15 dark:border-purple-500/30 dark:text-purple-300 font-bold transition-transform duration-150 ease-out active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer text-[10px] font-mono shrink-0 whitespace-nowrap"
                           >
                             <Sparkles className="w-3 h-3 shrink-0" />
                             <span>{isGeneratingDigest ? 'Generated!' : (<>Generate Digest<span className="hidden sm:inline"> Now</span></>)}</span>
@@ -1061,22 +1081,21 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
               {activeTab === 'data' && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-bold text-white tracking-tight">Data Management</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Manage session cache and synthetic forensic states</p>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Data Management</h3>
+                    <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Manage session cache and synthetic forensic states</p>
                   </div>
 
                   <div className="space-y-3">
                     {/* ── Clear Analysis Session (ephemeral tier only) ── */}
                     <div
-                      className="rounded-xl p-4 flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4"
-                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                      className="rounded-xl p-4 flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]"
                     >
                       <div>
-                        <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <RefreshCw className="w-3.5 h-3.5 text-amber-400" /> Clear Analysis Session
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <RefreshCw className="w-3.5 h-3.5 text-amber-500" /> Clear Analysis Session
                         </h4>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          Clears only the active forensic session (Email Analyzer, Header Forensics, Threat Intelligence, Origin Investigation). Dashboard, Reports, Alerts &amp; Campaigns are <span className="text-white font-semibold">not affected</span>.
+                        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
+                          Clears only the active forensic session (Email Analyzer, Header Forensics, Threat Intelligence, Origin Investigation). Dashboard, Reports, Alerts &amp; Campaigns are <span className="text-slate-900 dark:text-white font-semibold">not affected</span>.
                         </p>
                       </div>
                       <button
@@ -1086,11 +1105,11 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                           setSessionCleared(true);
                           setTimeout(() => setSessionCleared(false), 2500);
                         }}
-                        className="self-start sm:self-auto shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-colors"
+                        className="self-start sm:self-auto shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-transform duration-150 ease-out active:scale-95 cursor-pointer"
                         style={{
                           background: sessionCleared ? 'rgba(34,197,94,0.12)' : 'rgba(251,191,36,0.1)',
                           border: sessionCleared ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(251,191,36,0.25)',
-                          color: sessionCleared ? '#4ade80' : '#fbbf24',
+                          color: sessionCleared ? '#16a34a' : '#d97706',
                         }}
                       >
                         {sessionCleared ? <Check className="w-3.5 h-3.5" /> : <RefreshCw className="w-3.5 h-3.5" />}
@@ -1100,17 +1119,15 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
 
                     {/* ── Reload Synthetic Dataset ── */}
                     <div
-                      className="rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4"
-                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                      className="rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]"
                     >
                       <div>
-                        <h4 className="text-xs font-bold text-white">Reload Synthetic Dataset</h4>
-                        <p className="text-xs text-gray-400 mt-0.5">Reset demo cases, campaigns, and indicators</p>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Reload Synthetic Dataset</h4>
+                        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Reset demo cases, campaigns, and indicators</p>
                       </div>
                       <button
                         onClick={() => window.location.reload()}
-                        className="self-start sm:self-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-cyan-400 transition-colors"
-                        style={{ background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.25)' }}
+                        className="self-start sm:self-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/25 transition-transform duration-150 ease-out active:scale-95 cursor-pointer"
                       >
                         <RefreshCw className="w-3.5 h-3.5" /> Reload
                       </button>
@@ -1118,14 +1135,13 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
 
                     {/* ── Purge User Requests & Tickets ── */}
                     <div
-                      className="rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4"
-                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                      className="rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]"
                     >
                       <div>
-                        <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <Trash2 className="w-3.5 h-3.5 text-rose-400" /> Purge User Requests & Tickets
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <Trash2 className="w-3.5 h-3.5 text-rose-500" /> Purge User Requests & Tickets
                         </h4>
-                        <p className="text-xs text-gray-400 mt-0.5">
+                        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
                           Wipes all user-submitted tickets and investigation requests from local cache and remote database
                         </p>
                       </div>
@@ -1137,11 +1153,11 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                             setTimeout(() => setTicketsCleared(false), 2500);
                           }
                         }}
-                        className="self-start sm:self-auto shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-colors cursor-pointer"
+                        className="self-start sm:self-auto shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-transform duration-150 ease-out active:scale-95 cursor-pointer"
                         style={{
                           background: ticketsCleared ? 'rgba(34,197,94,0.12)' : 'rgba(244,63,94,0.1)',
                           border: ticketsCleared ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(244,63,94,0.25)',
-                          color: ticketsCleared ? '#4ade80' : '#f43f5e',
+                          color: ticketsCleared ? '#16a34a' : '#e11d48',
                         }}
                       >
                         {ticketsCleared ? <Check className="w-3.5 h-3.5" /> : <Trash2 className="w-3.5 h-3.5" />}
@@ -1156,41 +1172,39 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
               {activeTab === 'ai-engine' && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                      <Cpu className="w-5 h-5 text-purple-400" />
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                      <Cpu className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                       AI Engine — Google Gemini
                     </h3>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
                       Sentinel-X utilizes Google Gemini Flash for zero-latency email threat forensics.
                     </p>
                   </div>
 
                   {/* Info banner */}
                   <div
-                    className="rounded-xl p-4 flex items-start gap-3"
-                    style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)' }}
+                    className="rounded-xl p-4 flex items-start gap-3 bg-purple-500/10 border border-purple-500/25"
                   >
-                    <Key className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
-                    <div className="text-xs text-gray-300 leading-relaxed">
-                      <span className="text-white font-semibold">Backend Integration:</span> Configured automatically through environment variables. (<code className="font-mono text-purple-300">End users do not need to provide their own keys.</code>)
+                    <Key className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
+                    <div className="text-xs text-slate-700 dark:text-gray-300 leading-relaxed">
+                      <span className="text-slate-900 dark:text-white font-semibold">Backend Integration:</span> Configured automatically through environment variables. (<code className="font-mono text-purple-600 dark:text-purple-300">End users do not need to provide their own keys.</code>)
                     </div>
                   </div>
 
                   {/* Active Model Status */}
                   <div
-                    className="rounded-xl p-4"
-                    style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
+                    className="rounded-xl p-4 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06]"
                   >
-                    <h4 className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest mb-2">Active Model & Backend</h4>
+                    <h4 className="text-[10px] font-mono font-bold text-slate-500 dark:text-gray-500 uppercase tracking-widest mb-2">Active Model &amp; Backend</h4>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span
-                          className="w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)] animate-pulse"
+                          className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(74,222,128,0.8)] animate-pulse"
                         />
-                        <span className="text-xs font-mono font-bold text-white">gemini-3.6-flash</span>
-                        <span className="text-[11px] text-gray-400 ml-2">JSON Schema Enforcement Enabled</span>
+                        <span className="text-xs font-mono font-bold text-slate-900 dark:text-white">gemini-3.6-flash</span>
+                        <span className="text-[11px] text-slate-500 dark:text-gray-400 ml-2">JSON Schema Enforcement Enabled</span>
                       </div>
-                      <span className="text-[10px] font-mono text-purple-400 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20">
+                      <span className="text-[10px] font-mono text-purple-700 dark:text-purple-400 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20">
                         FREE TIER READY
                       </span>
                     </div>
@@ -1201,8 +1215,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                     <button
                       onClick={handleTestClaudeKey}
                       disabled={claudeKeyTesting}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-cyan-300 transition-all hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={{ background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.25)' }}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/25 transition-transform duration-150 ease-out active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
                       {claudeKeyTesting ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />
@@ -1215,20 +1228,18 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
                     {/* Test result */}
                     {claudeKeyTestResult === 'ok' && (
                       <div
-                        className="rounded-xl p-3.5 flex items-center gap-2.5 mt-3"
-                        style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)' }}
+                        className="rounded-xl p-3.5 flex items-center gap-2.5 mt-3 bg-emerald-50 border border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/25"
                       >
-                        <Check className="w-4 h-4 text-green-400 shrink-0" />
-                        <span className="text-xs text-green-300 font-semibold">Gemini AI engine is live and operational.</span>
+                        <Check className="w-4 h-4 text-emerald-600 dark:text-green-400 shrink-0" />
+                        <span className="text-xs text-emerald-800 dark:text-green-300 font-semibold">Gemini AI engine is live and operational.</span>
                       </div>
                     )}
                     {claudeKeyTestResult === 'fail' && (
                       <div
-                        className="rounded-xl p-3.5 flex items-center gap-2.5 mt-3"
-                        style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}
+                        className="rounded-xl p-3.5 flex items-center gap-2.5 mt-3 bg-red-50 border border-red-200 dark:bg-red-500/10 dark:border-red-500/25"
                       >
-                        <Shield className="w-4 h-4 text-red-400 shrink-0" />
-                        <span className="text-xs text-red-300 font-semibold">Could not reach Gemini. Please ensure <code className="font-mono text-red-200">VITE_GEMINI_API_KEY</code> is set in <code className="font-mono text-red-200">.env</code>.</span>
+                        <Shield className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
+                        <span className="text-xs text-red-800 dark:text-red-300 font-semibold">Could not reach Gemini. Please ensure <code className="font-mono text-red-600 dark:text-red-200">VITE_GEMINI_API_KEY</code> is set in <code className="font-mono text-red-600 dark:text-red-200">.env</code>.</span>
                       </div>
                     )}
                   </div>
@@ -1258,29 +1269,26 @@ function ToggleRow({
 }) {
   return (
     <div
-      className="rounded-xl p-4 transition-all hover:bg-white/[0.04]"
-      style={{
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.06)',
-      }}
+      className="rounded-xl p-4 transition-all bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] hover:bg-slate-100 dark:hover:bg-white/[0.04]"
     >
       <div className="flex items-center justify-between cursor-pointer select-none" onClick={onChange}>
         <div>
-          <h4 className="text-xs font-bold text-white">{label}</h4>
-          <p className="text-xs text-gray-400 mt-0.5">{detail}</p>
+          <h4 className="text-xs font-bold text-slate-900 dark:text-white">{label}</h4>
+          <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">{detail}</p>
         </div>
         <div
-          className="w-11 h-6 rounded-full relative transition-colors shrink-0 ml-3"
-          style={{ background: checked ? '#8b5cf6' : 'rgba(255,255,255,0.1)' }}
+          className={`w-11 h-6 rounded-full relative transition-colors shrink-0 ml-3 ${
+            checked ? 'bg-sky-500 dark:bg-purple-600' : 'bg-slate-300 dark:bg-white/10'
+          }`}
         >
           <div
-            className="w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform"
+            className="w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform shadow-sm"
             style={{ transform: checked ? 'translateX(22px)' : 'translateX(2px)' }}
           />
         </div>
       </div>
       {action && (
-        <div className="mt-3 pt-3 border-t border-white/5">
+        <div className="mt-3 pt-3 border-t border-slate-200 dark:border-white/5">
           {action}
         </div>
       )}

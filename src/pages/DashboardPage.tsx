@@ -34,6 +34,7 @@ import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useAnalysis } from '@/contexts/AnalysisContext';
 import { useCampaigns } from '@/contexts/CampaignContext';
 import { useEvidence } from '@/contexts/EvidenceContext';
+import { useTheme } from '@/context/ThemeContext';
 
 /* ═══════════════════════════════════════════════════════════
    TYPES
@@ -51,11 +52,11 @@ const ICON_MAP: Record<string, LucideIcon> = {
 };
 
 const ACCENT: Record<string, { glow: string; text: string; hex: string; spark: string }> = {
-  blue:  { glow: '0 0 22px rgba(59,130,246,0.18)',  text: 'text-blue-400',  hex: '#3b82f6', spark: '#818cf8' },
-  teal:  { glow: '0 0 22px rgba(20,184,166,0.18)',  text: 'text-teal-400',  hex: '#14b8a6', spark: '#2dd4bf' },
-  red:   { glow: '0 0 22px rgba(239,68,68,0.22)',   text: 'text-red-400',   hex: '#ef4444', spark: '#f87171' },
-  amber: { glow: '0 0 22px rgba(245,158,11,0.18)',  text: 'text-amber-400', hex: '#f59e0b', spark: '#fbbf24' },
-  green: { glow: '0 0 22px rgba(34,197,94,0.18)',   text: 'text-green-400', hex: '#22c55e', spark: '#4ade80' },
+  blue:  { glow: 'none',  text: 'text-blue-400',  hex: '#3b82f6', spark: '#818cf8' },
+  teal:  { glow: 'none',  text: 'text-teal-400',  hex: '#14b8a6', spark: '#2dd4bf' },
+  red:   { glow: 'none',  text: 'text-red-400',   hex: '#ef4444', spark: '#f87171' },
+  amber: { glow: 'none',  text: 'text-amber-400', hex: '#f59e0b', spark: '#fbbf24' },
+  green: { glow: 'none',  text: 'text-green-400', hex: '#22c55e', spark: '#4ade80' },
 };
 
 const SEV_COLOR: Record<Severity, string> = {
@@ -106,20 +107,9 @@ function SlideIn({ children, delay = 0, direction = 'up', className = '' }: {
   );
 }
 
-/* 3-D tilt */
 function TiltCard({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const el = ref.current; if (!el) return;
-    const { left, top, width, height } = el.getBoundingClientRect();
-    const x = (e.clientX - left) / width - 0.5;
-    const y = (e.clientY - top) / height - 0.5;
-    el.style.transform = `perspective(900px) rotateY(${x * 10}deg) rotateX(${-y * 8}deg) translateZ(6px) scale(1.015)`;
-  };
-  const onLeave = () => { if (ref.current) ref.current.style.transform = 'perspective(900px) rotateY(0) rotateX(0) translateZ(0) scale(1)'; };
   return (
-    <div ref={ref} className={`transition-transform duration-200 ease-out will-change-transform ${className}`}
-      style={{ transformStyle: 'preserve-3d', ...style }} onMouseMove={onMove} onMouseLeave={onLeave}>
+    <div className={className} style={style}>
       {children}
     </div>
   );
@@ -196,6 +186,7 @@ function useElapsed() {
    MAIN DASHBOARD
 ═══════════════════════════════════════════════════════════ */
 export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => void }) {
+  const { isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<'24H' | '7D'>('24H');
   const { analyzedReports, currentResult } = useAnalysis();
   const { campaigns } = useCampaigns();
@@ -220,12 +211,12 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
   const campaignCount = campaigns.length;
 
   const KPI_DEFS = useMemo(() => [
-    { label: 'Emails Analyzed',      val: emailCount,       delta: emailCount > 0 ? `+${emailCount}` : '0',   icon: 'MailCheck',    accent: 'blue',  fmt: (n: number) => n.toLocaleString() },
-    { label: 'Threats Detected',     val: threatCount,      delta: threatCount > 0 ? `+${threatCount}` : '0', icon: 'ShieldAlert',  accent: 'red',   fmt: (n: number) => n.toLocaleString() },
-    { label: 'Critical Threats',     val: criticalCount,    delta: criticalCount > 0 ? `+${criticalCount}` : '0', icon: 'AlertOctagon', accent: 'red',   fmt: (n: number) => String(n) },
-    { label: 'Active Cases',         val: activeCasesCount, delta: activeCasesCount > 0 ? `+${activeCasesCount}` : '0', icon: 'Search', accent: 'amber', fmt: (n: number) => String(n) },
-    { label: 'Detection Accuracy',   val: avgAccuracy,      delta: emailCount > 0 ? '+0.4%' : '0%', icon: 'Target',       accent: 'green', fmt: (n: number) => n.toFixed(1) + '%' },
-    { label: 'Campaigns Detected',   val: campaignCount,    delta: campaignCount > 0 ? `+${campaignCount}` : '0', icon: 'Network',      accent: 'teal',  fmt: (n: number) => String(n) },
+    { label: 'Emails Analyzed',      val: emailCount,       delta: emailCount > 0 ? String(emailCount) : '0',   icon: 'MailCheck',    accent: 'blue',  fmt: (n: number) => n.toLocaleString() },
+    { label: 'Threats Detected',     val: threatCount,      delta: threatCount > 0 ? String(threatCount) : '0', icon: 'ShieldAlert',  accent: 'red',   fmt: (n: number) => n.toLocaleString() },
+    { label: 'Critical Threats',     val: criticalCount,    delta: criticalCount > 0 ? String(criticalCount) : '0', icon: 'AlertOctagon', accent: 'red',   fmt: (n: number) => String(n) },
+    { label: 'Active Cases',         val: activeCasesCount, delta: activeCasesCount > 0 ? String(activeCasesCount) : '0', icon: 'Search', accent: 'amber', fmt: (n: number) => String(n) },
+    { label: 'Detection Accuracy',   val: avgAccuracy,      delta: emailCount > 0 ? '0.4%' : '0%', icon: 'Target',       accent: 'green', fmt: (n: number) => n.toFixed(1) + '%' },
+    { label: 'Campaigns Detected',   val: campaignCount,    delta: campaignCount > 0 ? String(campaignCount) : '0', icon: 'Network',      accent: 'teal',  fmt: (n: number) => String(n) },
   ], [emailCount, threatCount, criticalCount, activeCasesCount, avgAccuracy, campaignCount]);
 
   // Sparklines
@@ -451,28 +442,28 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
       {/* ── Header ── */}
       <SlideIn delay={0} direction="down">
         <div className="relative rounded-2xl overflow-hidden px-4 sm:px-6 py-4 sm:py-5"
-          style={{ background:'linear-gradient(135deg,#0a0c14,#0f1520 60%,#0c0e18)', border:'1px solid rgba(255,255,255,0.07)', boxShadow:'0 4px 40px rgba(0,0,0,0.6)' }}>
-          <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage:'linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px)', backgroundSize:'48px 48px' }} />
+          style={{ background: isDark ? 'linear-gradient(135deg,#0a0c14,#0f1520 60%,#0c0e18)' : '#ffffff', border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0', boxShadow: isDark ? '0 4px 40px rgba(0,0,0,0.6)' : '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: isDark ? 'linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px)' : 'none', backgroundSize:'48px 48px' }} />
           <div className="absolute -top-10 right-24 w-44 h-44 rounded-full pointer-events-none" style={{ background:'radial-gradient(circle,rgba(59,130,246,0.07),transparent 70%)' }} />
 
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">Threat Operations Center</h2>
-              <p className="text-xs sm:text-sm text-gray-400 mt-0.5">Real-time visibility into email threats, investigations, campaigns, and forensic activity.</p>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">Threat Operations Center</h2>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-gray-400 mt-0.5">Real-time visibility into email threats, investigations, campaigns, and forensic activity.</p>
               <div className="flex items-center gap-2 mt-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-[11px] text-gray-500 font-mono">
+                <span className="text-[11px] text-slate-400 dark:text-gray-500 font-mono">
                   Last updated {elapsed}s ago &nbsp;·&nbsp; {now24h()}
                 </span>
               </div>
             </div>
             {/* LIVE MONITORING */}
             <div className="flex items-center gap-3 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl shrink-0 self-start"
-              style={{ background:'linear-gradient(135deg,rgba(34,197,94,0.2),rgba(21,128,61,0.1))', border:'1px solid rgba(34,197,94,0.35)', boxShadow:'0 0 20px rgba(34,197,94,0.12)' }}>
+              style={{ background: isDark ? 'linear-gradient(135deg,rgba(34,197,94,0.2),rgba(21,128,61,0.1))' : 'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.35)' }}>
               <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" style={{ boxShadow:'0 0 8px rgba(34,197,94,0.9)' }} />
               <div>
-                <p className="text-xs font-bold text-green-400 uppercase tracking-wider leading-none">LIVE MONITORING</p>
-                <p className="text-[10px] text-green-400/70 mt-0.5">Active</p>
+                <p className="text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wider leading-none">LIVE MONITORING</p>
+                <p className="text-[10px] text-green-700/70 dark:text-green-400/70 mt-0.5">Active</p>
               </div>
             </div>
           </div>
@@ -487,30 +478,25 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
           const isUp = true;
           return (
             <SlideIn key={kpi.label} delay={100 + i * 65} direction="up">
-              <TiltCard
-                className="relative rounded-2xl overflow-hidden p-3 sm:p-4 cursor-pointer group"
-                style={{ background:`linear-gradient(145deg,${i%2===0?'#0e1525':'#0c1020'},#070a12)`, border:'1px solid rgba(255,255,255,0.07)', boxShadow:ac.glow, minHeight: 145 }}>
-                {/* top accent line */}
-                <div className="absolute top-0 left-4 right-4 h-[1.5px] rounded-full" style={{ background:`linear-gradient(90deg,transparent,${ac.hex},transparent)`, opacity:.7 }} />
-                {/* bg orb */}
-                <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full pointer-events-none transition-all duration-300 group-hover:scale-150" style={{ background:`radial-gradient(circle,${ac.hex}18,transparent 70%)` }} />
-
+              <div
+                className="relative rounded-2xl overflow-hidden p-3 sm:p-4"
+                style={{ background: isDark ? `linear-gradient(145deg,${i%2===0?'#0e1525':'#0c1020'},#070a12)` : '#ffffff', border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0', boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.35)' : '0 1px 3px rgba(0,0,0,0.05)', minHeight: 145 }}>
                 {/* icon + delta */}
                 <div className="flex items-start justify-between mb-2">
-                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center" style={{ background:`${ac.hex}22`, border:`1px solid ${ac.hex}35`, boxShadow:`0 0 12px ${ac.hex}25` }}>
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center" style={{ background:`${ac.hex}22`, border:`1px solid ${ac.hex}35` }}>
                     {Icon && <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${ac.text}`} />}
                   </div>
-                  <span className={`flex items-center gap-0.5 text-[10px] sm:text-[11px] font-bold ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className={`flex items-center gap-0.5 text-[10px] sm:text-[11px] font-bold ${isUp ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
                     {isUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                    {i === 4 ? `+${kpi.delta}%` : `+${kpi.delta}`}
+                    {kpi.delta}
                   </span>
                 </div>
 
                 {/* live value */}
-                <p className="text-xl sm:text-2xl font-black text-white tracking-tight mt-1">
+                <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
                   <LiveNumber value={typeof kpi.val === 'number' ? kpi.val : 0} fmt={kpi.fmt} />
                 </p>
-                <p className="text-[10px] sm:text-[11px] text-gray-500 font-medium mt-0.5 truncate">{kpi.label}</p>
+                <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-gray-400 font-medium mt-0.5 truncate">{kpi.label}</p>
 
                 {/* live sparkline */}
                 <div className="mt-2 -mx-1">
@@ -521,7 +507,7 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-              </TiltCard>
+              </div>
             </SlideIn>
           );
         })}
@@ -532,22 +518,22 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
 
         {/* Area chart — live sliding window */}
         <SlideIn delay={520} direction="left" className="lg:col-span-3">
-          <div className="rounded-2xl p-5 h-full" style={{ background:'linear-gradient(145deg,#090c14,#0c1020)', border:'1px solid rgba(255,255,255,0.07)', boxShadow:'0 8px 32px rgba(0,0,0,0.5)' }}>
+          <div className="rounded-2xl p-5 h-full" style={{ background: isDark ? 'linear-gradient(145deg,#090c14,#0c1020)' : '#ffffff', border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0', boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.5)' : '0 1px 3px rgba(0,0,0,0.05)' }}>
             <div className="flex items-start justify-between mb-4">
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
-                  <h3 className="text-sm font-bold text-white">Threat Activity</h3>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Threat Activity</h3>
                   <LiveBadge />
                 </div>
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-slate-500 dark:text-gray-400">
                   {activeTab === '24H' ? '24-hour threat telemetry · hourly buckets' : '7-day trend analysis · daily threat volume'}
                 </p>
               </div>
-              <div className="flex items-center rounded-lg overflow-hidden" style={{ border:'1px solid rgba(255,255,255,0.1)' }}>
+              <div className="flex items-center rounded-lg overflow-hidden" style={{ border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e2e8f0' }}>
                 {(['24H','7D'] as const).map(tab => (
                   <button key={tab} onClick={() => setActiveTab(tab)}
-                    className={`px-3 py-1.5 text-[11px] font-bold transition-all duration-200 ${activeTab===tab ? 'text-white' : 'text-gray-500 hover:text-gray-300'}`}
-                    style={activeTab===tab ? { background:'rgba(139,92,246,0.4)' } : {}}>
+                    className={`px-3 py-1.5 text-[11px] font-bold transition-all duration-200 ${activeTab===tab ? (isDark ? 'text-white' : 'text-purple-700 bg-purple-50') : (isDark ? 'text-gray-500 hover:text-gray-300' : 'text-slate-500 hover:text-slate-800')}`}
+                    style={activeTab===tab && isDark ? { background:'rgba(139,92,246,0.4)' } : {}}>
                     {tab}
                   </button>
                 ))}
@@ -559,7 +545,7 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
               {[{color:'#06b6d4',label:'Emails Analyzed'},{color:'#8b5cf6',label:'Threats'}].map(l => (
                 <span key={l.label} className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full" style={{ background:l.color, boxShadow:`0 0 5px ${l.color}` }} />
-                  <span className="text-gray-400">{l.label}</span>
+                  <span className="text-slate-600 dark:text-gray-400">{l.label}</span>
                 </span>
               ))}
             </div>
@@ -580,9 +566,9 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
                     <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
                   </filter>
                 </defs>
-                <CartesianGrid strokeDasharray="2 6" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="hour" tick={{ fill:'#4b5563', fontSize:10, fontFamily:'monospace' }} axisLine={false} tickLine={false} interval={activeTab === '24H' ? 3 : 0} />
-                <YAxis tick={{ fill:'#4b5563', fontSize:10 }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="2 6" stroke={isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.05)"} vertical={false} />
+                <XAxis dataKey="hour" tick={{ fill: isDark ? '#4b5563' : '#64748b', fontSize:10, fontFamily:"'Inter', sans-serif" }} axisLine={false} tickLine={false} interval={activeTab === '24H' ? 3 : 0} />
+                <YAxis tick={{ fill: isDark ? '#4b5563' : '#64748b', fontSize:10 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<GlowTooltip />} />
                 <Area type="monotone" dataKey="scanned" stroke="#06b6d4" strokeWidth={2.5}
                   fill="url(#lGradCyan)" name="Emails Analyzed" filter="url(#glowCyan)"
@@ -597,11 +583,11 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
 
         {/* Attack Surface donut */}
         <SlideIn delay={600} direction="right" className="lg:col-span-2">
-          <div className="rounded-2xl p-5 h-full" style={{ background:'linear-gradient(145deg,#090c14,#0c1020)', border:'1px solid rgba(255,255,255,0.07)', boxShadow:'0 8px 32px rgba(0,0,0,0.5)' }}>
+          <div className="rounded-2xl p-5 h-full" style={{ background: isDark ? 'linear-gradient(145deg,#090c14,#0c1020)' : '#ffffff', border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0', boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.5)' : '0 1px 3px rgba(0,0,0,0.05)' }}>
             <div className="flex items-center justify-between mb-2">
               <div>
-                <h3 className="text-sm font-bold text-white">Attack Surface</h3>
-                <p className="text-[11px] text-gray-500 mt-0.5">Threat distribution across analyzed items</p>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Attack Surface</h3>
+                <p className="text-[11px] text-slate-500 dark:text-gray-400 mt-0.5">Threat distribution across analyzed items</p>
               </div>
               <LiveBadge />
             </div>
@@ -627,8 +613,8 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
               </ResponsiveContainer>
               {/* center label */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-2xl font-black text-white">{Math.round(totalThreats).toLocaleString()}</span>
-                <span className="text-[9px] text-gray-500 font-mono uppercase tracking-widest mt-0.5">THREATS</span>
+                <span className="text-2xl font-black text-slate-900 dark:text-white">{Math.round(totalThreats).toLocaleString()}</span>
+                <span className="text-[9px] text-slate-400 dark:text-gray-500 font-mono uppercase tracking-widest mt-0.5">THREATS</span>
               </div>
             </div>
 
@@ -638,9 +624,9 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
                 <div key={s.name} className="flex items-center justify-between text-[11px]">
                   <span className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ background:s.color, boxShadow:`0 0 4px ${s.color}` }} />
-                    <span className="text-gray-400">{s.name}</span>
+                    <span className="text-slate-600 dark:text-gray-400">{s.name}</span>
                   </span>
-                  <span className="text-white font-mono font-semibold">{s.value.toLocaleString()}</span>
+                  <span className="text-slate-900 dark:text-white font-mono font-semibold">{s.value.toLocaleString()}</span>
                 </div>
               ))}
             </div>
@@ -656,29 +642,29 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
 
           {/* Hourly Volume Bar Chart — live */}
           <SlideIn delay={680} direction="left">
-            <div className="rounded-2xl p-5" style={{ background:'linear-gradient(145deg,#09090f,#0c0e18)', border:'1px solid rgba(255,255,255,0.07)', boxShadow:'0 8px 32px rgba(0,0,0,0.45)' }}>
+            <div className="rounded-2xl p-5" style={{ background: isDark ? 'linear-gradient(145deg,#09090f,#0c0e18)' : '#ffffff', border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0', boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.45)' : '0 1px 3px rgba(0,0,0,0.05)' }}>
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-white">Hourly Volume</h3>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Hourly Volume</h3>
                     <LiveBadge />
                   </div>
-                  <p className="text-[11px] text-gray-500 mt-0.5">Email vs. threat volume breakdown</p>
+                  <p className="text-[11px] text-slate-500 dark:text-gray-400 mt-0.5">Email vs. threat volume breakdown</p>
                 </div>
                 <div className="flex items-center gap-3 text-[11px]">
                   {[{c:'#3b82f680',l:'Scanned'},{c:'#ef444480',l:'Threats'}].map(x => (
                     <span key={x.l} className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded" style={{ background:x.c }} />
-                      <span className="text-gray-400">{x.l}</span>
+                      <span className="text-slate-600 dark:text-gray-400">{x.l}</span>
                     </span>
                   ))}
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={110}>
                 <BarChart data={bars} margin={{ top:2, right:0, left:-20, bottom:0 }} barGap={2}>
-                  <CartesianGrid strokeDasharray="2 6" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                  <XAxis dataKey="hour" tick={{ fill:'#4b5563', fontSize:9, fontFamily:'monospace' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill:'#4b5563', fontSize:9 }} axisLine={false} tickLine={false} />
+                  <CartesianGrid strokeDasharray="2 6" stroke={isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.05)"} vertical={false} />
+                  <XAxis dataKey="hour" tick={{ fill: isDark ? '#4b5563' : '#64748b', fontSize:9, fontFamily:"'Inter', sans-serif" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: isDark ? '#4b5563' : '#64748b', fontSize:9 }} axisLine={false} tickLine={false} />
                   <Tooltip content={<GlowTooltip />} />
                   <Bar dataKey="scanned" name="Scanned" fill="#3b82f680" radius={[3,3,0,0]} isAnimationActive animationDuration={1200} animationEasing="ease-in-out" />
                   <Bar dataKey="threats"  name="Threats"  fill="#ef444480" radius={[3,3,0,0]} isAnimationActive animationDuration={1200} animationEasing="ease-in-out" />
@@ -689,22 +675,22 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
 
           {/* Live Threat Feed */}
           <SlideIn delay={750} direction="left">
-            <div className="rounded-2xl p-5 flex-1" style={{ background:'linear-gradient(145deg,#09090f,#0c0e18)', border:'1px solid rgba(255,255,255,0.07)', boxShadow:'0 8px 32px rgba(0,0,0,0.45)' }}>
+            <div className="rounded-2xl p-5 flex-1" style={{ background: isDark ? 'linear-gradient(145deg,#09090f,#0c0e18)' : '#ffffff', border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0', boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.45)' : '0 1px 3px rgba(0,0,0,0.05)' }}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <Radio className="w-3.5 h-3.5 text-red-400" style={{ filter:'drop-shadow(0 0 4px rgba(239,68,68,.8))' }} />
-                  <h3 className="text-sm font-bold text-white">Live Threat Feed</h3>
+                  <Radio className="w-3.5 h-3.5 text-red-500 dark:text-red-400" style={{ filter:'drop-shadow(0 0 4px rgba(239,68,68,.8))' }} />
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Live Threat Feed</h3>
                   <LiveBadge />
                 </div>
                 <button onClick={() => onNavigate?.('email-analyzer')}
-                  className="flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 transition-colors font-medium">
+                  className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-500 transition-colors font-medium">
                   Analyze Email <ExternalLink className="w-3 h-3" />
                 </button>
               </div>
 
               <div className="space-y-2">
                 {feed.length === 0 ? (
-                  <div className="text-center py-6 text-xs text-gray-500 font-mono">
+                  <div className="text-center py-6 text-xs text-slate-400 dark:text-gray-500 font-mono">
                     No threat feed events recorded. Ingest an email in Email Analyzer to populate detections.
                   </div>
                 ) : (
@@ -714,10 +700,10 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
                     return (
                       <div key={`${item.id}-${item.time}`}
                         onClick={() => onNavigate?.('email-analyzer')}
-                        className="flex items-start gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-300 hover:bg-white/[0.055]"
+                        className="flex items-start gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-300 hover:bg-slate-100/80 dark:hover:bg-white/[0.055]"
                         style={{
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.06)',
+                          background: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+                          border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0',
                           transition: 'background .4s, border-color .4s',
                         }}
                       >
@@ -727,13 +713,13 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-0.5">
                             <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${sevBadge.bg} ${sevBadge.text}`}>{item.severity}</span>
-                            <span className="text-xs font-semibold text-white truncate">{item.title}</span>
+                            <span className="text-xs font-semibold text-slate-900 dark:text-white truncate">{item.title}</span>
                           </div>
-                          <p className="text-[11px] text-gray-500 truncate">{item.source}</p>
+                          <p className="text-[11px] text-slate-500 dark:text-gray-400 truncate">{item.source}</p>
                         </div>
                         <div className="shrink-0 flex flex-col items-end gap-1.5">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${statBadge.bg} ${statBadge.text}`}>{item.status}</span>
-                          <span className="text-[10px] text-gray-600 font-mono">{item.time}</span>
+                          <span className="text-[10px] text-slate-400 dark:text-gray-600 font-mono">{item.time}</span>
                         </div>
                       </div>
                     );
@@ -746,30 +732,30 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
 
         {/* Sentinel AI */}
         <SlideIn delay={820} direction="right" className="lg:col-span-2">
-          <TiltCard className="rounded-2xl p-5 h-full"
-            style={{ background:'linear-gradient(145deg,#09090f,#0c0e18)', border:'1px solid rgba(255,255,255,0.07)', boxShadow:'0 8px 32px rgba(0,0,0,0.5)', transformStyle:'preserve-3d' }}>
+          <div className="rounded-2xl p-5 h-full"
+            style={{ background: isDark ? 'linear-gradient(145deg,#09090f,#0c0e18)' : '#ffffff', border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0', boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.5)' : '0 1px 3px rgba(0,0,0,0.05)' }}>
             {/* header */}
             <div className="flex items-center gap-3 mb-1">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-                style={{ background:'rgba(139,92,246,0.2)', border:'1px solid rgba(139,92,246,0.4)', boxShadow:'0 0 16px rgba(139,92,246,0.3)' }}>
+                style={{ background:'rgba(139,92,246,0.2)', border:'1px solid rgba(139,92,246,0.4)' }}>
                 <Bot className="w-4 h-4 text-violet-400" />
               </div>
               <div>
-                <p className="text-sm font-bold text-white tracking-wide">SENTINEL AI</p>
-                <p className="text-[10px] text-gray-500">AI-powered threat investigation assistant</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white tracking-wide">SENTINEL AI</p>
+                <p className="text-[10px] text-slate-500 dark:text-gray-400">AI-powered threat investigation assistant</p>
               </div>
             </div>
 
             <ThinkingDots />
 
-            <div className="rounded-xl px-4 py-3 mb-4 text-xs text-gray-300 leading-relaxed min-h-[50px]"
-              style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)' }}>
+            <div className="rounded-xl px-4 py-3 mb-4 text-xs text-slate-700 dark:text-gray-300 leading-relaxed min-h-[50px]"
+              style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc', border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0' }}>
               {aiSummary}
             </div>
 
             {/* live confidence */}
             <div className="mb-3">
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1 font-mono">THREAT CONFIDENCE</p>
+              <p className="text-[10px] text-slate-500 dark:text-gray-400 uppercase tracking-widest mb-1 font-mono">THREAT CONFIDENCE</p>
               <p className="text-3xl font-black transition-all duration-700"
                 style={{ background:'linear-gradient(135deg,#a78bfa,#c084fc)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', filter:'drop-shadow(0 0 10px rgba(167,139,250,.4))' }}>
                 {confidence > 0 ? `${confidence.toFixed(1)}%` : '—'}
@@ -778,33 +764,33 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
 
             <div className="space-y-1.5 mb-5">
               {aiMetrics.map(m => (
-                <div key={m.label} className="flex items-center justify-between text-[11px] py-0.5 border-b border-white/5 last:border-0">
-                  <span className="text-gray-500">{m.label}</span>
+                <div key={m.label} className="flex items-center justify-between text-[11px] py-0.5 border-b border-slate-100 dark:border-white/5 last:border-0">
+                  <span className="text-slate-500 dark:text-gray-400">{m.label}</span>
                   <span className={`font-semibold ${m.color}`}>{m.value}</span>
                 </div>
               ))}
             </div>
 
             <button onClick={() => onNavigate?.('email-analyzer')}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
-              style={{ background:'linear-gradient(135deg,#7c3aed,#6d28d9 50%,#5b21b6)', boxShadow:'0 4px 20px rgba(124,58,237,0.4),0 0 0 1px rgba(255,255,255,0.1) inset' }}>
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition-transform duration-150 ease-out active:scale-95 cursor-pointer"
+              style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)', boxShadow: '0 4px 20px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1) inset' }}>
               <Zap className="w-4 h-4" />
               Start AI Investigation
             </button>
-          </TiltCard>
+          </div>
         </SlideIn>
       </div>
 
       {/* ── Recent Threats Table ── */}
       <SlideIn delay={950} direction="up">
-        <div className="rounded-2xl p-5" style={{ background:'linear-gradient(145deg,#09090f,#0c0e18)', border:'1px solid rgba(255,255,255,0.07)', boxShadow:'0 8px 32px rgba(0,0,0,0.4)' }}>
+        <div className="rounded-2xl p-5" style={{ background: isDark ? 'linear-gradient(145deg,#09090f,#0c0e18)' : '#ffffff', border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0', boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-bold text-white">Recent Threats</h3>
-              <p className="text-[11px] text-gray-500 mt-0.5">Detections from analyzed emails</p>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Recent Threats</h3>
+              <p className="text-[11px] text-slate-500 dark:text-gray-400 mt-0.5">Detections from analyzed emails</p>
             </div>
             <button onClick={() => onNavigate?.('email-analyzer')}
-              className="flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 transition-colors font-medium">
+              className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-500 transition-colors font-medium">
               Analyze New Email <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -812,16 +798,16 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
           <div className="overflow-x-auto scrollbar-thin">
             <table className="w-full min-w-[540px] md:min-w-0">
               <thead>
-                <tr style={{ borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+                <tr style={{ borderBottom: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0' }}>
                   {['Threat ID','Sender','Type','Severity','Risk Score','Status'].map(h => (
-                    <th key={h} className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider text-left py-3 px-3">{h}</th>
+                    <th key={h} className="text-[10px] font-semibold text-slate-400 dark:text-gray-500 uppercase tracking-wider text-left py-3 px-3">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {analyzedReports.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-xs text-gray-500 font-mono">
+                    <td colSpan={6} className="py-8 text-center text-xs text-slate-400 dark:text-gray-500 font-mono">
                       No threat detections recorded yet. Scanned emails and active threat investigations will appear here.
                     </td>
                   </tr>
@@ -835,12 +821,12 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
                     return (
                       <tr key={r.case_id || i} onClick={() => onNavigate?.('email-analyzer')}
                         className="cursor-pointer transition-colors duration-150"
-                        style={{ borderBottom:'1px solid rgba(255,255,255,0.04)', animation:`fadeInUp .4s ease-out ${i*70}ms both` }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.035)'; }}
+                        style={{ borderBottom: isDark ? '1px solid rgba(255,255,255,0.04)' : '1px solid #f1f5f9', animation:`fadeInUp .4s ease-out ${i*70}ms both` }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = isDark ? 'rgba(255,255,255,0.035)' : '#f8fafc'; }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-                        <td className="py-3.5 px-3 text-xs font-mono text-blue-400 font-bold">{r.case_id}</td>
-                        <td className="py-3.5 px-3 text-xs text-gray-300 max-w-[160px] truncate" title={fromHdr}>{fromHdr}</td>
-                        <td className="py-3.5 px-3 text-xs text-gray-500 hidden md:table-cell">{r.verdict}</td>
+                        <td className="py-3.5 px-3 text-xs font-mono text-blue-600 dark:text-blue-400 font-bold">{r.case_id}</td>
+                        <td className="py-3.5 px-3 text-xs text-slate-800 dark:text-gray-300 max-w-[160px] truncate" title={fromHdr}>{fromHdr}</td>
+                        <td className="py-3.5 px-3 text-xs text-slate-500 dark:text-gray-400 hidden md:table-cell">{r.verdict}</td>
                         <td className="py-3.5 px-3 hidden lg:table-cell">
                           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase"
                             style={{ background:`${SEV_COLOR[sev]}22`, color:SEV_COLOR[sev], border:`1px solid ${SEV_COLOR[sev]}44` }}>
@@ -850,11 +836,11 @@ export function DashboardPage({ onNavigate }: { onNavigate?: (route: string) => 
                         </td>
                         <td className="py-3.5 px-3 hidden lg:table-cell">
                           <div className="flex items-center gap-2">
-                            <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden w-16">
+                            <div className="flex-1 h-1.5 rounded-full bg-slate-200 dark:bg-white/5 overflow-hidden w-16">
                               <div className="h-full rounded-full transition-all duration-1000"
                                 style={{ width:`${r.threat_score}%`, background:`linear-gradient(90deg,${r.threat_score>80?'#ef4444':'#f59e0b'},${r.threat_score>80?'#f97316':'#fbbf24'})`, boxShadow:`0 0 6px ${r.threat_score>80?'rgba(239,68,68,.5)':'rgba(245,158,11,.5)'}` }} />
                             </div>
-                            <span className="text-xs font-mono text-white font-bold">{r.threat_score}</span>
+                            <span className="text-xs font-mono text-slate-900 dark:text-white font-bold">{r.threat_score}</span>
                           </div>
                         </td>
                         <td className="py-3.5 px-3">

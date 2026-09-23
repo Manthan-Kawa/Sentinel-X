@@ -62,11 +62,11 @@ function SlideIn({ children, delay = 0, direction = 'up', className = '' }: {
 }
 
 const LEVEL_COLORS: Record<string, { bg: string; border: string; text: string; glow: string }> = {
-  critical: { bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.35)',   text: 'text-red-400',    glow: '0 0 24px rgba(239,68,68,0.15)' },
-  high:     { bg: 'rgba(249,115,22,0.08)',  border: 'rgba(249,115,22,0.35)',  text: 'text-orange-400', glow: '0 0 24px rgba(249,115,22,0.12)' },
-  medium:   { bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.35)',  text: 'text-amber-400',  glow: '0 0 24px rgba(245,158,11,0.10)' },
-  low:      { bg: 'rgba(59,130,246,0.08)',  border: 'rgba(59,130,246,0.35)',  text: 'text-blue-400',   glow: '0 0 24px rgba(59,130,246,0.10)' },
-  info:     { bg: 'rgba(107,114,128,0.08)', border: 'rgba(107,114,128,0.35)', text: 'text-gray-400',   glow: 'none' },
+  critical: { bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.35)',   text: 'text-red-600 dark:text-red-400',    glow: 'none' },
+  high:     { bg: 'rgba(249,115,22,0.08)',  border: 'rgba(249,115,22,0.35)',  text: 'text-orange-600 dark:text-orange-400', glow: 'none' },
+  medium:   { bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.35)',  text: 'text-amber-600 dark:text-amber-400',  glow: 'none' },
+  low:      { bg: 'rgba(59,130,246,0.08)',  border: 'rgba(59,130,246,0.35)',  text: 'text-blue-600 dark:text-blue-400',   glow: 'none' },
+  info:     { bg: 'rgba(107,114,128,0.08)', border: 'rgba(107,114,128,0.35)', text: 'text-slate-600 dark:text-gray-400',   glow: 'none' },
 };
 
 export function OriginInvestigationPage({ onNavigate }: { onNavigate?: (route: string) => void }) {
@@ -245,8 +245,8 @@ export function OriginInvestigationPage({ onNavigate }: { onNavigate?: (route: s
               </button>
             )}
             <div className="min-w-0 flex-1">
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug">Origin Investigation</h2>
-              <p className="text-xs sm:text-sm text-gray-400 mt-0.5 leading-relaxed">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-snug">Origin Investigation</h2>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-gray-400 mt-0.5 leading-relaxed">
                 Geographic infrastructure triangulation and origin relay location telemetry
               </p>
             </div>
@@ -271,10 +271,10 @@ export function OriginInvestigationPage({ onNavigate }: { onNavigate?: (route: s
                     <Link className="w-3.5 h-3.5 text-white" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-mono uppercase tracking-widest text-gray-500 font-bold leading-none mb-0.5">Synced from Email Analysis</p>
-                    <p className="text-xs font-bold text-white font-mono truncate block" title={`${currentResult.case_id || 'ANALYSIS-ACTIVE'}${subjectHeader ? ` — ${subjectHeader}` : ''}`}>
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500 dark:text-gray-400 font-bold leading-none mb-0.5">Synced from Email Analysis</p>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white font-mono truncate block" title={`${currentResult.case_id || 'ANALYSIS-ACTIVE'}${subjectHeader ? ` — ${subjectHeader}` : ''}`}>
                       <span>{currentResult.case_id || 'ANALYSIS-ACTIVE'}</span>
-                      {subjectHeader && <span className="text-gray-300 font-normal"> — {subjectHeader}</span>}
+                      {subjectHeader && <span className="text-slate-600 dark:text-gray-300 font-normal"> — {subjectHeader}</span>}
                     </p>
                   </div>
                 </div>
@@ -287,18 +287,13 @@ export function OriginInvestigationPage({ onNavigate }: { onNavigate?: (route: s
                     {currentResult.alert_level || 'INFO'}
                   </span>
                   {typeof currentResult.threat_score === 'number' && (
-                    <span className="px-2.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold text-purple-300 bg-purple-500/20 border border-purple-500/30 shrink-0 whitespace-nowrap">
+                    <span className="px-2.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-500/20 border border-purple-300 dark:border-purple-500/30 shrink-0 whitespace-nowrap">
                       Score: {currentResult.threat_score}/100
                     </span>
                   )}
                   {(currentResult.origin?.sending_ip || currentResult.threat_intel?.sending_ip) && (
-                    <span className="px-2.5 py-0.5 rounded text-[10px] sm:text-[11px] font-mono font-bold text-cyan-300 bg-cyan-500/15 border border-cyan-500/25 shrink-0 truncate max-w-[170px] whitespace-nowrap">
+                    <span className="px-2.5 py-0.5 rounded text-[10px] sm:text-[11px] font-mono font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-500/15 border border-cyan-300 dark:border-cyan-500/25 shrink-0 truncate max-w-[170px] whitespace-nowrap">
                       IP: {currentResult.origin?.sending_ip || currentResult.threat_intel?.sending_ip}
-                    </span>
-                  )}
-                  {currentResult.origin?.country && (
-                    <span className="px-2.5 py-0.5 rounded text-[10px] sm:text-[11px] font-mono font-bold text-green-300 bg-green-500/15 border border-green-500/25 shrink-0 truncate max-w-[140px] whitespace-nowrap">
-                      {currentResult.origin.country}
                     </span>
                   )}
                 </div>
@@ -311,26 +306,17 @@ export function OriginInvestigationPage({ onNavigate }: { onNavigate?: (route: s
       {!currentResult ? (
         <SlideIn delay={60} direction="up">
           <div
-            className="rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-6"
-            style={{
-              background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            }}
+            className="rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-6 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-transparent shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
           >
             <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center"
-              style={{
-                background: 'rgba(59,130,246,0.1)',
-                border: '1px solid rgba(59,130,246,0.25)',
-              }}
+              className="w-16 h-16 rounded-2xl flex items-center justify-center bg-blue-500/10 border border-blue-500/25 text-blue-600 dark:text-blue-400"
             >
-              <Globe className="w-8 h-8 text-blue-400" />
+              <Globe className="w-8 h-8" />
             </div>
 
             <div className="max-w-md space-y-2">
-              <h3 className="text-lg font-bold text-white tracking-tight">No Origin Telemetry in Session</h3>
-              <p className="text-xs text-gray-400 leading-relaxed font-mono">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">No Origin Telemetry in Session</h3>
+              <p className="text-xs text-slate-600 dark:text-gray-400 leading-relaxed font-mono">
                 Upload or paste an email in Email Analyzer to inspect its physical server origin, ASN route telemetry, live GeoIP resolution, and bulletproof relay path.
               </p>
             </div>
@@ -338,7 +324,7 @@ export function OriginInvestigationPage({ onNavigate }: { onNavigate?: (route: s
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button
                 onClick={() => onNavigate?.('email-analyzer')}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 shadow-lg font-mono"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 shadow-lg font-mono cursor-pointer"
                 style={{
                   background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
                   boxShadow: '0 4px 16px rgba(59,130,246,0.3)',
@@ -349,13 +335,9 @@ export function OriginInvestigationPage({ onNavigate }: { onNavigate?: (route: s
               </button>
               <button
                 onClick={loadDemoCase}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white transition-all font-mono"
-                style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                }}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:text-black dark:text-purple-200 dark:hover:text-purple-100 bg-slate-100 hover:bg-slate-200 dark:bg-purple-900/30 hover:dark:bg-purple-900/50 border border-slate-200 dark:border-purple-500/45 hover:dark:border-purple-400/60 transition-all font-mono cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
               >
-                <Sparkles className="w-4 h-4 text-purple-400" />
+                <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                 Load Sample Demo Email
               </button>
             </div>
@@ -367,19 +349,14 @@ export function OriginInvestigationPage({ onNavigate }: { onNavigate?: (route: s
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <SlideIn delay={100} direction="left" className="lg:col-span-2">
               <div
-                className="rounded-2xl p-5"
-                style={{
-                  background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                }}
+                className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
               >
                 <div className="mb-4">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-purple-400" />
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-purple-500 dark:text-purple-400" />
                     Infrastructure Map
                   </h3>
-                  <p className="text-[11px] text-gray-500 mt-0.5">
+                  <p className="text-[11px] text-slate-500 dark:text-gray-400 mt-0.5">
                     Suspected attacker origin relay pointer with real-time live pulse telemetry
                   </p>
                 </div>
@@ -402,7 +379,7 @@ export function OriginInvestigationPage({ onNavigate }: { onNavigate?: (route: s
           </div>
 
           {/* ── Horizontal Divider Line ── */}
-          <div className="w-full h-px bg-white/10" />
+          <div className="w-full h-px bg-slate-200 dark:bg-white/10" />
 
           {/* ── Bottom Row: Origin Confidence Engine (Full Width) ── */}
           <SlideIn delay={220} direction="up">
@@ -418,34 +395,25 @@ function LocationDetailPanel({ location }: { location: InfraLocation | null }) {
   if (!location) {
     return (
       <div
-        className="rounded-2xl p-5 flex flex-col items-center justify-center text-center py-10 h-full"
-        style={{
-          background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-          border: '1px solid rgba(255,255,255,0.08)',
-        }}
+        className="rounded-2xl p-5 flex flex-col items-center justify-center text-center py-10 h-full bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/10 shadow-sm"
       >
-        <Crosshair className="w-8 h-8 text-gray-600 mb-3" />
-        <p className="text-xs text-gray-400">Select a location on the map to view infrastructure details</p>
+        <Crosshair className="w-8 h-8 text-slate-400 dark:text-gray-600 mb-3" />
+        <p className="text-xs text-slate-600 dark:text-gray-400">Select a location on the map to view infrastructure details</p>
       </div>
     );
   }
 
   return (
     <div
-      className="rounded-2xl p-5 h-full flex flex-col justify-between"
-      style={{
-        background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-      }}
+      className="rounded-2xl p-5 h-full flex flex-col justify-between bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
     >
       <div>
         <div className="mb-4">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-red-400 shrink-0" />
+          <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-red-500 dark:text-red-400 shrink-0" />
             {location.city}, {location.country}
           </h3>
-          <p className="text-xs font-semibold text-purple-300 mt-1 font-mono">{location.role}</p>
+          <p className="text-xs font-semibold text-purple-600 dark:text-purple-300 mt-1 font-mono">{location.role}</p>
         </div>
 
         <div className="space-y-1">
@@ -454,10 +422,10 @@ function LocationDetailPanel({ location }: { location: InfraLocation | null }) {
           <DetailRow label="IP Address" value={location.ip} />
           <DetailRow label="ASN" value={`${location.asn} (${location.asnOrg})`} />
           <DetailRow label="Hosting" value={location.hosting} mono={false} />
-          <div className="flex items-center justify-between gap-3 py-2.5 border-b border-white/5 last:border-0">
-            <span className="text-xs text-gray-400 font-medium">Confidence</span>
+          <div className="flex items-center justify-between gap-3 py-2.5 border-b border-slate-200/60 dark:border-white/5 last:border-0">
+            <span className="text-xs text-slate-500 dark:text-gray-400 font-medium">Confidence</span>
             <div className="flex items-center gap-2">
-              <div className="w-20 h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <div className="w-20 h-1.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full"
                   style={{
@@ -467,21 +435,21 @@ function LocationDetailPanel({ location }: { location: InfraLocation | null }) {
                   }}
                 />
               </div>
-              <span className="text-xs font-mono text-white font-bold">{location.confidence}%</span>
+              <span className="text-xs font-mono text-slate-900 dark:text-white font-bold">{location.confidence}%</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mt-4 pt-3 border-t border-white/10">
-        <h4 className="text-[10px] text-gray-500 uppercase tracking-widest font-mono font-bold mb-2.5">
+      <div className="mt-4 pt-3 border-t border-slate-200 dark:border-white/10">
+        <h4 className="text-[10px] text-slate-500 dark:text-gray-400 uppercase tracking-widest font-mono font-bold mb-2.5">
           Supporting Evidence
         </h4>
         <div className="space-y-2">
           {location.evidence.map((e, i) => (
             <div key={i} className="flex items-start gap-2">
-              <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
-              <span className="text-xs text-gray-300 leading-relaxed">{e}</span>
+              <Info className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0 mt-0.5" />
+              <span className="text-xs text-slate-700 dark:text-gray-300 leading-relaxed">{e}</span>
             </div>
           ))}
         </div>
@@ -492,10 +460,10 @@ function LocationDetailPanel({ location }: { location: InfraLocation | null }) {
 
 function DetailRow({ label, value, mono = true }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
-      <span className="text-xs text-gray-400 font-medium">{label}</span>
+    <div className="flex items-center justify-between gap-3 py-2 border-b border-slate-200/60 dark:border-white/5 last:border-0">
+      <span className="text-xs text-slate-500 dark:text-gray-400 font-medium">{label}</span>
       <div className="flex items-center gap-1.5 min-w-0">
-        <span className={`text-xs text-white ${mono ? 'font-mono' : ''} text-right break-all font-semibold`}>{value}</span>
+        <span className={`text-xs text-slate-900 dark:text-white ${mono ? 'font-mono' : ''} text-right break-all font-semibold`}>{value}</span>
         {mono && <CopyButton value={value} />}
       </div>
     </div>
@@ -545,31 +513,25 @@ function OriginConfidenceEngine({ result }: { result: EmailAnalysisResult | null
 
   return (
     <div
-      className="rounded-2xl p-6"
-      style={{
-        background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-      }}
+      className="rounded-2xl p-6 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
     >
       <div className="mb-4">
-        <h3 className="text-sm font-bold text-white flex items-center gap-2">
-          <Crosshair className="w-4 h-4 text-cyan-400" />
+        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <Crosshair className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
           Origin Confidence Engine
         </h3>
-        <p className="text-[11px] text-gray-500 mt-0.5">Probable origin based on supporting telemetry signals</p>
+        <p className="text-[11px] text-slate-500 dark:text-gray-400 mt-0.5">Probable origin based on supporting telemetry signals</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-4">
         <div
-          className="rounded-xl p-4 lg:col-span-1 flex flex-col justify-center"
-          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+          className="rounded-xl p-4 lg:col-span-1 flex flex-col justify-center bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]"
         >
-          <span className="text-[10px] text-gray-500 uppercase tracking-widest font-mono font-bold">Probable Source Infrastructure</span>
-          <p className="text-sm text-white font-bold mt-1 font-mono">{probableSource}</p>
+          <span className="text-[10px] text-slate-500 dark:text-gray-400 uppercase tracking-widest font-mono font-bold">Probable Source Infrastructure</span>
+          <p className="text-sm text-slate-900 dark:text-white font-bold mt-1 font-mono">{probableSource}</p>
           <div className="flex items-center gap-2 mt-4">
-            <span className="text-xs text-gray-400 font-medium">Confidence</span>
-            <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+            <span className="text-xs text-slate-500 dark:text-gray-400 font-medium">Confidence</span>
+            <div className="flex-1 h-2 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full"
                 style={{
@@ -579,7 +541,7 @@ function OriginConfidenceEngine({ result }: { result: EmailAnalysisResult | null
                 }}
               />
             </div>
-            <span className="text-xs font-bold font-mono text-cyan-400">{confidence}%</span>
+            <span className="text-xs font-bold font-mono text-cyan-600 dark:text-cyan-400">{confidence}%</span>
           </div>
         </div>
 
@@ -587,26 +549,24 @@ function OriginConfidenceEngine({ result }: { result: EmailAnalysisResult | null
           {signals.map((s) => (
             <div
               key={s.signal}
-              className="rounded-xl p-3"
-              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+              className="rounded-xl p-3 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.05]"
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-white font-semibold">{s.signal}</span>
-                <span className="text-xs font-mono font-bold text-purple-400">+{s.weight}%</span>
+                <span className="text-xs text-slate-900 dark:text-white font-semibold">{s.signal}</span>
+                <span className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400">+{s.weight}%</span>
               </div>
-              <p className="text-[11px] text-gray-400 leading-relaxed">{s.detail}</p>
+              <p className="text-[11px] text-slate-600 dark:text-gray-400 leading-relaxed">{s.detail}</p>
             </div>
           ))}
         </div>
       </div>
 
       <div
-        className="flex items-start gap-2.5 rounded-xl p-3.5"
-        style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}
+        className="flex items-start gap-2.5 rounded-xl p-3.5 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25"
       >
-        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-        <p className="text-[11px] text-gray-300 leading-relaxed">
-          <span className="text-white font-bold">Geographic location is an inference.</span> IP geolocation
+        <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" />
+        <p className="text-[11px] text-slate-700 dark:text-gray-300 leading-relaxed">
+          <span className="text-slate-900 dark:text-white font-bold">Geographic location is an inference.</span> IP geolocation
           reflects hosting infrastructure location, not physical attacker location. VPNs &amp; proxies mask true origin.
         </p>
       </div>
@@ -650,22 +610,21 @@ export function AttackGraphPage({ onNavigate }: { onNavigate?: (route: string) =
                 </button>
               )}
               <div className="min-w-0 flex-1">
-                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug">Attack Graph</h2>
-                <p className="text-xs sm:text-sm text-gray-400 mt-0.5 leading-relaxed">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-snug">Attack Graph</h2>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-gray-400 mt-0.5 leading-relaxed">
                   Interactive entity correlation network — click any node to inspect details
                 </p>
               </div>
             </div>
             <div className="hidden sm:flex items-center gap-2 shrink-0 self-start sm:self-center">
               <div
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
-                style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)' }}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-500/30 bg-purple-50 dark:bg-purple-950/20"
               >
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500" />
                 </span>
-                <span className="text-xs font-semibold text-purple-300 font-mono">LIVE GRAPH ACTIVE</span>
+                <span className="text-xs font-semibold text-purple-700 dark:text-purple-300 font-mono">LIVE GRAPH ACTIVE</span>
               </div>
             </div>
           </div>
@@ -689,10 +648,10 @@ export function AttackGraphPage({ onNavigate }: { onNavigate?: (route: string) =
                     <Link className="w-3.5 h-3.5 text-white" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-mono uppercase tracking-widest text-gray-500 font-bold leading-none mb-0.5">Synced from Email Analysis</p>
-                    <p className="text-xs font-bold text-white font-mono truncate" title={`${currentResult.case_id || 'ANALYSIS-ACTIVE'}${subjectHeader ? ` — ${subjectHeader}` : ''}`}>
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500 dark:text-gray-400 font-bold leading-none mb-0.5">Synced from Email Analysis</p>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white font-mono truncate" title={`${currentResult.case_id || 'ANALYSIS-ACTIVE'}${subjectHeader ? ` — ${subjectHeader}` : ''}`}>
                       <span>{currentResult.case_id || 'ANALYSIS-ACTIVE'}</span>
-                      {subjectHeader && <span className="text-gray-300 font-normal"> — {subjectHeader}</span>}
+                      {subjectHeader && <span className="text-slate-600 dark:text-gray-300 font-normal"> — {subjectHeader}</span>}
                     </p>
                   </div>
                 </div>
@@ -705,7 +664,7 @@ export function AttackGraphPage({ onNavigate }: { onNavigate?: (route: string) =
                     {currentResult.alert_level || 'INFO'}
                   </span>
                   {typeof currentResult.threat_score === 'number' && (
-                    <span className="px-2.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold text-purple-300 bg-purple-500/20 border border-purple-500/30 shrink-0 whitespace-nowrap">
+                    <span className="px-2.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-500/20 border border-purple-300 dark:border-purple-500/30 shrink-0 whitespace-nowrap">
                       Score: {currentResult.threat_score}/100
                     </span>
                   )}
@@ -719,26 +678,17 @@ export function AttackGraphPage({ onNavigate }: { onNavigate?: (route: string) =
       {!currentResult ? (
         <SlideIn delay={60} direction="up">
           <div
-            className="rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-6"
-            style={{
-              background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            }}
+            className="rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-6 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-transparent shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
           >
             <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center"
-              style={{
-                background: 'rgba(59,130,246,0.1)',
-                border: '1px solid rgba(59,130,246,0.25)',
-              }}
+              className="w-16 h-16 rounded-2xl flex items-center justify-center bg-blue-500/10 border border-blue-500/25 text-blue-600 dark:text-blue-400"
             >
-              <Network className="w-8 h-8 text-blue-400" />
+              <Network className="w-8 h-8" />
             </div>
 
             <div className="max-w-md space-y-2">
-              <h3 className="text-lg font-bold text-white tracking-tight">No Attack Graph in Session</h3>
-              <p className="text-xs text-gray-400 leading-relaxed font-mono">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">No Attack Graph in Session</h3>
+              <p className="text-xs text-slate-600 dark:text-gray-400 leading-relaxed font-mono">
                 Upload or paste an email in Email Analyzer to generate an interactive multi-node attack topology mapping senders, infrastructure, hashes, and associated campaign clusters.
               </p>
             </div>
@@ -746,7 +696,7 @@ export function AttackGraphPage({ onNavigate }: { onNavigate?: (route: string) =
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button
                 onClick={() => onNavigate?.('email-analyzer')}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 shadow-lg font-mono"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 shadow-lg font-mono cursor-pointer"
                 style={{
                   background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
                   boxShadow: '0 4px 16px rgba(59,130,246,0.3)',
@@ -757,13 +707,9 @@ export function AttackGraphPage({ onNavigate }: { onNavigate?: (route: string) =
               </button>
               <button
                 onClick={loadDemoCase}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-gray-300 hover:text-white transition-all font-mono"
-                style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                }}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:text-black dark:text-purple-200 dark:hover:text-purple-100 bg-slate-100 hover:bg-slate-200 dark:bg-purple-900/30 hover:dark:bg-purple-900/50 border border-slate-200 dark:border-purple-500/45 hover:dark:border-purple-400/60 transition-all font-mono cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
               >
-                <Sparkles className="w-4 h-4 text-purple-400" />
+                <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                 Load Sample Demo Email
               </button>
             </div>

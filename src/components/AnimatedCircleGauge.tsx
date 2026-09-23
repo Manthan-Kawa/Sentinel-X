@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTheme } from '@/context/ThemeContext';
 
 interface AnimatedCircleGaugeProps {
   score: number;
@@ -17,6 +18,7 @@ export function AnimatedCircleGauge({
   label = 'CRITICAL RISK',
   gradientColors = ['#f87171', '#ef4444', '#b91c1c'],
 }: AnimatedCircleGaugeProps) {
+  const { isDark } = useTheme();
   const [currentScore, setCurrentScore] = useState(0);
   const [fillOffset, setFillOffset] = useState(264); // Start at 0% (full offset = hidden)
   const radius = 42;
@@ -57,7 +59,7 @@ export function AnimatedCircleGauge({
   return (
     <div className="flex flex-col items-center justify-center">
       <div className="relative" style={{ width: size, height: size }}>
-        <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+        <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90" shapeRendering="geometricPrecision">
           <defs>
             {/* Rich Red/Crimson gradient for risk score */}
             <linearGradient id="riskRedGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -66,7 +68,7 @@ export function AnimatedCircleGauge({
               <stop offset="100%" stopColor={gradientColors[2]} />
             </linearGradient>
 
-            {/* Pulsating red neon glow filter */}
+            {/* Pulsating red neon glow filter (dark mode only) */}
             <filter id="riskGlow" x="-20%" y="-20%" width="140%" height="140%">
               <feGaussianBlur stdDeviation="3.5" result="blur" />
               <feMerge>
@@ -82,8 +84,9 @@ export function AnimatedCircleGauge({
             cy="50"
             r={radius}
             fill="none"
-            stroke="rgba(255,255,255,0.06)"
+            stroke={isDark ? "rgba(255,255,255,0.06)" : "#e2e8f0"}
             strokeWidth={strokeWidth}
+            shapeRendering="geometricPrecision"
           />
 
           {/* Animated fill-up circle with hardware-accelerated cubic-bezier transition */}
@@ -97,7 +100,8 @@ export function AnimatedCircleGauge({
             strokeDasharray={circumference}
             strokeDashoffset={fillOffset}
             strokeLinecap="round"
-            filter="url(#riskGlow)"
+            filter={isDark ? "url(#riskGlow)" : undefined}
+            shapeRendering="geometricPrecision"
             style={{
               transition: 'stroke-dashoffset 1.35s cubic-bezier(0.34, 1.25, 0.64, 1)',
             }}
@@ -106,20 +110,20 @@ export function AnimatedCircleGauge({
 
         {/* Center counter text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-3xl font-black text-white tracking-tight drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]">
+          <span className={`text-3xl font-black tracking-tight ${isDark ? 'text-white drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'text-black'}`}>
             {Math.round(currentScore)}
           </span>
-          <span className="text-[10px] text-gray-500 font-mono mt-0.5">/ {max}</span>
+          <span className={`text-[10px] font-mono mt-0.5 ${isDark ? 'text-gray-500' : 'text-slate-600 font-semibold'}`}>/ {max}</span>
         </div>
       </div>
 
       {label && (
         <span
-          className="mt-3 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider text-red-400"
+          className="mt-3 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider text-red-700 dark:text-red-400"
           style={{
-            background: 'rgba(239,68,68,0.15)',
-            border: '1px solid rgba(239,68,68,0.3)',
-            boxShadow: '0 0 12px rgba(239,68,68,0.15)',
+            background: isDark ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.1)',
+            border: isDark ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(239,68,68,0.25)',
+            boxShadow: isDark ? '0 0 12px rgba(239,68,68,0.15)' : 'none',
           }}
         >
           {label}

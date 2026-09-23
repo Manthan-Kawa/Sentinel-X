@@ -1,8 +1,9 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
 import {
   Upload,
   FileText,
   Mail,
+  MailSearch,
   ShieldAlert,
   ShieldCheck,
   ChevronRight,
@@ -153,6 +154,35 @@ export function EmailAnalyzerPage({ onNavigate }: { onNavigate?: (route: string)
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [tabIndicatorStyle, setTabIndicatorStyle] = useState<{
+    left: number;
+    width: number;
+    opacity: number;
+  }>({ left: 0, width: 0, opacity: 0 });
+
+  useLayoutEffect(() => {
+    const updateIndicator = () => {
+      const currentTabEl = tabRefs.current[activeTab];
+      if (currentTabEl) {
+        setTabIndicatorStyle({
+          left: currentTabEl.offsetLeft,
+          width: currentTabEl.offsetWidth,
+          opacity: 1,
+        });
+      } else {
+        setTabIndicatorStyle((prev) => ({ ...prev, opacity: 0 }));
+      }
+    };
+    updateIndicator();
+    const rafId = requestAnimationFrame(updateIndicator);
+    window.addEventListener('resize', updateIndicator);
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', updateIndicator);
+    };
+  }, [activeTab]);
+
   // Keep state synced with currentResult from AnalysisContext across navigation
   useEffect(() => {
     if (currentResult && !userRequestedIdle) {
@@ -270,8 +300,8 @@ export function EmailAnalyzerPage({ onNavigate }: { onNavigate?: (route: string)
       {/* ── Page Header ── */}
       <SlideIn delay={0} direction="down">
         <div>
-          <h2 className="text-2xl font-black text-white tracking-tight">Email Analyzer</h2>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Email Analyzer</h2>
+          <p className="text-sm text-slate-600 dark:text-gray-400 mt-0.5">
             Upload, paste, or load a demo email to begin forensic analysis
           </p>
         </div>
@@ -281,12 +311,7 @@ export function EmailAnalyzerPage({ onNavigate }: { onNavigate?: (route: string)
       {state !== 'idle' && state !== 'error' && (
         <SlideIn delay={100} direction="down">
           <div
-            className="rounded-2xl p-4"
-            style={{
-              background: 'linear-gradient(145deg, #0a0d15, #080b14)',
-              border: '1px solid rgba(255,255,255,0.07)',
-              boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
-            }}
+            className="rounded-2xl p-4 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/[0.07] shadow-sm dark:shadow-[0_4px_24px_rgba(0,0,0,0.5)]"
           >
             <div className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-none no-scrollbar touch-scroll pb-1">
               {ANALYSIS_STAGES.map((stage, i) => {
@@ -296,21 +321,18 @@ export function EmailAnalyzerPage({ onNavigate }: { onNavigate?: (route: string)
                   <div key={stage} className="flex items-center shrink-0">
                     <div
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-300 ${
-                        isActive ? 'text-purple-300' : isDone ? 'text-green-400' : 'text-gray-500'
-                      }`}
-                      style={
                         isActive
-                          ? { background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.4)', boxShadow: '0 0 12px rgba(139,92,246,0.3)' }
+                          ? 'text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-500/20 border border-purple-300 dark:border-purple-500/40 shadow-sm dark:shadow-[0_0_12px_rgba(139,92,246,0.3)]'
                           : isDone
-                          ? { background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }
-                          : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }
-                      }
+                          ? 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20'
+                          : 'text-slate-500 dark:text-gray-500 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.05]'
+                      }`}
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-purple-400 animate-pulse' : isDone ? 'bg-green-400' : 'bg-gray-600'}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-purple-600 dark:bg-purple-400 animate-pulse' : isDone ? 'bg-green-600 dark:bg-green-400' : 'bg-slate-300 dark:bg-gray-600'}`} />
                       {stage}
                     </div>
                     {i < ANALYSIS_STAGES.length - 1 && (
-                      <ChevronRight className={`w-3.5 h-3.5 mx-1 ${isDone ? 'text-green-500' : 'text-gray-700'}`} />
+                      <ChevronRight className={`w-3.5 h-3.5 mx-1 ${isDone ? 'text-green-600 dark:text-green-500' : 'text-slate-300 dark:text-gray-700'}`} />
                     )}
                   </div>
                 );
@@ -385,18 +407,11 @@ function IdleView({
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className="relative rounded-2xl py-8 sm:py-14 px-4 sm:px-6 text-center cursor-pointer transition-all duration-300 group"
-          style={{
-            background: dragOver
-              ? 'linear-gradient(145deg, rgba(139,92,246,0.1), rgba(124,58,237,0.05))'
-              : 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-            border: dragOver
-              ? '2px dashed rgba(139,92,246,0.7)'
-              : '1.5px dashed rgba(255,255,255,0.1)',
-            boxShadow: dragOver
-              ? '0 0 30px rgba(139,92,246,0.2)'
-              : '0 8px 32px rgba(0,0,0,0.4)',
-          }}
+          className={`relative rounded-2xl py-8 sm:py-14 px-4 sm:px-6 text-center cursor-pointer transition-all duration-300 group border-2 border-dashed ${
+            dragOver
+              ? 'bg-purple-500/10 border-purple-500 shadow-[0_0_30px_rgba(139,92,246,0.2)]'
+              : 'bg-white dark:bg-[#090b12] border-slate-300 dark:border-white/10 shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:border-purple-400 dark:hover:border-purple-500/40'
+          }`}
         >
           <input
             ref={fileInputRef}
@@ -413,10 +428,10 @@ function IdleView({
               boxShadow: '0 0 20px rgba(124,58,237,0.25)',
             }}
           >
-            <Upload className="w-6 h-6 sm:w-7 sm:h-7 text-purple-400" />
+            <Upload className="w-6 h-6 sm:w-7 sm:h-7 text-purple-600 dark:text-purple-400" />
           </div>
-          <h3 className="text-sm sm:text-base font-bold text-white mb-1">Drag & drop .EML file here</h3>
-          <p className="text-xs text-gray-500 font-medium">or click to browse — or paste raw email below</p>
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1">Drag & drop .EML file here</h3>
+          <p className="text-xs text-slate-600 dark:text-gray-500 font-medium">or click to browse — or paste raw email below</p>
         </div>
       </SlideIn>
 
@@ -425,27 +440,18 @@ function IdleView({
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <button
             onClick={onDemo}
-            className="flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl text-xs font-bold text-purple-200 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
-            style={{
-              background: 'linear-gradient(135deg, rgba(124,58,237,0.3) 0%, rgba(91,33,182,0.2) 100%)',
-              border: '1px solid rgba(139,92,246,0.45)',
-              boxShadow: '0 4px 20px rgba(124,58,237,0.2)',
-            }}
+            className="flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl text-xs font-bold text-purple-700 dark:text-purple-200 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-500/45 transition-all duration-300 hover:scale-[1.02] shadow-sm hover:shadow-md active:scale-[0.98] cursor-pointer"
           >
-            <Sparkles className="w-4 h-4 text-purple-400" />
+            <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
             Load Demo BEC Email
           </button>
 
           <button
             onClick={onAnalyzePasted}
             disabled={!pastedEmail.trim()}
-            className="flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl text-xs font-bold text-gray-300 transition-all duration-300 hover:text-white hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}
+            className="flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl text-xs font-bold text-slate-700 dark:text-gray-300 hover:text-black dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-white/5 border border-slate-200 dark:border-white/10 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
-            <Zap className="w-4 h-4 text-gray-400" />
+            <Zap className="w-4 h-4 text-slate-500 dark:text-gray-400" />
             Analyze Pasted Email
           </button>
         </div>
@@ -454,24 +460,18 @@ function IdleView({
       {/* ── Paste Raw Email Section ── */}
       <SlideIn delay={260} direction="up">
         <div className="space-y-2">
-          <p className="text-[11px] font-mono text-gray-500 uppercase tracking-widest font-semibold">
+          <p className="text-[11px] font-mono text-slate-600 dark:text-gray-500 uppercase tracking-widest font-semibold">
             PASTE RAW EMAIL
           </p>
           <div
-            className="rounded-2xl p-1 overflow-hidden"
-            style={{
-              background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            }}
+            className="rounded-2xl p-1 overflow-hidden bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
           >
             <textarea
               value={pastedEmail}
               onChange={(e) => setPastedEmail(e.target.value)}
               placeholder="Paste raw email headers and body here..."
               rows={8}
-              className="w-full bg-transparent p-4 text-xs font-mono text-gray-300 placeholder-gray-600 focus:outline-none resize-none scrollbar-thin"
-              style={{ fontFamily: "'JetBrains Mono', monospace" }}
+              className="w-full bg-transparent p-4 text-xs text-slate-900 dark:text-gray-200 placeholder-slate-400 dark:placeholder-gray-600 focus:outline-none resize-none scrollbar-thin"
             />
           </div>
         </div>
@@ -489,12 +489,7 @@ function AnalyzingView({ step }: { step: number }) {
 
   return (
     <div
-      className="rounded-2xl p-8 flex flex-col items-center justify-center py-12 text-center"
-      style={{
-        background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-      }}
+      className="rounded-2xl p-8 flex flex-col items-center justify-center py-12 text-center bg-white dark:bg-[#090b12] border border-slate-200 dark:border-transparent shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
     >
       <div className="mb-6">
         <GradientLiveProgressRing
@@ -503,8 +498,8 @@ function AnalyzingView({ step }: { step: number }) {
         />
       </div>
 
-      <h3 className="text-lg font-bold text-white mb-1">{current.label}</h3>
-      <p className="text-xs text-gray-400 mb-8 max-w-md">{current.detail}</p>
+      <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{current.label}</h3>
+      <p className="text-xs text-slate-600 dark:text-gray-400 mb-8 max-w-md">{current.detail}</p>
 
       <div className="w-full max-w-md space-y-2">
         {ANALYSIS_STEPS.map((s, i) => {
@@ -524,14 +519,14 @@ function AnalyzingView({ step }: { step: number }) {
                 style={{ background: isDone ? 'rgba(34,197,94,0.2)' : isActive ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.05)' }}
               >
                 {isDone ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500 dark:text-green-400" />
                 ) : isActive ? (
-                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" />
+                  <div className="w-2 h-2 bg-purple-500 dark:bg-purple-400 rounded-full animate-pulse" />
                 ) : (
-                  <div className="w-2 h-2 bg-gray-600 rounded-full" />
+                  <div className="w-2 h-2 bg-gray-400 dark:bg-gray-600 rounded-full" />
                 )}
               </div>
-              <span className={`text-xs ${isDone ? 'text-gray-400' : isActive ? 'text-white font-semibold' : 'text-gray-600'}`}>
+              <span className={`text-xs ${isDone ? 'text-slate-500 dark:text-gray-400' : isActive ? 'text-slate-900 dark:text-white font-semibold' : 'text-slate-400 dark:text-gray-600'}`}>
                 {s.stage} — {s.label}
               </span>
             </div>
@@ -539,7 +534,7 @@ function AnalyzingView({ step }: { step: number }) {
         })}
       </div>
 
-      <p className="text-[11px] text-gray-600 mt-6 font-mono">Calling Claude AI… this may take 10-20 seconds</p>
+      <p className="text-[11px] text-slate-500 dark:text-gray-600 mt-6 font-mono">Calling Claude AI… this may take 10-20 seconds</p>
     </div>
   );
 }
@@ -555,23 +550,18 @@ function ErrorView({ error, onRetry }: { error: string; onRetry: () => void; onS
 
   return (
     <div
-      className="rounded-2xl p-8 flex flex-col items-center text-center gap-5"
-      style={{
-        background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-        border: '1px solid rgba(239,68,68,0.2)',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-      }}
+      className="rounded-2xl p-8 flex flex-col items-center text-center gap-5 bg-white dark:bg-[#090b12] border border-red-200 dark:border-red-500/20 shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
     >
       <div
         className="w-16 h-16 rounded-2xl flex items-center justify-center"
         style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)' }}
       >
-        <ShieldAlert className="w-8 h-8 text-red-400" />
+        <ShieldAlert className="w-8 h-8 text-red-500 dark:text-red-400" />
       </div>
 
       <div>
-        <h3 className="text-base font-bold text-white mb-2">Analysis Failed</h3>
-        <p className="text-xs text-gray-400 max-w-md leading-relaxed font-mono whitespace-pre-wrap">{displayMsg}</p>
+        <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Analysis Failed</h3>
+        <p className="text-xs text-slate-600 dark:text-gray-400 max-w-md leading-relaxed font-mono whitespace-pre-wrap">{displayMsg}</p>
       </div>
 
       <div className="flex items-center gap-3">
@@ -618,19 +608,13 @@ function ResultsView({
       {/* ── Risk Summary Banner ── */}
       <SlideIn delay={80} direction="up">
         <div
-          className="rounded-2xl overflow-hidden"
-          style={{
-            background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-            border: `1px solid ${ac.border}`,
-            boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 40px ${ac.glow}`,
-          }}
+          className="rounded-2xl overflow-hidden bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
         >
           <div className="grid grid-cols-1 lg:grid-cols-4">
 
             {/* Score Gauge */}
             <div
-              className="lg:col-span-1 p-6 flex flex-col items-center justify-center border-b lg:border-b-0 lg:border-r"
-              style={{ background: `linear-gradient(135deg, ${ac.bg} 0%, transparent 100%)`, borderColor: ac.border }}
+              className="lg:col-span-1 p-6 flex flex-col items-center justify-center border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-transparent"
             >
               <AnimatedCircleGauge
                 score={result.threat_score}
@@ -647,41 +631,41 @@ function ResultsView({
                   style={{ background: ac.bg, border: `1px solid ${ac.border}` }}>
                   {result.alert_level}
                 </span>
-                <span className="px-2.5 py-0.5 rounded text-[11px] font-bold text-orange-400 bg-orange-500/20 border border-orange-500/30">
+                <span className="px-2.5 py-0.5 rounded text-[11px] font-bold text-orange-700 dark:text-orange-400 bg-orange-500/10 dark:bg-orange-500/20 border border-orange-500/30">
                   {result.verdict}
                 </span>
-                <span className="px-2.5 py-0.5 rounded text-[11px] font-bold text-purple-300 bg-purple-500/20 border border-purple-500/30">
+                <span className="px-2.5 py-0.5 rounded text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-500/10 dark:bg-purple-500/20 border border-purple-500/30">
                   Confidence: {result.confidence}%
                 </span>
               </div>
 
               {/* Case / Campaign IDs */}
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-[11px] font-mono text-gray-500 flex items-center gap-1">
+                <span className="text-[11px] font-mono text-slate-500 dark:text-gray-500 flex items-center gap-1">
                   <Lock className="w-3 h-3" /> {result.case_id}
                 </span>
-                <span className="text-[11px] font-mono text-gray-500 flex items-center gap-1">
+                <span className="text-[11px] font-mono text-slate-500 dark:text-gray-500 flex items-center gap-1">
                   <Target className="w-3 h-3" /> {result.campaign_id}
                 </span>
               </div>
 
               {/* Summary */}
-              <p className="text-xs text-gray-300 leading-relaxed">{result.summary}</p>
+              <p className="text-xs text-slate-700 dark:text-gray-300 leading-relaxed font-sans">{result.summary}</p>
 
               {/* Threat intel quick stats */}
               <div className="flex flex-wrap items-center gap-4 text-xs pt-1">
                 {result.threat_intel?.sending_ip && (
-                  <span className="flex items-center gap-1.5 text-gray-500">
+                  <span className="flex items-center gap-1.5 text-slate-500 dark:text-gray-500 font-mono">
                     <Server className="w-3.5 h-3.5" /> {result.threat_intel.sending_ip}
                   </span>
                 )}
                 {result.threat_intel?.domain && (
-                  <span className="flex items-center gap-1.5 text-gray-500">
+                  <span className="flex items-center gap-1.5 text-slate-500 dark:text-gray-500 font-mono">
                     <MapPin className="w-3.5 h-3.5" /> {result.threat_intel.domain}
                   </span>
                 )}
                 {fileName && (
-                  <span className="flex items-center gap-1.5 text-gray-500">
+                  <span className="flex items-center gap-1.5 text-slate-500 dark:text-gray-500">
                     <FileText className="w-3.5 h-3.5" /> {fileName}
                   </span>
                 )}
@@ -695,11 +679,7 @@ function ResultsView({
                   return (
                     <span
                       key={k}
-                      className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${isPass ? 'text-green-400' : 'text-red-400'}`}
-                      style={{
-                        background: isPass ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-                        border: `1px solid ${isPass ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
-                      }}
+                      className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${isPass ? 'text-green-700 dark:text-green-400 bg-green-500/10 border border-green-500/25' : 'text-red-700 dark:text-red-400 bg-red-500/10 border border-red-500/25'}`}
                     >
                       {k.toUpperCase()} {val}
                     </span>
@@ -710,22 +690,24 @@ function ResultsView({
 
             {/* Actions */}
             <div
-              className="lg:col-span-1 p-6 flex flex-col gap-2.5 justify-center border-t lg:border-t-0 lg:border-l"
-              style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+              className="lg:col-span-1 p-6 flex flex-col gap-2.5 justify-center border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-white/10"
             >
               <button
                 onClick={() => onNavigate?.('reports')}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-white transition-all duration-200 hover:scale-[1.02] shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', boxShadow: '0 4px 16px rgba(124,58,237,0.3)' }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-white transition-transform duration-150 ease-out active:scale-95 shadow-xl cursor-pointer"
+                style={{
+                  background: 'linear-gradient(135deg, #7c3aed 0%, #9333ea 50%, #6366f1 100%)',
+                  border: '1px solid rgba(192, 132, 252, 0.6)',
+                  boxShadow: '0 4px 20px rgba(147, 51, 234, 0.4)',
+                }}
               >
-                <FileText className="w-4 h-4" />
+                <Printer className="w-4 h-4 text-purple-200" />
                 View Report
               </button>
               {onNavigate && (
                 <button
                   onClick={() => onNavigate('header-forensics')}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-gray-300 hover:text-white transition-all duration-200"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-slate-700 dark:text-gray-300 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 transition-transform duration-150 ease-out active:scale-95 cursor-pointer"
                 >
                   <ArrowRight className="w-4 h-4" />
                   Header Forensics
@@ -733,10 +715,14 @@ function ResultsView({
               )}
               <button
                 onClick={onReset}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-gray-400 hover:text-white transition-all duration-200"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold text-white transition-transform duration-150 ease-out active:scale-95 shadow-md cursor-pointer"
+                style={{
+                  background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
+                  boxShadow: '0 4px 16px rgba(59, 130, 246, 0.3)',
+                  border: '1px solid rgba(99, 102, 241, 0.4)',
+                }}
               >
-                <ShieldCheck className="w-4 h-4" />
+                <MailSearch className="w-4 h-4" />
                 New Analysis
               </button>
             </div>
@@ -748,32 +734,26 @@ function ResultsView({
       {(result.risk_factors || []).length > 0 && (
         <SlideIn delay={160} direction="up">
           <div
-            className="rounded-2xl p-5"
-            style={{
-              background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            }}
+            className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
           >
             <div className="mb-4">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-orange-400" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-orange-500 dark:text-orange-400" />
                 Risk Factors
               </h3>
-              <p className="text-[11px] text-gray-500 mt-0.5">Key indicators contributing to the risk score</p>
+              <p className="text-[11px] text-slate-500 dark:text-gray-500 mt-0.5">Key indicators contributing to the risk score</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {(result.risk_factors || []).map((rf, i) => (
                 <div
                   key={i}
-                  className="rounded-xl p-3.5 transition-all duration-200 hover:scale-[1.01]"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                  className="rounded-xl p-3.5 transition-all duration-200 hover:scale-[1.01] bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]"
                 >
                   <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <span className="text-xs font-bold text-white">{rf.label}</span>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">{rf.label}</span>
                     <span className={SEVERITY_BADGE[rf.severity] || 'badge-info'}>{rf.severity}</span>
                   </div>
-                  <p className="text-[11px] text-gray-400 leading-relaxed">{rf.detail}</p>
+                  <p className="text-[11px] text-slate-600 dark:text-gray-400 leading-relaxed">{rf.detail}</p>
                 </div>
               ))}
             </div>
@@ -785,42 +765,35 @@ function ResultsView({
       {(result.recommended_actions || []).length > 0 && (
         <SlideIn delay={220} direction="up">
           <div
-            className="rounded-2xl p-5"
-            style={{
-              background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            }}
+            className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
           >
             <div className="mb-4">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Zap className="w-4 h-4 text-purple-400" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Zap className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                 Recommended Actions
               </h3>
-              <p className="text-[11px] text-gray-500 mt-0.5">Prioritized response actions based on threat analysis</p>
+              <p className="text-[11px] text-slate-500 dark:text-gray-500 mt-0.5">Prioritized response actions based on threat analysis</p>
             </div>
             <div className="space-y-2">
               {(result.recommended_actions || []).map((a, i) => {
                 const colors: Record<string, { bg: string; border: string; text: string }> = {
-                  immediate: { bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.25)', text: 'text-red-400' },
-                  high:      { bg: 'rgba(249,115,22,0.08)', border: 'rgba(249,115,22,0.25)', text: 'text-orange-400' },
-                  medium:    { bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)', text: 'text-amber-400' },
-                  low:       { bg: 'rgba(107,114,128,0.08)', border: 'rgba(107,114,128,0.2)', text: 'text-gray-400' },
+                  immediate: { bg: 'bg-red-50 dark:bg-red-500/[0.08]', border: 'border-red-200 dark:border-red-500/30', text: 'text-red-700 dark:text-red-400' },
+                  high:      { bg: 'bg-orange-50 dark:bg-orange-500/[0.08]', border: 'border-orange-200 dark:border-orange-500/30', text: 'text-orange-700 dark:text-orange-400' },
+                  medium:    { bg: 'bg-amber-50 dark:bg-amber-500/[0.08]', border: 'border-amber-200 dark:border-amber-500/30', text: 'text-amber-700 dark:text-amber-400' },
+                  low:       { bg: 'bg-slate-50 dark:bg-gray-500/[0.08]', border: 'border-slate-200 dark:border-gray-500/20', text: 'text-slate-700 dark:text-gray-400' },
                 };
                 const c = colors[a.priority] ?? colors.low;
                 return (
                   <div
                     key={i}
-                    className="rounded-xl p-3.5 flex items-start gap-3"
-                    style={{ background: c.bg, border: `1px solid ${c.border}` }}
+                    className={`rounded-xl p-3.5 flex items-start gap-3 ${c.bg} border ${c.border}`}
                   >
-                    <span className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded mt-0.5 shrink-0 ${c.text}`}
-                      style={{ background: 'rgba(0,0,0,0.3)' }}>
+                    <span className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded mt-0.5 shrink-0 ${c.text} bg-white dark:bg-black/30 border border-current/20 shadow-xs`}>
                       {a.priority}
                     </span>
                     <div>
-                      <p className="text-xs font-bold text-white">{a.action}</p>
-                      <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">{a.detail}</p>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">{a.action}</p>
+                      <p className="text-[11px] text-slate-600 dark:text-gray-400 mt-0.5 leading-relaxed">{a.detail}</p>
                     </div>
                   </div>
                 );
@@ -834,19 +807,14 @@ function ResultsView({
       {(result.origin?.relay_hops || []).length > 0 && (
         <SlideIn delay={280} direction="up">
           <div
-            className="rounded-2xl p-5"
-            style={{
-              background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            }}
+            className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
           >
             <div className="mb-4">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Share2 className="w-4 h-4 text-teal-400" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Share2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                 Origin &amp; SMTP Relay Chain
               </h3>
-              <p className="text-[11px] text-gray-500 mt-0.5">
+              <p className="text-[11px] text-slate-500 dark:text-gray-500 mt-0.5 font-mono">
                 {result.origin?.hosting} · {result.origin?.country} · {result.origin?.asn}
               </p>
             </div>
@@ -854,22 +822,20 @@ function ResultsView({
               {(result.origin?.relay_hops || []).map((hop) => (
                 <div
                   key={hop.hop}
-                  className="flex items-start gap-3 rounded-xl px-4 py-3"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+                  className="flex items-start gap-3 rounded-xl px-4 py-3 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.05]"
                 >
                   <span
-                    className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-mono font-bold text-teal-400 shrink-0"
-                    style={{ background: 'rgba(20,184,166,0.1)', border: '1px solid rgba(20,184,166,0.2)' }}
+                    className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-mono font-bold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10 border border-teal-200 dark:border-teal-500/20 shrink-0"
                   >
                     {hop.hop}
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-mono text-white font-semibold">{hop.ip}</span>
-                      {hop.hostname && <span className="text-[11px] text-gray-500 font-mono">{hop.hostname}</span>}
-                      <span className="text-[10px] text-gray-600">{hop.country}</span>
+                      <span className="text-xs font-mono text-slate-900 dark:text-white font-semibold">{hop.ip}</span>
+                      {hop.hostname && <span className="text-[11px] text-slate-500 dark:text-gray-500 font-mono">{hop.hostname}</span>}
+                      <span className="text-[10px] text-slate-500 dark:text-gray-600">{hop.country}</span>
                     </div>
-                    <p className="text-[11px] text-gray-400 mt-0.5">{hop.note}</p>
+                    <p className="text-[11px] text-slate-600 dark:text-gray-400 mt-0.5 font-sans">{hop.note}</p>
                   </div>
                 </div>
               ))}
@@ -882,30 +848,24 @@ function ResultsView({
       {(result.evidence || []).length > 0 && (
         <SlideIn delay={340} direction="up">
           <div
-            className="rounded-2xl p-5"
-            style={{
-              background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            }}
+            className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
           >
             <div className="mb-4">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <FileSearch className="w-4 h-4 text-blue-400" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <FileSearch className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 Evidence Items
               </h3>
-              <p className="text-[11px] text-gray-500 mt-0.5">Forensic artifacts extracted from this email</p>
+              <p className="text-[11px] text-slate-500 dark:text-gray-500 mt-0.5">Forensic artifacts extracted from this email</p>
             </div>
             <div className="space-y-2">
               {(result.evidence || []).map((ev) => (
                 <div
                   key={ev.id}
-                  className="rounded-xl px-4 py-2.5 flex items-start gap-3"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+                  className="rounded-xl px-4 py-2.5 flex items-start gap-3 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.05]"
                 >
-                  <span className="text-[10px] font-mono font-bold text-blue-400 uppercase w-24 shrink-0 mt-0.5">{ev.type}</span>
-                  <span className="text-xs font-mono text-gray-300 break-all flex-1">{ev.value}</span>
-                  {ev.hash && <span className="text-[10px] text-gray-600 font-mono shrink-0 hidden xl:block">{ev.hash.slice(0, 16)}…</span>}
+                  <span className="text-[10px] font-mono font-bold text-blue-600 dark:text-blue-400 uppercase w-24 shrink-0 mt-0.5">{ev.type}</span>
+                  <span className="text-xs font-mono text-slate-800 dark:text-gray-300 break-all flex-1">{ev.value}</span>
+                  {ev.hash && <span className="text-[10px] text-slate-500 dark:text-gray-600 font-mono shrink-0 hidden xl:block">{ev.hash.slice(0, 16)}…</span>}
                 </div>
               ))}
             </div>
@@ -916,14 +876,32 @@ function ResultsView({
       {/* ── Interactive Tabs ── */}
       <SlideIn delay={400} direction="up">
         <div
-          className="rounded-2xl p-5"
-          style={{
-            background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-          }}
+          className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
         >
-          <div className="flex items-center gap-1 border-b border-white/10 mb-5 overflow-x-auto scrollbar-none touch-scroll">
+          <div
+            className="relative isolate flex items-center gap-1 border-b border-slate-200 dark:border-white/10 mb-5 overflow-x-auto overflow-y-hidden scrollbar-none select-none touch-pan-x"
+            style={{
+              touchAction: 'pan-x',
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehaviorY: 'none',
+              overscrollBehaviorX: 'contain',
+            }}
+          >
+            {/* Smooth sliding indicator (slides left/right only, Y locked to 0) */}
+            <div
+              className="absolute z-0 pointer-events-none rounded-t-xl bg-purple-500/15 dark:bg-purple-500/20 border-b-2 border-purple-600 dark:border-purple-500 shadow-sm"
+              style={{
+                transform: `translate3d(${tabIndicatorStyle.left}px, 0, 0)`,
+                width: tabIndicatorStyle.width,
+                height: '100%',
+                bottom: 0,
+                opacity: tabIndicatorStyle.opacity,
+                transition: 'transform 300ms cubic-bezier(0.25, 1, 0.5, 1), width 300ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
+                left: 0,
+                zIndex: 0,
+              }}
+            />
+
             {[
               { id: 'facts',     label: 'Observed Facts', icon: Eye },
               { id: 'inference', label: 'AI Inference',   icon: Brain },
@@ -935,11 +913,12 @@ function ResultsView({
               return (
                 <button
                   key={tab.id}
+                  ref={(el) => { tabRefs.current[tab.id] = el; }}
                   onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all duration-200 -mb-px shrink-0 ${
-                    isActive ? 'text-purple-300 border-purple-500' : 'text-gray-500 border-transparent hover:text-gray-300'
+                  style={{ zIndex: 10 }}
+                  className={`relative z-10 flex items-center gap-2 px-4 py-2.5 text-xs font-bold transition-colors duration-200 shrink-0 cursor-pointer ${
+                    isActive ? 'text-purple-900 dark:text-purple-300' : 'text-slate-500 dark:text-gray-500 hover:text-slate-800 dark:hover:text-gray-300'
                   }`}
-                  style={isActive ? { background: 'rgba(139,92,246,0.1)' } : {}}
                 >
                   <Icon className="w-4 h-4" />
                   {tab.label}
@@ -968,18 +947,17 @@ function ObservedFactsTab({ facts = [] }: { facts?: EmailAnalysisResult['observe
   return (
     <div className="space-y-5">
       <div
-        className="flex items-start gap-2.5 rounded-xl p-3.5"
-        style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}
+        className="flex items-start gap-2.5 rounded-xl p-3.5 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20"
       >
-        <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-        <p className="text-xs text-gray-300 leading-relaxed">
-          <span className="text-white font-semibold">Observed Facts</span> are verifiable signals extracted directly from the email message.
+        <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+        <p className="text-xs text-slate-700 dark:text-gray-300 leading-relaxed font-sans">
+          <span className="text-slate-900 dark:text-white font-semibold">Observed Facts</span> are verifiable signals extracted directly from the email message.
           These are objective data points — not predictions or interpretations.
         </p>
       </div>
       {categories.map((cat) => (
         <div key={cat}>
-          <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 font-mono">{cat}</h4>
+          <h4 className="text-[10px] font-bold text-slate-500 dark:text-gray-500 uppercase tracking-widest mb-2 font-mono">{cat}</h4>
           <div className="space-y-1.5">
             {safeFacts.filter((f) => f.category === cat).map((fact) => {
               const Icon = FACT_ICON[fact.status] || Info;
@@ -987,12 +965,11 @@ function ObservedFactsTab({ facts = [] }: { facts?: EmailAnalysisResult['observe
               return (
                 <div
                   key={fact.id}
-                  className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 transition-colors duration-150"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+                  className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 transition-colors duration-150 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.05]"
                 >
                   <Icon className={`w-4 h-4 shrink-0 ${color}`} />
-                  <span className="text-xs text-gray-400 w-36 shrink-0 font-medium">{fact.field}</span>
-                  <span className="text-xs text-white font-mono flex-1 break-all">{fact.value}</span>
+                  <span className="text-xs text-slate-600 dark:text-gray-400 w-36 shrink-0 font-medium">{fact.field}</span>
+                  <span className="text-xs text-slate-900 dark:text-white font-mono flex-1 break-all">{fact.value}</span>
                 </div>
               );
             })}
@@ -1009,25 +986,23 @@ function AIInferenceTab({ inferences = [] }: { inferences?: EmailAnalysisResult[
   return (
     <div className="space-y-4">
       <div
-        className="flex items-start gap-2.5 rounded-xl p-3.5"
-        style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)' }}
+        className="flex items-start gap-2.5 rounded-xl p-3.5 bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20"
       >
-        <Brain className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
-        <p className="text-xs text-gray-300 leading-relaxed">
-          <span className="text-white font-semibold">AI Inference</span> represents analytical interpretation based on observed facts.
+        <Brain className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
+        <p className="text-xs text-slate-700 dark:text-gray-300 leading-relaxed font-sans">
+          <span className="text-slate-900 dark:text-white font-semibold">AI Inference</span> represents analytical interpretation based on observed facts.
           These are probabilistic assessments — each inference is labeled with a confidence score and its evidentiary basis.
         </p>
       </div>
       {safeInferences.map((inf) => (
         <div
           key={inf.id}
-          className="rounded-xl p-4 transition-all duration-200"
-          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+          className="rounded-xl p-4 transition-all duration-200 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]"
         >
           <div className="flex items-start justify-between gap-3 mb-2">
-            <p className="text-xs font-semibold text-white flex-1">{inf.inference}</p>
+            <p className="text-xs font-semibold text-slate-900 dark:text-white flex-1">{inf.inference}</p>
             <div className="shrink-0 flex items-center gap-2">
-              <div className="w-20 h-1.5 rounded-full overflow-hidden bg-white/10">
+              <div className="w-20 h-1.5 rounded-full overflow-hidden bg-slate-200 dark:bg-white/10">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
@@ -1037,12 +1012,12 @@ function AIInferenceTab({ inferences = [] }: { inferences?: EmailAnalysisResult[
                   }}
                 />
               </div>
-              <span className="text-xs font-mono text-white font-bold">{inf.confidence}%</span>
+              <span className="text-xs font-mono text-slate-900 dark:text-white font-bold">{inf.confidence}%</span>
             </div>
           </div>
-          <div className="flex items-start gap-2 mt-2 pt-2 border-t border-white/5">
-            <span className="text-[10px] text-gray-500 font-mono uppercase tracking-wider shrink-0 mt-0.5">BASIS</span>
-            <p className="text-xs text-gray-400 leading-relaxed">{inf.basis}</p>
+          <div className="flex items-start gap-2 mt-2 pt-2 border-t border-slate-200 dark:border-white/5">
+            <span className="text-[10px] text-slate-500 dark:text-gray-500 font-mono uppercase tracking-wider shrink-0 mt-0.5">BASIS</span>
+            <p className="text-xs text-slate-600 dark:text-gray-400 leading-relaxed font-sans">{inf.basis}</p>
           </div>
         </div>
       ))}
@@ -1055,13 +1030,12 @@ function HeadersTab({ headers = [] }: { headers?: EmailAnalysisResult['headers']
   if (safeHeaders.length === 0) return <EmptyTabPlaceholder message="No headers parsed from this email." />;
   return (
     <div
-      className="rounded-xl overflow-hidden font-mono text-xs"
-      style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.06)' }}
+      className="rounded-xl overflow-hidden font-mono text-xs bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/[0.06]"
     >
       {safeHeaders.map((h, i) => (
-        <div key={i} className="flex border-b border-white/5 last:border-0 hover:bg-white/[0.03] transition-colors">
-          <div className="w-44 shrink-0 px-3.5 py-2.5 text-teal-400 font-bold border-r border-white/5 break-all">{h.key}</div>
-          <div className="px-3.5 py-2.5 text-gray-300 break-all">{h.value}</div>
+        <div key={i} className="flex border-b border-slate-200 dark:border-white/5 last:border-0 hover:bg-slate-100 dark:hover:bg-white/[0.03] transition-colors">
+          <div className="w-44 shrink-0 px-3.5 py-2.5 text-teal-700 dark:text-teal-400 font-bold border-r border-slate-200 dark:border-white/5 break-all">{h.key}</div>
+          <div className="px-3.5 py-2.5 text-slate-800 dark:text-gray-300 break-all">{h.value}</div>
         </div>
       ))}
     </div>
@@ -1071,8 +1045,7 @@ function HeadersTab({ headers = [] }: { headers?: EmailAnalysisResult['headers']
 function RawEmailTab({ raw }: { raw: string }) {
   return (
     <div
-      className="rounded-xl p-4 overflow-x-auto scrollbar-thin font-mono text-xs text-gray-300 leading-relaxed"
-      style={{ background: '#06070a', border: '1px solid rgba(255,255,255,0.06)' }}
+      className="rounded-xl p-4 overflow-x-auto scrollbar-thin font-mono text-xs text-slate-800 dark:text-gray-300 leading-relaxed bg-slate-50 dark:bg-[#06070a] border border-slate-200 dark:border-white/[0.06]"
     >
       <pre className="whitespace-pre-wrap">{raw || '(no raw email content stored)'}</pre>
     </div>

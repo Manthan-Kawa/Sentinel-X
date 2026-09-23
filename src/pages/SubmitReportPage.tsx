@@ -16,7 +16,7 @@ const EML_INSTRUCTIONS = [
   {
     client: 'Gmail',
     icon: '📧',
-    color: 'text-red-400',
+    color: 'text-red-600 dark:text-red-400',
     border: 'border-red-500/20',
     bg: 'rgba(239,68,68,0.05)',
     steps: [
@@ -29,7 +29,7 @@ const EML_INSTRUCTIONS = [
   {
     client: 'Outlook (Desktop)',
     icon: '📨',
-    color: 'text-blue-400',
+    color: 'text-blue-600 dark:text-blue-400',
     border: 'border-blue-500/20',
     bg: 'rgba(59,130,246,0.05)',
     steps: [
@@ -42,7 +42,7 @@ const EML_INSTRUCTIONS = [
   {
     client: 'Outlook Web (OWA)',
     icon: '🌐',
-    color: 'text-cyan-400',
+    color: 'text-cyan-600 dark:text-cyan-400',
     border: 'border-cyan-500/20',
     bg: 'rgba(6,182,212,0.05)',
     steps: [
@@ -55,8 +55,8 @@ const EML_INSTRUCTIONS = [
   {
     client: 'Apple Mail',
     icon: '🍎',
-    color: 'text-gray-300',
-    border: 'border-gray-500/20',
+    color: 'text-black dark:text-white',
+    border: 'border-slate-300 dark:border-gray-500/20',
     bg: 'rgba(156,163,175,0.05)',
     steps: [
       'Open the suspicious email in Apple Mail.',
@@ -68,7 +68,7 @@ const EML_INSTRUCTIONS = [
   {
     client: 'Thunderbird',
     icon: '⚡',
-    color: 'text-amber-400',
+    color: 'text-amber-600 dark:text-amber-400',
     border: 'border-amber-500/20',
     bg: 'rgba(245,158,11,0.05)',
     steps: [
@@ -189,27 +189,26 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
           className="w-20 h-20 rounded-3xl flex items-center justify-center"
           style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', boxShadow: '0 0 40px rgba(34,197,94,0.15)' }}
         >
-          <CheckCircle2 className="w-10 h-10 text-green-400" />
+          <CheckCircle2 className="w-10 h-10 text-green-500 dark:text-green-400" />
         </div>
         <div className="text-center">
-          <h2 className="text-2xl font-black text-white mb-2">Report Submitted!</h2>
-          <p className="text-gray-400 text-sm">Your report has been received and is pending analyst review.</p>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Report Submitted!</h2>
+          <p className="text-slate-500 dark:text-gray-400 text-sm">Your report has been received and is pending analyst review.</p>
         </div>
         <div
           className="px-6 py-4 rounded-2xl text-center"
           style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)' }}
         >
-          <p className="text-xs text-gray-400 mb-1">Case ID</p>
-          <p className="text-xl font-black text-green-400">{submitted.caseId}</p>
+          <p className="text-xs text-slate-500 dark:text-gray-400 mb-1">Case ID</p>
+          <p className="text-xl font-black text-green-600 dark:text-green-400">{submitted.caseId}</p>
         </div>
-        <p className="text-xs text-gray-500 text-center max-w-sm">
+        <p className="text-xs text-slate-400 dark:text-gray-500 text-center max-w-sm">
           You will be notified when an analyst has reviewed your submission. Track the status in Check Status.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <button
             onClick={() => { setSubmitted(null); setEmlFile(null); setComment(''); }}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-300 transition-all hover:text-white text-center"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white transition-all text-center bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/10"
           >
             Submit Another
           </button>
@@ -235,11 +234,11 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
               className="w-9 h-9 rounded-xl flex items-center justify-center"
               style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)' }}
             >
-              <Upload className="w-4.5 h-4.5 text-blue-400" />
+              <Upload className="w-4.5 h-4.5 text-blue-500 dark:text-blue-400" />
             </div>
-            <h1 className="text-2xl font-black text-white">Submit a Report</h1>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white">Submit a Report</h1>
           </div>
-          <p className="text-gray-400 text-sm">
+          <p className="text-slate-500 dark:text-gray-400 text-sm">
             Upload a suspicious .eml email file for our security analysts to investigate.
           </p>
         </div>
@@ -257,13 +256,13 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
             border: dragging
               ? '2px dashed rgba(59,130,246,0.7)'
               : emlFile
-              ? '2px solid rgba(34,197,94,0.4)'
-              : '2px dashed rgba(255,255,255,0.15)',
+                ? '2px solid rgba(34,197,94,0.4)'
+                : '2px dashed rgba(99,116,160,0.3)',
             background: dragging
               ? 'rgba(59,130,246,0.06)'
               : emlFile
-              ? 'rgba(34,197,94,0.04)'
-              : 'rgba(255,255,255,0.02)',
+                ? 'rgba(34,197,94,0.04)'
+                : 'rgba(0,0,0,0.01)',
             boxShadow: dragging ? '0 0 30px rgba(59,130,246,0.12)' : 'none',
           }}
         >
@@ -282,15 +281,15 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
                 className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
                 style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}
               >
-                <FileText className="w-6 h-6 text-green-400" />
+                <FileText className="w-6 h-6 text-green-500 dark:text-green-400" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-white truncate">{emlFile.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{formatBytes(emlFile.size)} · .eml</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{emlFile.name}</p>
+                <p className="text-xs text-slate-400 dark:text-gray-500 mt-0.5">{formatBytes(emlFile.size)} · .eml</p>
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); setEmlFile(null); }}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 transition-all"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -300,16 +299,16 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
             <div className="p-8 sm:p-12 flex flex-col items-center gap-3 text-center">
               <div
                 className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}
+                style={{ background: 'rgba(99,116,160,0.08)', border: '1px solid rgba(99,116,160,0.18)' }}
               >
-                <Paperclip className="w-7 h-7 text-gray-500" />
+                <Paperclip className="w-7 h-7 text-slate-400 dark:text-gray-500" />
               </div>
               <div>
-                <p className="text-white font-semibold text-sm">Drop your .eml file here</p>
-                <p className="text-gray-500 text-xs mt-1">or click to browse</p>
+                <p className="text-slate-700 dark:text-white font-semibold text-sm">Drop your .eml file here</p>
+                <p className="text-slate-400 dark:text-gray-500 text-xs mt-1">or click to browse</p>
               </div>
               <span
-                className="px-3 py-1 rounded-full text-[10px] font-bold text-blue-400"
+                className="px-3 py-1 rounded-full text-[10px] font-bold text-blue-600 dark:text-blue-400"
                 style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
               >
                 .EML files only
@@ -324,8 +323,8 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
           className="flex items-center gap-2.5 px-4 py-3 rounded-xl"
           style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}
         >
-          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-          <p className="text-sm text-red-400">{error}</p>
+          <AlertTriangle className="w-4 h-4 text-red-500 dark:text-red-400 shrink-0" />
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
 
@@ -333,31 +332,31 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
       <SlideIn delay={100} direction="up">
         <div
           className="rounded-2xl overflow-hidden"
-          style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}
+          style={{ border: '1px solid rgba(99,116,160,0.18)', background: 'rgba(0,0,0,0.01)' }}
         >
-          <div className="px-5 py-3 flex items-center gap-2 border-b border-white/5">
-            <HelpCircle className="w-4 h-4 text-gray-400" />
-            <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">
+          <div className="px-5 py-3 flex items-center gap-2 border-b border-slate-200 dark:border-white/5">
+            <HelpCircle className="w-4 h-4 text-slate-400 dark:text-gray-400" />
+            <span className="text-xs font-bold text-slate-500 dark:text-gray-300 uppercase tracking-wider">
               How to export a .eml file
             </span>
           </div>
-          <div className="divide-y divide-white/[0.05]">
+          <div className="divide-y divide-slate-100 dark:divide-white/[0.05]">
             {EML_INSTRUCTIONS.map((client) => {
               const open = expandedClient === client.client;
               return (
                 <div key={client.client}>
                   <button
                     onClick={() => setExpandedClient(open ? null : client.client)}
-                    className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.03] transition-colors text-left"
+                    className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors text-left"
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-lg">{client.icon}</span>
                       <span className={`text-sm font-semibold ${client.color}`}>{client.client}</span>
                     </div>
                     {open ? (
-                      <ChevronUp className="w-4 h-4 text-gray-500" />
+                      <ChevronUp className="w-4 h-4 text-slate-400 dark:text-gray-500" />
                     ) : (
-                      <ChevronDown className="w-4 h-4 text-gray-500" />
+                      <ChevronDown className="w-4 h-4 text-slate-400 dark:text-gray-500" />
                     )}
                   </button>
                   {open && (
@@ -369,12 +368,11 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
                         {client.steps.map((step, i) => (
                           <li key={i} className="flex items-start gap-3">
                             <span
-                              className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5"
-                              style={{ background: 'rgba(255,255,255,0.08)', color: '#9ca3af' }}
+                              className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 text-slate-500 dark:text-gray-400 bg-slate-200 dark:bg-white/[0.08]"
                             >
                               {i + 1}
                             </span>
-                            <p className="text-xs text-gray-300 leading-relaxed">{step}</p>
+                            <p className="text-xs text-slate-600 dark:text-gray-300 leading-relaxed">{step}</p>
                           </li>
                         ))}
                       </ol>
@@ -390,8 +388,8 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
       {/* Comment / Notes */}
       <SlideIn delay={140} direction="up">
         <div className="space-y-2">
-          <label className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
-            <Mail className="w-3.5 h-3.5 text-gray-400" />
+          <label className="text-xs font-bold text-slate-500 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
+            <Mail className="w-3.5 h-3.5 text-slate-400 dark:text-gray-400" />
             Additional Notes (optional)
           </label>
           <textarea
@@ -399,29 +397,24 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
             onChange={(e) => setComment(e.target.value)}
             placeholder="Describe any suspicious behaviour, why you think this email is malicious, any context that may help the analyst…"
             rows={4}
-            className="w-full px-4 py-3 rounded-xl text-sm text-gray-200 placeholder-gray-600 focus:outline-none resize-none transition-all"
-            style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}
-            onFocus={(e) => { e.currentTarget.style.border = '1px solid rgba(59,130,246,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.08)'; }}
-            onBlur={(e) => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = 'none'; }}
+            className="w-full px-4 py-3 rounded-xl text-sm text-slate-800 dark:text-gray-200 placeholder-slate-400 dark:placeholder-gray-600 focus:outline-none resize-none transition-all bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10"
+            onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(59,130,246,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.08)'; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = 'none'; }}
           />
-          <p className="text-[11px] text-gray-600">{comment.length} characters</p>
+          <p className="text-[11px] text-slate-400 dark:text-gray-600">{comment.length} characters</p>
         </div>
       </SlideIn>
 
       {/* Incident Urgency & Interaction Checklist */}
       <SlideIn delay={180} direction="up">
         <div
-          className="p-4 rounded-2xl space-y-2.5"
-          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}
+          className="p-4 rounded-2xl space-y-2.5 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08]"
         >
-          <p className="text-xs font-bold text-gray-300 uppercase tracking-wider">
-            Incident Severity & Interaction (Helps SOC prioritize)
+          <p className="text-xs font-bold text-slate-500 dark:text-gray-300 uppercase tracking-wider">
+            Incident Severity &amp; Interaction (Helps SOC prioritize)
           </p>
-          <div className="space-y-2 text-xs text-gray-300">
-            <label className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors">
+          <div className="space-y-2 text-xs text-slate-600 dark:text-gray-300">
+            <label className="flex items-center gap-2.5 cursor-pointer hover:text-slate-900 dark:hover:text-white transition-colors">
               <input
                 type="checkbox"
                 checked={clickedLink}
@@ -430,7 +423,7 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
               />
               <span>I clicked a link or opened a web page inside this email</span>
             </label>
-            <label className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors">
+            <label className="flex items-center gap-2.5 cursor-pointer hover:text-slate-900 dark:hover:text-white transition-colors">
               <input
                 type="checkbox"
                 checked={enteredCreds}
@@ -439,14 +432,14 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
               />
               <span>I entered my password, credentials, or personal info</span>
             </label>
-            <label className="flex items-center gap-2.5 cursor-pointer hover:text-white transition-colors">
+            <label className="flex items-center gap-2.5 cursor-pointer hover:text-slate-900 dark:hover:text-white transition-colors">
               <input
                 type="checkbox"
                 checked={isUrgent}
                 onChange={(e) => setIsUrgent(e.target.checked)}
                 className="rounded accent-amber-500 w-4 h-4 cursor-pointer"
               />
-              <span className="text-amber-300 font-semibold">Mark as Critical / Urgent triage request</span>
+              <span className="text-amber-600 dark:text-amber-300 font-semibold">Mark as Critical / Urgent triage request</span>
             </label>
           </div>
         </div>
@@ -479,3 +472,4 @@ export function SubmitReportPage({ onNavigate }: SubmitReportPageProps) {
     </div>
   );
 }
+

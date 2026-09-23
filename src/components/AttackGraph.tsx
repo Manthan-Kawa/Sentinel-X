@@ -20,6 +20,7 @@ import ReactFlow, {
   type NodeProps,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { useTheme } from '@/context/ThemeContext';
 
 /* ── Graph Positions Persistence Helper ─────────────────────────────────── */
 export const KEY_GRAPH_POSITIONS_PREFIX = 'sentinel_attack_graph_pos_';
@@ -117,14 +118,14 @@ function AttackNode({ data, selected }: NodeProps) {
       {/* Header Bar */}
       <div style={{ background: cfg.headerBg, borderBottom: `1px solid ${cfg.border}40`, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '7px' }}>
         <Icon style={{ color: cfg.iconColor, width: 12, height: 12, flexShrink: 0 }} />
-        <span style={{ color: cfg.iconColor, fontSize: '9px', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'monospace' }}>
+        <span style={{ color: cfg.iconColor, fontSize: '9px', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: "'Inter', sans-serif" }}>
           {cfg.label}
         </span>
       </div>
 
       {/* Main Label */}
       <div style={{ padding: '7px 10px 4px' }}>
-        <div style={{ color: '#ffffff', fontSize: '11px', fontWeight: 700, fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ color: '#ffffff', fontSize: '11px', fontWeight: 700, fontFamily: "'Inter', sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {nd.label}
         </div>
       </div>
@@ -133,8 +134,8 @@ function AttackNode({ data, selected }: NodeProps) {
       <div style={{ padding: '0 10px 8px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
         {nd.details.map((d) => (
           <div key={d.key} style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-            <span style={{ color: '#6b7280', fontSize: '9.5px', fontFamily: 'monospace', whiteSpace: 'nowrap', flexShrink: 0 }}>{d.key}:</span>
-            <span style={{ color: '#d1d5db', fontSize: '9.5px', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.value}</span>
+            <span style={{ color: '#6b7280', fontSize: '9.5px', fontFamily: "'Inter', sans-serif", whiteSpace: 'nowrap', flexShrink: 0 }}>{d.key}:</span>
+            <span style={{ color: '#d1d5db', fontSize: '9.5px', fontFamily: "'Inter', sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.value}</span>
           </div>
         ))}
       </div>
@@ -461,6 +462,7 @@ function AttackGraphCanvasInner({
   onNavigate?: (route: string) => void;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { isDark } = useTheme();
   const layoutStyle = getCaseLayoutStyle(result?.case_id);
   const rfInstance = useReactFlow();
 
@@ -496,7 +498,7 @@ function AttackGraphCanvasInner({
       animated: true,
       label: e.label,
       style: { stroke: e.color ?? '#6366f1', strokeWidth: 1.5, strokeDasharray: '4 4' },
-      labelStyle: { fill: '#a5b4fc', fontSize: 8, fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.08em' },
+      labelStyle: { fill: '#a5b4fc', fontSize: 8, fontFamily: "'Inter', sans-serif", fontWeight: 700, letterSpacing: '0.04em' },
       labelBgStyle: { fill: '#0a0c16', fillOpacity: 0.95 },
       labelBgPadding: [4, 3] as [number, number],
       labelBgBorderRadius: 4,
@@ -567,17 +569,13 @@ function AttackGraphCanvasInner({
       {/* ── Toolbar: Synced Topology Status & Actions (No manual switcher) ── */}
       {showHeader && (
         <div
-          className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl"
-          style={{
-            background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-            border: '1px solid rgba(255,255,255,0.08)',
-          }}
+          className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/10 shadow-none"
         >
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-gray-400 font-bold">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500 dark:text-gray-400 font-bold">
               Synced Topology:
             </span>
-            <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-purple-300 bg-purple-500/15 border border-purple-500/30">
+            <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-500/15 border border-purple-200 dark:border-purple-500/30">
               {layoutDisplayNames[layoutStyle]}
             </span>
           </div>
@@ -585,13 +583,13 @@ function AttackGraphCanvasInner({
           <div className="flex items-center gap-2">
             <button
               onClick={fitView}
-              className="px-3 py-1.5 rounded-xl text-xs font-mono font-semibold text-gray-300 hover:text-white transition-colors border border-white/10 hover:border-white/20 bg-white/5 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl text-xs font-mono font-semibold text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white transition-colors border border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 bg-slate-100 dark:bg-white/5 cursor-pointer"
             >
               Fit View
             </button>
             <button
               onClick={reset}
-              className="px-3 py-1.5 rounded-xl text-xs font-mono font-semibold text-gray-300 hover:text-white transition-colors border border-white/10 hover:border-white/20 bg-white/5 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl text-xs font-mono font-semibold text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white transition-colors border border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 bg-slate-100 dark:bg-white/5 cursor-pointer"
             >
               Reset
             </button>
@@ -607,7 +605,11 @@ function AttackGraphCanvasInner({
         {/* ── Graph Canvas (80%) ── */}
         <div
           className="lg:col-span-4 rounded-2xl overflow-hidden relative select-none h-[400px] sm:h-[480px] lg:h-full"
-          style={{ background: '#07080e', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 40px rgba(0,0,0,0.6)' }}
+          style={{
+            background: '#07080e',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: isDark ? '0 8px 40px rgba(0,0,0,0.6)' : 'none',
+          }}
         >
           <ReactFlow
             nodes={nodes}
@@ -647,7 +649,11 @@ function AttackGraphCanvasInner({
           {/* Legend */}
           <div
             className="absolute bottom-3 left-3 right-3 sm:right-auto sm:bottom-4 sm:left-4 z-20 flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl backdrop-blur-md overflow-x-auto scrollbar-none max-w-[calc(100%-24px)]"
-            style={{ background: 'rgba(10,12,22,0.92)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}
+            style={{
+              background: 'rgba(10,12,22,0.92)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.5)' : 'none',
+            }}
           >
             <span className="text-[9px] font-mono font-bold text-gray-500 uppercase tracking-widest mr-1 shrink-0">NODE TYPES</span>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -671,8 +677,7 @@ function AttackGraphCanvasInner({
 
         {/* ── Node Details Panel (20%) ── */}
         <div
-          className="lg:col-span-1 rounded-2xl p-5 flex flex-col justify-between"
-          style={{ background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', height: '100%', overflow: 'auto' }}
+          className="lg:col-span-1 rounded-2xl p-5 flex flex-col justify-between bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/10 shadow-none dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-auto h-full"
         >
           {selectedNode ? (() => {
             const cfg = NODE_CFG[selectedNode.type];
@@ -682,26 +687,26 @@ function AttackGraphCanvasInner({
                 <div className="rounded-xl p-3 flex items-center gap-2.5" style={{ background: cfg.headerBg, border: `1px solid ${cfg.border}40` }}>
                   <Icon style={{ color: cfg.iconColor, width: 18, height: 18, flexShrink: 0 }} />
                   <div className="min-w-0">
-                    <div style={{ color: cfg.iconColor, fontSize: '9px', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'monospace' }}>{cfg.label}</div>
-                    <div className="text-xs font-mono text-white font-bold mt-0.5 truncate">{selectedNode.label}</div>
+                    <div style={{ color: cfg.iconColor, fontSize: '9px', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: "'Inter', sans-serif" }}>{cfg.label}</div>
+                    <div className="text-xs font-mono text-slate-900 dark:text-white font-bold mt-0.5 truncate">{selectedNode.label}</div>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-mono font-bold mb-2">Entity Attributes</p>
+                  <p className="text-[10px] text-slate-500 dark:text-gray-400 uppercase tracking-widest font-mono font-bold mb-2">Entity Attributes</p>
                   {selectedNode.details.map((d) => (
-                    <div key={d.key} className="flex items-center justify-between gap-2 py-2 border-b border-white/5 last:border-0">
-                      <span className="text-xs text-gray-400 font-mono capitalize shrink-0">{d.key}</span>
+                    <div key={d.key} className="flex items-center justify-between gap-2 py-2 border-b border-slate-200/60 dark:border-white/5 last:border-0">
+                      <span className="text-xs text-slate-500 dark:text-gray-400 font-mono capitalize shrink-0">{d.key}</span>
                       <div className="flex items-center gap-1 min-w-0">
-                        <span className="text-xs text-white font-mono font-semibold truncate">{d.value}</span>
+                        <span className="text-xs text-slate-900 dark:text-white font-mono font-semibold truncate">{d.value}</span>
                         <CopyButton value={d.value} />
                       </div>
                     </div>
                   ))}
                 </div>
                 {selectedNode.sublabel && (
-                  <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <span className="text-[10px] text-gray-500 font-mono uppercase font-bold block mb-1">Context Note</span>
-                    <p className="text-xs text-gray-300 font-mono leading-relaxed">{selectedNode.sublabel}</p>
+                  <div className="rounded-xl p-3 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.05]">
+                    <span className="text-[10px] text-slate-500 dark:text-gray-400 font-mono uppercase font-bold block mb-1">Context Note</span>
+                    <p className="text-xs text-slate-700 dark:text-gray-300 font-mono leading-relaxed">{selectedNode.sublabel}</p>
                   </div>
                 )}
               </div>
@@ -709,16 +714,16 @@ function AttackGraphCanvasInner({
           })() : (
             <div className="flex flex-col items-center justify-center text-center h-full py-12">
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)' }}>
-                <Network className="w-6 h-6 text-purple-400" />
+                <Network className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
-              <h4 className="text-xs font-bold text-white mb-1">Node Inspector</h4>
-              <p className="text-xs text-gray-500 font-mono max-w-[180px]">Click any node on the graph canvas to inspect its entity details & metadata.</p>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white mb-1">Node Inspector</h4>
+              <p className="text-xs text-slate-500 dark:text-gray-400 font-mono max-w-[180px]">Click any node on the graph canvas to inspect its entity details & metadata.</p>
             </div>
           )}
 
-          <div className="rounded-xl p-3 flex items-center gap-2 mt-auto" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-            <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-            <span className="text-[10px] text-gray-400 font-mono">
+          <div className="rounded-xl p-3 flex items-center gap-2 mt-auto bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.04]">
+            <Info className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
+            <span className="text-[10px] text-slate-500 dark:text-gray-400 font-mono">
               {selectedNode ? 'Click pane to deselect' : `${liveNodes.length} entities mapped in cluster`}
             </span>
           </div>
@@ -821,7 +826,7 @@ export function renderAttackGraphToSvg(
         <path d="${pathD}" stroke="${col}" stroke-width="1.5" stroke-dasharray="4 4" fill="none" marker-end="url(#m-${e.id})" />
         <g transform="translate(${mx - badgeW / 2}, ${my - 8})">
           <rect width="${badgeW}" height="16" rx="4" fill="#0a0c16" stroke="${col}" stroke-width="0.8" />
-          <text x="${badgeW / 2}" y="11.5" fill="#e0e7ff" font-size="7.5" font-family="'JetBrains Mono', monospace" font-weight="700" text-anchor="middle" letter-spacing="0.4px">${e.label}</text>
+          <text x="${badgeW / 2}" y="11.5" fill="#e0e7ff" font-size="7.5" font-family="'Inter', sans-serif" font-weight="700" text-anchor="middle" letter-spacing="0.4px">${e.label}</text>
         </g>
       </g>
     `;
@@ -836,7 +841,7 @@ export function renderAttackGraphToSvg(
       const keyFormatted = d.key.length > 13 ? d.key.slice(0, 11) + '..' : d.key;
       const valFormatted = d.value.length > 18 ? d.value.slice(0, 16) + '..' : d.value;
       return `
-        <text x="10" y="${64 + i * 16}" font-size="9" font-family="'JetBrains Mono', monospace">
+        <text x="10" y="${64 + i * 16}" font-size="9" font-family="'Inter', sans-serif">
           <tspan fill="#6b7280">${keyFormatted}: </tspan>
           <tspan fill="${valColor}">${valFormatted}</tspan>
         </text>
@@ -860,10 +865,10 @@ export function renderAttackGraphToSvg(
         <rect width="${NODE_W}" height="26" rx="9" fill="${cfg.headerBg}" />
         <rect y="25" width="${NODE_W}" height="1" fill="${cfg.border}" opacity="0.25" />
         <circle cx="12" cy="13" r="3" fill="${cfg.iconColor}" />
-        <text x="22" y="16.5" fill="${cfg.iconColor}" font-size="8.5" font-weight="800" font-family="'JetBrains Mono', monospace" letter-spacing="0.8px">${cfg.label}</text>
+        <text x="22" y="16.5" fill="${cfg.iconColor}" font-size="8.5" font-weight="800" font-family="'Inter', sans-serif" letter-spacing="0.8px">${cfg.label}</text>
         
         <!-- Main Label -->
-        <text x="10" y="45" fill="#ffffff" font-size="10.5" font-weight="700" font-family="'JetBrains Mono', monospace">${mainLabel}</text>
+        <text x="10" y="45" fill="#ffffff" font-size="10.5" font-weight="700" font-family="'Inter', sans-serif">${mainLabel}</text>
         
         <!-- Detail Rows -->
         ${detailsHtml}
@@ -883,7 +888,7 @@ export function renderAttackGraphToSvg(
       <g transform="translate(${idx * 72}, 0)">
         <rect width="${itemW}" height="20" rx="4" fill="${cfg.headerBg}" stroke="${cfg.border}" stroke-width="0.8" opacity="0.9" />
         <circle cx="8" cy="10" r="2.5" fill="${cfg.iconColor}" />
-        <text x="15" y="13.5" fill="${cfg.iconColor}" font-size="7.5" font-weight="bold" font-family="'JetBrains Mono', monospace">${item.label}</text>
+        <text x="15" y="13.5" fill="${cfg.iconColor}" font-size="7.5" font-weight="bold" font-family="'Inter', sans-serif">${item.label}</text>
       </g>
     `;
   }).join('');
@@ -906,7 +911,7 @@ export function renderAttackGraphToSvg(
       <!-- Legend Layer -->
       <g transform="translate(${legX}, ${legY})">
         <rect width="${legW}" height="36" rx="8" fill="rgba(10,12,22,0.92)" stroke="rgba(255,255,255,0.08)" />
-        <text x="12" y="22" fill="#6b7280" font-size="8" font-weight="800" font-family="'JetBrains Mono', monospace" letter-spacing="1px">NODE TYPES</text>
+        <text x="12" y="22" fill="#6b7280" font-size="8" font-weight="800" font-family="'Inter', sans-serif" letter-spacing="1px">NODE TYPES</text>
         <g transform="translate(90, 8)">
           ${legItemsHtml}
         </g>

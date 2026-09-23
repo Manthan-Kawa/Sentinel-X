@@ -71,35 +71,35 @@ const SEVERITY_STYLES: Record<Severity, { border: string; bg: string; text: stri
     bg: 'rgba(239,68,68,0.1)',
     text: '#f87171',
     dot: '#ef4444',
-    glow: 'rgba(239,68,68,0.25)',
+    glow: 'none',
   },
   high: {
     border: 'rgba(249,115,22,0.4)',
     bg: 'rgba(249,115,22,0.1)',
     text: '#fb923c',
     dot: '#f97316',
-    glow: 'rgba(249,115,22,0.2)',
+    glow: 'none',
   },
   medium: {
     border: 'rgba(245,158,11,0.35)',
     bg: 'rgba(245,158,11,0.08)',
     text: '#fbbf24',
     dot: '#f59e0b',
-    glow: 'rgba(245,158,11,0.15)',
+    glow: 'none',
   },
   low: {
     border: 'rgba(59,130,246,0.35)',
     bg: 'rgba(59,130,246,0.08)',
     text: '#60a5fa',
     dot: '#3b82f6',
-    glow: 'rgba(59,130,246,0.15)',
+    glow: 'none',
   },
   info: {
     border: 'rgba(156,163,175,0.25)',
     bg: 'rgba(156,163,175,0.06)',
     text: '#9ca3af',
     dot: '#6b7280',
-    glow: 'rgba(156,163,175,0.1)',
+    glow: 'none',
   },
 };
 
@@ -218,7 +218,7 @@ export function InvestigationsPage() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
             </span>
-            <span className="text-xs font-semibold text-red-300 font-mono">
+            <span className="text-xs font-semibold text-red-600 dark:text-red-300 font-mono">
               {openCount} OPEN CASE{openCount !== 1 ? 'S' : ''}
             </span>
           </div>
@@ -242,7 +242,7 @@ export function InvestigationsPage() {
                 style={{
                   background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
                   border: '1px solid rgba(255,255,255,0.07)',
-                  boxShadow: `0 0 20px ${stat.glow}`,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
                 }}
               >
                 <div className="flex items-center justify-between mb-2">

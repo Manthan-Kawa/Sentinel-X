@@ -236,7 +236,7 @@ export function DarkCyberMap({
             border-radius: 10px;
             padding: 10px 14px;
             color: #e5e7eb;
-            font-family: 'Inter', monospace;
+            font-family: 'Inter', sans-serif;
             min-width: 180px;
             box-shadow: 0 0 20px rgba(239,68,68,0.15);
           ">
@@ -253,7 +253,7 @@ export function DarkCyberMap({
             <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:2px;">
               ${m.city}, ${m.country}
             </div>
-            ${m.ip ? `<div style="font-size:11px;color:#22d3ee;font-family:monospace;">IP: ${m.ip}</div>` : ''}
+            ${m.ip ? `<div style="font-size:11px;color:#22d3ee;font-family:'Inter', sans-serif;font-weight:500;">IP: ${m.ip}</div>` : ''}
             ${m.role ? `<div style="font-size:11px;color:#9ca3af;margin-top:2px;">${m.role}</div>` : ''}
             ${m.confidence != null ? `<div style="font-size:10px;color:#6b7280;margin-top:4px;">Confidence: <b style="color:#facc15">${m.confidence}%</b></div>` : ''}
           </div>

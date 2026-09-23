@@ -167,7 +167,7 @@ function AppShell() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: '#08090e' }}>
+    <div className="flex h-screen h-[100dvh] overflow-hidden bg-slate-50 dark:bg-[#08090e] text-slate-900 dark:text-slate-100 transition-colors">
       <Sidebar
         activeId={effectiveNavId}
         onNavigate={(id) => handleNavigate(id)}
@@ -175,13 +175,13 @@ function AppShell() {
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
       />
-      <div className="flex-1 flex flex-col min-w-0 relative z-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full overflow-hidden relative z-0">
         <TopBar
           onMenuClick={() => setMobileOpen(true)}
           activeLabel={route.includes('/forensics') ? 'Deep Forensics Report' : (activeNav?.label ?? 'Dashboard')}
           onNavigate={(id) => handleNavigate(id)}
         />
-        <main className="flex-1 overflow-y-auto scrollbar-thin touch-scroll p-3 sm:p-4 lg:p-5" style={{ background: '#08090e' }}>
+        <main className="flex-1 min-h-0 overflow-y-auto scrollbar-thin touch-scroll p-3 sm:p-4 lg:p-5 bg-slate-50 dark:bg-[#08090e] transition-colors">
           <div className="max-w-[1600px] mx-auto animate-fade-in" key={route}>
             {renderPage()}
           </div>

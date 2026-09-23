@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -76,6 +76,49 @@ export function EmailDetailDrawer({
   const [renderedEmail, setRenderedEmail] = useState<IngestedEmail | null>(propEmail);
   const [isRendered, setIsRendered] = useState(isOpen && !!propEmail);
   const [isVisible, setIsVisible] = useState(false);
+
+  // Smooth sliding tab indicator pill
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [indicatorStyle, setIndicatorStyle] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    opacity: number;
+  }>({ left: 0, top: 0, width: 0, height: 0, opacity: 0 });
+
+  useLayoutEffect(() => {
+    const updateIndicator = () => {
+      const currentTabEl = tabRefs.current[activeTab];
+      if (currentTabEl) {
+        setIndicatorStyle((prev) => {
+          if (
+            prev.left === currentTabEl.offsetLeft &&
+            prev.top === currentTabEl.offsetTop &&
+            prev.width === currentTabEl.offsetWidth &&
+            prev.height === currentTabEl.offsetHeight &&
+            prev.opacity === 1
+          ) {
+            return prev;
+          }
+          return {
+            left: currentTabEl.offsetLeft,
+            top: currentTabEl.offsetTop,
+            width: currentTabEl.offsetWidth,
+            height: currentTabEl.offsetHeight,
+            opacity: 1,
+          };
+        });
+      }
+    };
+    updateIndicator();
+    const rafId = requestAnimationFrame(updateIndicator);
+    window.addEventListener('resize', updateIndicator);
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', updateIndicator);
+    };
+  }, [activeTab, isVisible]);
 
   useEffect(() => {
     if (isOpen && propEmail) {
@@ -281,43 +324,43 @@ export function EmailDetailDrawer({
 
       {/* Drawer panel — full height, buttery smooth slide in/out from right */}
       <div
-        className={`relative w-full max-w-2xl bg-[#0d0e15] border-l border-white/10 shadow-2xl flex flex-col h-full z-10 text-white transform transition-transform duration-300 ease-out ${
+        className={`relative w-full max-w-2xl bg-white dark:bg-[#0d0e15] border-l border-slate-200 dark:border-white/10 shadow-2xl flex flex-col h-full z-10 text-slate-900 dark:text-white transform transition-transform duration-300 ease-out ${
           isVisible ? 'translate-x-0' : 'translate-x-full'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drawer Header */}
-        <div className="p-4 sm:p-6 border-b border-white/10 bg-[#12131d]/90 flex flex-col gap-3 sm:gap-4">
+        <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-white/10 bg-slate-50/90 dark:bg-[#12131d]/90 flex flex-col gap-3 sm:gap-4">
           <div className="flex items-start justify-between gap-3 sm:gap-4">
             <div className="flex flex-col gap-1.5 flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 {getThreatBadge()}
                 {isEscalatedPending && (
-                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-medium inline-flex items-center gap-1.5 leading-none">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse shrink-0" />
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30 font-medium inline-flex items-center gap-1.5 leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500 dark:bg-purple-400 animate-pulse shrink-0" />
                     <span className="leading-none">SOC Escalated</span>
                   </span>
                 )}
                 {isAnalyzedBySoc && (
-                  <span className="text-[11px] px-3 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/40 font-semibold inline-flex items-center gap-1.5 leading-none shadow-sm shadow-purple-950/40">
-                    <Check className="w-3.5 h-3.5 text-purple-400 shrink-0 stroke-[2.5]" />
+                  <span className="text-[11px] px-3 py-1 rounded-full bg-purple-500/20 text-purple-800 dark:text-purple-200 border border-purple-500/40 font-semibold inline-flex items-center gap-1.5 leading-none shadow-sm shadow-purple-950/40">
+                    <Check className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0 stroke-[2.5]" />
                     <span className="leading-none">Escalation Completed</span>
                   </span>
                 )}
                 {analysis?.is_reviewed && (
-                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30">
                     Reviewed by User
                   </span>
                 )}
               </div>
-              <h2 className="text-base sm:text-lg font-bold text-white leading-snug break-words mt-1">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-snug break-words mt-1">
                 {decodeMimeHeader(email.subject)}
               </h2>
             </div>
 
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:text-gray-400 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-white/10 transition-colors shrink-0"
               title="Close Drawer"
             >
               <X className="w-5 h-5" />
@@ -325,55 +368,74 @@ export function EmailDetailDrawer({
           </div>
 
           {/* Sender & Metadata bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-400 bg-black/30 p-3 rounded-xl border border-white/5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 dark:text-gray-400 bg-slate-100 dark:bg-black/30 p-3 rounded-xl border border-slate-200 dark:border-white/5">
             <div className="flex items-center gap-2 truncate">
-              <User className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <User className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
               <span className="truncate">
-                <strong className="text-gray-300">{decodeMimeHeader(email.sender_name || 'Sender')}:</strong> {email.sender}
+                <strong className="text-slate-800 dark:text-gray-300">{decodeMimeHeader(email.sender_name || 'Sender')}:</strong> {email.sender}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Calendar className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+              <Calendar className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
               <span>{new Date(email.received_at).toLocaleString()}</span>
             </div>
           </div>
 
           {/* Tab Navigation */}
-          <div className="flex gap-2 border-b border-white/10 -mb-2 pb-2 overflow-x-auto scrollbar-none touch-scroll">
-            <button
-              onClick={() => setActiveTab('assessment')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 whitespace-nowrap ${
-                activeTab === 'assessment'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              AI Threat Assessment
-            </button>
-            <button
-              onClick={() => setActiveTab('content')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 whitespace-nowrap ${
-                activeTab === 'content'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Mail className="w-3.5 h-3.5" />
-              Email Body & Links ({email.extracted_urls.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('headers')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 whitespace-nowrap ${
-                activeTab === 'headers'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <FileCode className="w-3.5 h-3.5" />
-              RFC Headers
-            </button>
+          <div className="flex items-center gap-2 pb-3">
+            <div className="relative isolate flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5">
+              {/* Smooth sliding indicator pill */}
+              <div
+                className="absolute z-0 pointer-events-none rounded-lg bg-white dark:bg-cyan-500/20 border border-cyan-400 dark:border-cyan-500/40 shadow-sm dark:shadow-none transition-all duration-300 ease-out"
+                style={{
+                  top: 0,
+                  left: 0,
+                  transform: `translate3d(${indicatorStyle.left}px, ${indicatorStyle.top}px, 0)`,
+                  width: indicatorStyle.width,
+                  height: indicatorStyle.height,
+                  opacity: indicatorStyle.opacity,
+                }}
+              />
+
+              <button
+                ref={(el) => { tabRefs.current['assessment'] = el; }}
+                onClick={() => setActiveTab('assessment')}
+                className={`relative z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors duration-150 shrink-0 whitespace-nowrap cursor-pointer ${
+                  activeTab === 'assessment'
+                    ? 'text-cyan-600 dark:text-cyan-300'
+                    : 'text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-white'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                AI Threat Assessment
+              </button>
+              <button
+                ref={(el) => { tabRefs.current['content'] = el; }}
+                onClick={() => setActiveTab('content')}
+                className={`relative z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors duration-150 shrink-0 whitespace-nowrap cursor-pointer ${
+                  activeTab === 'content'
+                    ? 'text-cyan-600 dark:text-cyan-300'
+                    : 'text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-white'
+                }`}
+              >
+                <Mail className="w-3.5 h-3.5" />
+                Email Body &amp; Links ({email.extracted_urls.length})
+              </button>
+              <button
+                ref={(el) => { tabRefs.current['headers'] = el; }}
+                onClick={() => setActiveTab('headers')}
+                className={`relative z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors duration-150 shrink-0 whitespace-nowrap cursor-pointer ${
+                  activeTab === 'headers'
+                    ? 'text-cyan-600 dark:text-cyan-300'
+                    : 'text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-white'
+                }`}
+              >
+                <FileCode className="w-3.5 h-3.5" />
+                RFC Headers
+              </button>
+            </div>
           </div>
+
         </div>
 
         {/* Drawer Body */}
@@ -421,61 +483,61 @@ export function EmailDetailDrawer({
               <div
                 className={`p-5 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 ${
                   threatLevel === 'malicious'
-                    ? 'bg-red-950/20 border-red-500/30'
+                    ? 'bg-red-500/10 dark:bg-red-950/20 border-red-500/30'
                     : threatLevel === 'suspicious'
-                    ? 'bg-amber-950/20 border-amber-500/30'
-                    : 'bg-emerald-950/20 border-emerald-500/30'
+                    ? 'bg-amber-500/10 dark:bg-amber-950/20 border-amber-500/30'
+                    : 'bg-emerald-500/10 dark:bg-emerald-950/20 border-emerald-500/30'
                 }`}
               >
                 <div className="space-y-1">
-                  <div className="text-xs uppercase tracking-wider text-gray-400 flex items-center gap-2 font-medium">
+                  <div className="text-xs uppercase tracking-wider text-slate-500 dark:text-gray-400 flex items-center gap-2 font-medium">
                     <span>Sentinel Automated Threat Triage</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-gray-300">
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-gray-300">
                       {analysis?.model_used || 'Gemini Flash'}
                     </span>
                   </div>
-                  <h3 className="text-lg font-bold text-white">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                     {threatLevel === 'malicious'
                       ? 'Severe Malicious Threat Identified'
                       : threatLevel === 'suspicious'
                       ? 'Suspicious Anomalies Detected'
                       : 'Authentic & Clean Email'}
                   </h3>
-                  <p className="text-xs text-gray-300 max-w-md leading-relaxed">
+                  <p className="text-xs text-slate-600 dark:text-gray-300 max-w-md leading-relaxed">
                     {analysis?.summary || 'Automated evaluation completed by Gemini AI.'}
                   </p>
                 </div>
 
-                <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-black/40 border border-white/5 min-w-[90px]">
+                <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/5 min-w-[90px]">
                   <span
                     className={`text-3xl font-black ${
                       threatLevel === 'malicious'
-                        ? 'text-red-400'
+                        ? 'text-red-500 dark:text-red-400'
                         : threatLevel === 'suspicious'
-                        ? 'text-amber-400'
-                        : 'text-emerald-400'
+                        ? 'text-amber-500 dark:text-amber-400'
+                        : 'text-emerald-500 dark:text-emerald-400'
                     }`}
                   >
                     {threatScore}
                   </span>
-                  <span className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">Score / 100</span>
+                  <span className="text-[10px] text-slate-500 dark:text-gray-400 uppercase tracking-wider font-medium">Score / 100</span>
                 </div>
               </div>
 
               {/* Phishing / Spoofing Indicators */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-                    <AlertOctagon className="w-4 h-4 text-cyan-400" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-300 flex items-center gap-2">
+                    <AlertOctagon className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                     Phishing & Spoofing Indicators ({analysis?.indicators.length || 0})
                   </h4>
-                  <span className="text-[11px] text-gray-500">
+                  <span className="text-[11px] text-slate-500 dark:text-gray-500">
                     Confidence: {analysis?.confidence ?? 90}%
                   </span>
                 </div>
 
                 {(!analysis?.indicators || analysis.indicators.length === 0) ? (
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-gray-400 text-xs text-center">
+                  <div className="p-4 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-500 dark:text-gray-400 text-xs text-center">
                     No suspicious phishing or spoofing indicators were found in this message.
                   </div>
                 ) : (
@@ -483,7 +545,7 @@ export function EmailDetailDrawer({
                     {analysis.indicators.map((ind, i) => (
                       <div
                         key={i}
-                        className="p-3.5 rounded-xl bg-white/[0.03] border border-white/8 hover:border-white/20 transition-all flex items-start gap-3"
+                        className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-transparent hover:border-slate-300 dark:hover:border-white/20 transition-all flex items-start gap-3"
                       >
                         <div
                           className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${
@@ -498,24 +560,24 @@ export function EmailDetailDrawer({
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[11px] px-2 py-0.5 rounded bg-white/10 font-medium text-gray-300">
+                            <span className="text-[11px] px-2 py-0.5 rounded bg-slate-200/80 dark:bg-white/10 font-medium text-slate-700 dark:text-gray-300">
                               {ind.category}
                             </span>
                             <span
                               className={`text-[10px] uppercase font-semibold ${
                                 ind.severity === 'critical'
-                                  ? 'text-red-400'
+                                  ? 'text-red-600 dark:text-red-400'
                                   : ind.severity === 'high'
-                                  ? 'text-orange-400'
+                                  ? 'text-orange-600 dark:text-orange-400'
                                   : ind.severity === 'medium'
-                                  ? 'text-amber-400'
-                                  : 'text-blue-400'
+                                  ? 'text-amber-600 dark:text-amber-400'
+                                  : 'text-blue-600 dark:text-blue-400'
                               }`}
                             >
                               [{ind.severity}]
                             </span>
                           </div>
-                          <p className="text-xs text-gray-200 leading-relaxed font-sans">
+                          <p className="text-xs text-slate-700 dark:text-gray-200 leading-relaxed font-sans">
                             {ind.finding}
                           </p>
                         </div>
@@ -526,12 +588,12 @@ export function EmailDetailDrawer({
               </div>
 
               {/* Recommended Action Box */}
-              <div className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/30 space-y-1.5">
-                <div className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
-                  <Shield className="w-4 h-4 text-cyan-400" />
+              <div className="p-4 rounded-xl bg-slate-100 dark:bg-cyan-950/20 border border-slate-200 dark:border-cyan-500/30 space-y-1.5 shadow-sm">
+                <div className="text-xs font-bold text-cyan-700 dark:text-cyan-300 flex items-center gap-1.5">
+                  <Shield className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                   Recommended User Action
                 </div>
-                <p className="text-xs text-cyan-100 leading-relaxed">
+                <p className="text-xs text-black dark:text-cyan-100 leading-relaxed font-semibold">
                   {analysis?.recommended_action || 'Proceed with standard corporate email policy.'}
                 </p>
               </div>
@@ -544,15 +606,15 @@ export function EmailDetailDrawer({
               {/* Extracted Links Section */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-                    <ExternalLink className="w-4 h-4 text-cyan-400" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-300 flex items-center gap-2">
+                    <ExternalLink className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                     Extracted & Defanged URLs ({email.extracted_urls.length})
                   </h4>
-                  <span className="text-[10px] text-gray-400">URLs defanged for safe inspection</span>
+                  <span className="text-[10px] text-slate-500 dark:text-gray-400">URLs defanged for safe inspection</span>
                 </div>
 
                 {email.extracted_urls.length === 0 ? (
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-gray-400 text-xs">
+                  <div className="p-4 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-500 dark:text-gray-400 text-xs">
                     No external hyperlinks detected in this email.
                   </div>
                 ) : (
@@ -562,20 +624,20 @@ export function EmailDetailDrawer({
                       return (
                         <div
                           key={idx}
-                          className="p-3 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between gap-3 text-xs"
+                          className="p-3 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/10 flex items-center justify-between gap-3 text-xs"
                         >
-                          <div className="font-mono text-cyan-300 truncate select-all">
+                          <div className="font-mono text-cyan-700 dark:text-cyan-300 truncate select-all">
                             {defanged}
                           </div>
                           <button
                             onClick={() => handleCopy(rawUrl)}
-                            className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 transition-colors shrink-0 flex items-center gap-1 text-[11px]"
+                            className="p-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-slate-700 dark:text-gray-300 transition-colors shrink-0 flex items-center gap-1 text-[11px]"
                             title="Copy link"
                           >
                             {copiedUrl === rawUrl ? (
                               <>
-                                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                <span className="text-emerald-400">Copied</span>
+                                <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
                               </>
                             ) : (
                               <>
@@ -640,7 +702,7 @@ export function EmailDetailDrawer({
                         return (
                           <div
                             key={att.id}
-                            className="p-3 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between gap-3 text-xs"
+                            className="p-3 rounded-xl bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 flex items-center justify-between gap-3 text-xs"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <div
@@ -655,7 +717,7 @@ export function EmailDetailDrawer({
                               </div>
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <div className="font-semibold text-white truncate max-w-sm" title={att.filename}>
+                                  <div className="font-semibold text-slate-900 dark:text-white truncate max-w-sm" title={att.filename}>
                                     {att.filename}
                                   </div>
                                   <span
@@ -669,7 +731,7 @@ export function EmailDetailDrawer({
                                     {config.label}
                                   </span>
                                 </div>
-                                <div className="text-[11px] text-gray-400">
+                                <div className="text-[11px] text-slate-500 dark:text-gray-400">
                                   {att.mimeType} · {att.formattedSize}
                                 </div>
                               </div>
@@ -678,14 +740,14 @@ export function EmailDetailDrawer({
                             {!isImageWithMultiple ? (
                               <button
                                 onClick={() => handleDownloadAttachment(att)}
-                                className="p-1.5 px-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-cyan-300 transition-colors shrink-0 flex items-center gap-1.5 text-[11px] cursor-pointer"
+                                className="p-1.5 px-2.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-cyan-700 dark:text-cyan-300 transition-colors shrink-0 flex items-center gap-1.5 text-[11px] cursor-pointer"
                                 title={`Download ${att.filename}`}
                               >
                                 <Download className="w-3.5 h-3.5" />
                                 <span>Download</span>
                               </button>
                             ) : (
-                              <span className="text-[10px] px-2 py-1 rounded bg-pink-500/15 border border-pink-500/30 text-pink-300 font-medium">
+                              <span className="text-[10px] px-2 py-1 rounded bg-pink-500/15 border border-pink-500/30 text-pink-700 dark:text-pink-300 font-medium">
                                 In Images ZIP
                               </span>
                             )}
@@ -699,11 +761,11 @@ export function EmailDetailDrawer({
 
               {/* Email Body Rendering */}
               <div className="space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-purple-400" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-300 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                   Email Body Preview
                 </h4>
-                <div className="p-4 rounded-xl bg-[#090a0f] border border-white/10 text-xs text-gray-200 font-sans leading-relaxed whitespace-pre-wrap selection:bg-cyan-500/30">
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#090a0f] border border-slate-200 dark:border-white/10 text-xs text-slate-800 dark:text-gray-200 font-sans leading-relaxed whitespace-pre-wrap selection:bg-cyan-500/30">
                   {email.body_text}
                 </div>
               </div>
@@ -713,24 +775,24 @@ export function EmailDetailDrawer({
           {/* TAB 3: RFC HEADERS */}
           {activeTab === 'headers' && (
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-                <FileCode className="w-4 h-4 text-cyan-400" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-300 flex items-center gap-2">
+                <FileCode className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                 Parsed RFC 822 Email Headers
               </h4>
-              <div className="rounded-xl border border-white/10 overflow-hidden bg-[#090a0f]">
+              <div className="rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden bg-slate-50 dark:bg-[#090a0f]">
                 <table className="w-full text-left text-xs font-mono">
                   <tbody>
                     {Object.entries(email.headers).map(([key, val], idx) => (
                       <tr
                         key={key}
-                        className={`border-b border-white/5 ${
-                          idx % 2 === 0 ? 'bg-white/[0.01]' : 'bg-white/[0.03]'
+                        className={`border-b border-slate-200 dark:border-white/5 ${
+                          idx % 2 === 0 ? 'bg-slate-100/40 dark:bg-white/[0.01]' : 'bg-slate-100/80 dark:bg-white/[0.03]'
                         }`}
                       >
-                        <td className="py-2.5 px-3 text-cyan-400 font-semibold uppercase tracking-wider w-1/4 select-all">
+                        <td className="py-2.5 px-3 text-cyan-700 dark:text-cyan-400 font-semibold uppercase tracking-wider w-1/4 select-all">
                           {key}
                         </td>
-                        <td className="py-2.5 px-3 text-gray-300 break-all select-all">
+                        <td className="py-2.5 px-3 text-slate-800 dark:text-gray-300 break-all select-all">
                           {val}
                         </td>
                       </tr>
@@ -743,11 +805,11 @@ export function EmailDetailDrawer({
         </div>
 
         {/* Drawer Action Footer */}
-        <div className="px-2.5 py-2.5 sm:px-5 sm:py-3.5 border-t border-white/10 bg-[#12131d] flex items-center justify-between gap-1 sm:gap-2 flex-nowrap">
+        <div className="px-2.5 py-2.5 sm:px-5 sm:py-3.5 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#12131d] flex items-center justify-between gap-1 sm:gap-2 flex-nowrap">
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <button
               onClick={handleExportJson}
-              className="px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-[11px] sm:text-xs font-medium border border-white/10 flex items-center gap-1 sm:gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-gray-300 text-[11px] sm:text-xs font-medium border border-slate-200 dark:border-white/10 flex items-center gap-1 sm:gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 shrink-0" />
               <span>Export JSON</span>
@@ -755,7 +817,7 @@ export function EmailDetailDrawer({
             {!analysis?.is_reviewed && (
               <button
                 onClick={() => markAsReviewed(email.id)}
-                className="px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-[11px] sm:text-xs font-medium border border-white/10 flex items-center gap-1 sm:gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                className="px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-gray-300 text-[11px] sm:text-xs font-medium border border-slate-200 dark:border-white/10 flex items-center gap-1 sm:gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span>Mark Safe</span>
@@ -800,32 +862,32 @@ export function EmailDetailDrawer({
 
       {/* Escalate Confirmation Modal */}
       {escalateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-md overflow-y-auto">
-          <div className="w-full max-w-md bg-[#13141f] border border-white/15 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4 text-white animate-scale-in max-h-[92vh] overflow-y-auto scrollbar-thin">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-md overflow-y-auto">
+          <div className="w-full max-w-md bg-white dark:bg-[#13141f] border border-slate-200 dark:border-white/15 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4 text-slate-900 dark:text-white animate-scale-in max-h-[92vh] overflow-y-auto scrollbar-thin">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                <div className="p-2 rounded-xl bg-purple-500/20 text-purple-700 dark:text-purple-400 border border-purple-500/30">
                   <Send className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Escalate Email to SOC</h3>
-                  <p className="text-xs text-gray-400">Security Operations Center Incident Dispatch</p>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Escalate Email to SOC</h3>
+                  <p className="text-xs text-slate-500 dark:text-gray-400">Security Operations Center Incident Dispatch</p>
                 </div>
               </div>
               <button
                 onClick={() => setEscalateModalOpen(false)}
-                className="text-gray-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700 dark:text-gray-400 dark:hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-xs text-gray-300 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-gray-300 leading-relaxed">
               This email and its full headers, MIME body, and Gemini threat evaluation will be dispatched directly into the SOC Analyst queue as an urgent case ticket.
             </p>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-300">
+              <label className="text-xs font-semibold text-slate-700 dark:text-gray-300">
                 Additional Comments / Context for SOC (optional):
               </label>
               <textarea
@@ -833,7 +895,7 @@ export function EmailDetailDrawer({
                 onChange={(e) => setEscalateNote(e.target.value)}
                 placeholder="e.g., I received this email right after an IT announcement. Links look suspicious."
                 rows={3}
-                className="w-full rounded-xl bg-black/40 border border-white/10 p-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors resize-none"
+                className="w-full rounded-xl bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 p-3 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors resize-none"
               />
             </div>
 
@@ -841,7 +903,7 @@ export function EmailDetailDrawer({
               <button
                 type="button"
                 onClick={() => setEscalateModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-medium transition-colors"
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-gray-300 text-xs font-medium transition-colors"
               >
                 Cancel
               </button>

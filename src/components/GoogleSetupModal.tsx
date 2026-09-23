@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ExternalLink, Key, Shield, CheckCircle2, AlertCircle } from 'lucide-react';
 import { GoogleAuthService } from '@/services/googleAuthService';
 
@@ -40,9 +41,9 @@ export function GoogleSetupModal({ isOpen, onClose, onSuccessConnect }: GoogleSe
     }
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(10px)' }}
       onClick={onClose}
     >
@@ -167,6 +168,7 @@ export function GoogleSetupModal({ isOpen, onClose, onSuccessConnect }: GoogleSe
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
