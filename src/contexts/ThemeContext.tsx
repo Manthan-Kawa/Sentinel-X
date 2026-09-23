@@ -85,6 +85,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   });
 
   const isTransitioningRef = useRef(false);
+  // Always reflects latest theme synchronously (updated at render time, not in useEffect)
+  // so any event handler closure never reads a stale value
+  const themeRef = useRef<Theme>(theme);
+  themeRef.current = theme;
 
   const setTheme = (newTheme: Theme, e?: React.MouseEvent | MouseEvent) => {
     if (newTheme === theme) return;
@@ -187,6 +191,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       updateThemeColorMeta(theme);
     }
   }, [theme]);
+
+  // Re-assert theme on every page navigation.
+  // iOS Safari can revert meta[name="theme-color"] after hash changes —
+  // this listener fixes it using themeRef so the closure is never stale.
+  useEffect(() => {
+    const handleNavChange = () => {
+      applyThemeDom(themeRef.current);
+      updateThemeColorMeta(themeRef.current);
+    };
+    window.addEventListener('hashchange', handleNavChange);
+    window.addEventListener('popstate', handleNavChange);
+    return () => {
+      window.removeEventListener('hashchange', handleNavChange);
+      window.removeEventListener('popstate', handleNavChange);
+    };
+  }, []); // empty — reads from themeRef, never stale
 
   return (
     <ThemeContext.Provider value={{ theme, isDark: theme === 'dark', toggleTheme, setTheme }}>
