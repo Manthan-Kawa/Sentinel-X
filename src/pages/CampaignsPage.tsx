@@ -157,11 +157,11 @@ function buildCaseFromAnalysis(r: EmailAnalysisResult): InvestigationCase {
 }
 
 /* ─── Severity Pill ─── */
-function SeverityPill({ severity }: { severity: Severity }) {
+function SeverityPill({ severity, className = '' }: { severity: Severity; className?: string }) {
   const s = SEVERITY_STYLES[severity];
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider font-mono"
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider font-mono ${className}`}
       style={{ background: s.bg, border: `1px solid ${s.border}`, color: s.text }}
     >
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.dot }} />
@@ -171,11 +171,11 @@ function SeverityPill({ severity }: { severity: Severity }) {
 }
 
 /* ─── Campaign Status Pill ─── */
-function StatusPill({ status }: { status: CampaignStatus }) {
+function StatusPill({ status, className = '' }: { status: CampaignStatus; className?: string }) {
   const s = STATUS_CONFIG[status];
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider font-mono"
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider font-mono ${className}`}
       style={{ background: s.bg, border: `1px solid ${s.border}`, color: s.color }}
     >
       <span className="relative flex h-2 w-2">
@@ -1239,16 +1239,16 @@ function CampaignDetail({
             </div>
           </div>
 
-          <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto pt-2.5 sm:pt-0 border-t border-slate-200 dark:border-white/[0.06] sm:border-t-0 flex-wrap">
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap shrink-0">
+          <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto pt-2.5 sm:pt-0 border-t border-slate-200 dark:border-white/[0.06] sm:border-t-0">
+            <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2 w-full sm:w-auto">
               <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider font-mono bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-500/15 dark:border-purple-500/30 dark:text-purple-300"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider font-mono bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-500/15 dark:border-purple-500/30 dark:text-purple-300 shrink-0 whitespace-nowrap"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 dark:bg-purple-400" />
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 dark:bg-purple-400 shrink-0" />
                 {campaign.id}
               </span>
-              <SeverityPill severity={campaign.severity} />
-              <StatusPill status={campaign.status} />
+              <SeverityPill severity={campaign.severity} className="shrink-0" />
+              <StatusPill status={campaign.status} className="shrink-0" />
             </div>
 
             {/* Desktop Action buttons: Edit Campaign & Delete Campaign (Red) */}
