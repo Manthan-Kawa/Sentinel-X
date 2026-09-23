@@ -274,7 +274,7 @@ export function AlertsPage({ onNavigate }: { onNavigate?: (id: string) => void }
             return (
               <div
                 key={st}
-                className="rounded-2xl p-4 transition-all hover:scale-[1.02] bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/10 shadow-sm"
+                className="rounded-2xl p-4 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/10 shadow-sm cursor-default select-none"
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[11px] text-slate-500 dark:text-gray-500 font-mono uppercase tracking-wider font-semibold">{cfg.label}</span>
