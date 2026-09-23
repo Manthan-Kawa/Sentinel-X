@@ -17,28 +17,33 @@ const ThemeContext = createContext<ThemeContextValue>({
   setTheme: () => {},
 });
 
-const applyStatusBarColor = (theme: Theme) => {
+/**
+ * Applies the status bar color and colorScheme to the DOM.
+ * In iOS Safari / WebKit, modifying an existing <meta name="theme-color"> tag's content attribute
+ * is frequently ignored or cached after a hashchange/page navigation.
+ * Removing all existing meta tags and appending a fresh <meta name="theme-color"> tag forces
+ * Safari to immediately re-evaluate and apply the theme color without locking.
+ */
+export const applyStatusBarColor = (theme: Theme) => {
   const topbarColor = theme === 'dark' ? '#0b0c11' : '#ffffff';
   const root = document.documentElement;
 
-  // Explicit colorScheme forces mobile Safari and WebKit to switch status bar icon styling
+  // 1. Explicit colorScheme tells WebKit to adapt native status bar text and icons (white in dark, black in light)
   root.style.colorScheme = theme;
   if (document.body) {
     document.body.style.colorScheme = theme;
   }
 
-  // Update theme-color meta tag
-  const metaThemeColors = document.querySelectorAll('meta[name="theme-color"]');
-  if (metaThemeColors.length > 0) {
-    metaThemeColors.forEach((m) => m.setAttribute('content', topbarColor));
-  } else {
-    const metaThemeColor = document.createElement('meta');
-    metaThemeColor.setAttribute('name', 'theme-color');
-    metaThemeColor.setAttribute('content', topbarColor);
-    document.head.appendChild(metaThemeColor);
-  }
+  // 2. Remove all existing meta[name="theme-color"] tags and append a fresh element
+  const existingMetas = document.querySelectorAll('meta[name="theme-color"]');
+  existingMetas.forEach((m) => m.remove());
 
-  // Ensure root background directly matches topbar color for mobile status bar area
+  const newMeta = document.createElement('meta');
+  newMeta.setAttribute('name', 'theme-color');
+  newMeta.setAttribute('content', topbarColor);
+  document.head.appendChild(newMeta);
+
+  // 3. Ensure root and body background directly match the topbar color for mobile safe areas
   root.style.backgroundColor = topbarColor;
   if (document.body) {
     document.body.style.backgroundColor = topbarColor;
@@ -71,6 +76,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   });
 
   const statusBarTimerRef = useRef<number | null>(null);
+  const isTransitioningRef = useRef<boolean>(false);
 
   const setTheme = (newTheme: Theme, e?: React.MouseEvent | MouseEvent) => {
     if (newTheme === theme) return;
@@ -88,15 +94,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       } catch { /* ignore */ }
     };
 
-    // Resolve the click-origin for the circle-expand centre
+    // Robust click/touch coordinate extraction
     let x = window.innerWidth / 2;
     let y = 0;
     if (e) {
-      if (e.clientX || e.clientY) {
+      if (typeof e.clientX === 'number' && typeof e.clientY === 'number' && (e.clientX !== 0 || e.clientY !== 0)) {
         x = e.clientX;
         y = e.clientY;
-      } else if (e.currentTarget instanceof HTMLElement) {
+      } else if (e.currentTarget && typeof (e.currentTarget as HTMLElement).getBoundingClientRect === 'function') {
         const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        x = r.left + r.width / 2;
+        y = r.top + r.height / 2;
+      } else if (e.target && typeof (e.target as HTMLElement).getBoundingClientRect === 'function') {
+        const r = (e.target as HTMLElement).getBoundingClientRect();
         x = r.left + r.width / 2;
         y = r.top + r.height / 2;
       }
@@ -109,10 +119,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Fallback: no View Transitions support → instant swap
     // @ts-ignore
     if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      isTransitioningRef.current = false;
       commitState();
       applyThemeDom(newTheme, true);
       return;
     }
+
+    // Mark transition active so React re-render useEffect won't prematurely fire applyStatusBarColor
+    isTransitioningRef.current = true;
 
     // Freeze element-level CSS transitions during the clip-path snapshot
     document.documentElement.setAttribute('data-theme-transitioning', 'true');
@@ -158,6 +172,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         clearTimeout(statusBarTimerRef.current);
         statusBarTimerRef.current = null;
       }
+      isTransitioningRef.current = false;
       applyStatusBarColor(newTheme);
     });
 
@@ -166,6 +181,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         clearTimeout(statusBarTimerRef.current);
         statusBarTimerRef.current = null;
       }
+      isTransitioningRef.current = false;
       // Unconditionally confirm the final status bar color so it can never be stuck
       applyStatusBarColor(newTheme);
       document.documentElement.removeAttribute('data-theme-transitioning');
@@ -176,8 +192,25 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setTheme(theme === 'dark' ? 'light' : 'dark', e);
   };
 
+  // Synchronize on mount and theme state change (when not actively animating)
   useEffect(() => {
+    if (isTransitioningRef.current) return;
     applyThemeDom(theme, true);
+  }, [theme]);
+
+  // Re-assert correct status bar color on page navigation / hash changes so it never locks
+  useEffect(() => {
+    const handleNavChange = () => {
+      if (!isTransitioningRef.current) {
+        applyStatusBarColor(theme);
+      }
+    };
+    window.addEventListener('hashchange', handleNavChange);
+    window.addEventListener('popstate', handleNavChange);
+    return () => {
+      window.removeEventListener('hashchange', handleNavChange);
+      window.removeEventListener('popstate', handleNavChange);
+    };
   }, [theme]);
 
   return (
@@ -190,4 +223,3 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 export function useTheme() {
   return useContext(ThemeContext);
 }
-
