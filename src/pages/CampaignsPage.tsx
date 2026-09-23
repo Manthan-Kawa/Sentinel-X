@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Search,
   Network,
@@ -25,6 +26,7 @@ import {
   RefreshCw,
   ChevronDown,
   Trash2,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -38,6 +40,7 @@ import {
 } from '@/data/mockData';
 import { useAnalysis } from '@/contexts/AnalysisContext';
 import { useCampaigns } from '@/contexts/CampaignContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import type { EmailAnalysisResult } from '@/services/claudeService';
 import { CopyButton } from '@/components/CopyButton';
 
@@ -224,8 +227,7 @@ function LiveRefreshBadge({ lastRefreshed }: { lastRefreshed: Date }) {
 
   return (
     <div
-      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium whitespace-nowrap shrink-0"
-      style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', color: '#86efac' }}
+      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-semibold whitespace-nowrap shrink-0 text-emerald-600 dark:text-[#86efac] bg-emerald-500/10 dark:bg-emerald-500/10 border border-emerald-500/25 dark:border-emerald-500/20"
     >
       <RefreshCw className="w-2.5 h-2.5 animate-spin" style={{ animationDuration: '3s' }} />
       <span>Live · {label}</span>
@@ -264,7 +266,29 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
       const updated = campaigns.find((c) => c.id === selected.id);
       if (updated) setSelected(updated);
     }
-  }, [campaigns]);
+  }, [campaigns, selected]);
+
+  const targetClusters = useMemo(() => {
+    const actives = allCampaigns.filter((c) => c.status === 'active');
+    return actives.length > 0 ? actives : allCampaigns;
+  }, [allCampaigns]);
+
+  // Rotate through target clusters if more than 1
+  const [clusterIdx, setClusterIdx] = useState(0);
+  const [clusterFade, setClusterFade] = useState<'in' | 'out'>('in');
+
+  useEffect(() => {
+    if (targetClusters.length <= 1) return;
+    const interval = setInterval(() => {
+      setClusterFade('out');
+      setTimeout(() => {
+        setClusterIdx((prev) => (prev + 1) % targetClusters.length);
+        setClusterFade('in');
+      }, 250);
+    }, 4500);
+
+    return () => clearInterval(interval);
+  }, [targetClusters.length]);
 
   if (selected) {
     return (
@@ -291,36 +315,39 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
 
   const activeCount = activeCampaignsCount;
 
-  const targetClusters = useMemo(() => {
-    const actives = allCampaigns.filter((c) => c.status === 'active');
-    return actives.length > 0 ? actives : allCampaigns;
-  }, [allCampaigns]);
-
-  // Rotate through target clusters if more than 1
-  const [clusterIdx, setClusterIdx] = useState(0);
-  const [clusterFade, setClusterFade] = useState<'in' | 'out'>('in');
-
-  useEffect(() => {
-    if (targetClusters.length <= 1) return;
-    const interval = setInterval(() => {
-      setClusterFade('out');
-      setTimeout(() => {
-        setClusterIdx((prev) => (prev + 1) % targetClusters.length);
-        setClusterFade('in');
-      }, 250);
-    }, 4500);
-
-    return () => clearInterval(interval);
-  }, [targetClusters.length]);
-
   const currentCluster = targetClusters[clusterIdx % (targetClusters.length || 1)] || targetClusters[0];
 
   const STAT_CARDS = [
-    { label: 'Emails Observed', value: stats.emailsObserved, icon: Mail, color: '#f87171', glow: 'rgba(239,68,68,0.15)' },
-    { label: 'Unique Domains', value: stats.uniqueDomains, icon: Globe, color: '#2dd4bf', glow: 'rgba(45,212,191,0.15)' },
-    { label: 'Unique IPs', value: stats.uniqueIPs, icon: Server, color: '#fb923c', glow: 'rgba(251,146,60,0.15)' },
-    { label: 'Suspicious URLs', value: stats.suspiciousURLs, icon: Link2, color: '#fbbf24', glow: 'rgba(251,191,36,0.15)' },
-    { label: 'Active Cases', value: stats.activeCases, icon: FolderSearch, color: '#c084fc', glow: 'rgba(192,132,252,0.15)' },
+    {
+      label: 'Emails Observed',
+      value: stats.emailsObserved,
+      dotColor: 'bg-[#f43f5e] dark:bg-[#f87171] shadow-sm shadow-rose-500/50',
+      numColor: 'text-[#e11d48] dark:text-[#f87171]',
+    },
+    {
+      label: 'Unique Domains',
+      value: stats.uniqueDomains,
+      dotColor: 'bg-[#0d9488] dark:bg-[#2dd4bf] shadow-sm shadow-teal-400/50',
+      numColor: 'text-[#0d9488] dark:text-[#2dd4bf]',
+    },
+    {
+      label: 'Unique IPs',
+      value: stats.uniqueIPs,
+      dotColor: 'bg-[#ea580c] dark:bg-[#fb923c] shadow-sm shadow-orange-400/50',
+      numColor: 'text-[#ea580c] dark:text-[#fb923c]',
+    },
+    {
+      label: 'Suspicious URLs',
+      value: stats.suspiciousURLs,
+      dotColor: 'bg-[#f59e0b] dark:bg-[#fbbf24] shadow-sm shadow-amber-400/50',
+      numColor: 'text-[#d97706] dark:text-[#fbbf24]',
+    },
+    {
+      label: 'Active Cases',
+      value: stats.activeCases,
+      dotColor: 'bg-[#9333ea] dark:bg-[#c084fc] shadow-sm shadow-purple-400/50',
+      numColor: 'text-[#9333ea] dark:text-[#c084fc]',
+    },
   ];
 
   return (
@@ -328,18 +355,15 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
       {/* ── Page Header (Single top-level SlideIn eliminates extra top margin on PC) ── */}
       <SlideIn delay={0} direction="down">
         {/* Mobile Card Header (Phone only: block md:hidden) Matching User Screenshot */}
-        <div className="block md:hidden rounded-2xl sm:rounded-3xl p-4 sm:p-5 bg-[#0e101a] border border-white/10 shadow-2xl space-y-4">
+        <div className="block md:hidden rounded-2xl sm:rounded-3xl p-4 sm:p-5 bg-white dark:bg-[#0e101a] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-2xl space-y-4">
           {/* Row 1: Icon + Eyebrow + Title + Active Count Pill */}
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-400 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/10">
-                <Crosshair className="w-5 h-5 text-purple-400" />
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/10">
+                <Crosshair className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div className="min-w-0">
-                {/* <div className="text-[10px] font-mono tracking-widest text-purple-400 font-bold uppercase">
-                  THREAT INTEL FEED
-                </div> */}
-                <h1 className="text-xl font-bold tracking-tight text-white leading-tight">
+                <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
                   Campaign Intelligence
                 </h1>
               </div>
@@ -350,12 +374,12 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
               style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.35)' }}
             >
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-xs font-bold text-amber-300 font-mono">{activeCount}</span>
+              <span className="text-xs font-bold text-amber-600 dark:text-amber-300 font-mono">{activeCount}</span>
             </div>
           </div>
 
           {/* Row 2: Subtitle Description */}
-          <p className="text-xs text-gray-400 leading-relaxed">
+          <p className="text-xs text-slate-600 dark:text-gray-400 leading-relaxed">
             Correlated threat clusters — multi-vector attack tracking, case intelligence &amp; real-time indicator grouping.
           </p>
 
@@ -366,8 +390,8 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg shrink-0 whitespace-nowrap"
               style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.3)' }}
             >
-              <Sparkles className="w-3 h-3 text-purple-400" />
-              <span className="text-xs font-semibold text-purple-300 font-mono">
+              <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+              <span className="text-xs font-semibold text-purple-700 dark:text-purple-300 font-mono">
                 {activeCount} ACTIVE CLUSTERS
               </span>
             </div>
@@ -375,10 +399,10 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
 
           {/* Row 4: Subheader (TARGET CLUSTERS | HIGH PRIORITY) */}
           <div className="flex items-center justify-between gap-2 pt-1">
-            <span className="text-[11px] font-mono tracking-wider text-gray-400 uppercase font-semibold">
+            <span className="text-[11px] font-mono tracking-wider text-slate-600 dark:text-gray-400 uppercase font-semibold">
               TARGET CLUSTERS
             </span>
-            <span className="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/25 text-[10px] font-mono font-bold text-rose-400 tracking-wider uppercase">
+            <span className="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/25 text-[10px] font-mono font-bold text-rose-600 dark:text-rose-400 tracking-wider uppercase">
               HIGH PRIORITY
             </span>
           </div>
@@ -387,46 +411,46 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
           {currentCluster && (
             <div
               onClick={() => setSelected(currentCluster)}
-              className="rounded-xl p-3 bg-[#131625] hover:bg-[#161a2e] border border-white/10 hover:border-purple-500/40 flex items-center justify-between gap-3 transition-all cursor-pointer active:scale-[0.99] group shadow-inner"
+              className="rounded-xl p-3 bg-slate-100 dark:bg-[#131625] hover:bg-slate-200 dark:hover:bg-[#161a2e] border border-slate-200 dark:border-white/10 hover:border-purple-400 dark:hover:border-purple-500/40 flex items-center justify-between gap-3 transition-all cursor-pointer active:scale-[0.99] group shadow-sm"
             >
               <div className={`min-w-0 flex-1 space-y-1 transition-opacity duration-200 ${clusterFade === 'in' ? 'opacity-100' : 'opacity-0'}`}>
                 <div className="flex items-center gap-2 flex-wrap font-mono text-xs">
-                  <span className={clusterIdx % 2 === 0 ? 'text-amber-400 font-bold' : 'text-purple-400 font-bold'}>
+                  <span className={clusterIdx % 2 === 0 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-purple-600 dark:text-purple-400 font-bold'}>
                     #{currentCluster.id.replace(/^#/, '')}
                   </span>
-                  <span className="text-gray-500">•</span>
-                  <span className="text-gray-400">
+                  <span className="text-slate-400 dark:text-gray-500">•</span>
+                  <span className="text-slate-500 dark:text-gray-400">
                     {clusterIdx % 2 === 0 ? '3m ago' : '11m ago'}
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm font-semibold text-white truncate">
+                <p className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white truncate">
                   {currentCluster.name}
                 </p>
                 <div className="flex items-center gap-2 text-[11px] flex-wrap">
-                  <span className="inline-flex items-center gap-1 text-emerald-400 font-mono">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-mono font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     {currentCluster.indicators || 14} IOCs detected
                   </span>
-                  <span className="text-gray-500">·</span>
-                  <span className="text-gray-400 truncate">
+                  <span className="text-slate-400 dark:text-gray-500">·</span>
+                  <span className="text-slate-600 dark:text-gray-400 truncate">
                     {currentCluster.threatType || 'Tor Exit Node'}
                   </span>
                 </div>
               </div>
 
-              <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-gray-400 group-hover:text-white flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-700 dark:text-gray-400 group-hover:text-black dark:group-hover:text-white flex items-center justify-center shrink-0">
                 <ChevronRight className="w-4 h-4" />
               </div>
             </div>
           )}
 
           {/* Row 6: Divider */}
-          <div className="border-t border-white/10 pt-1" />
+          <div className="border-t border-slate-200 dark:border-white/10 pt-1" />
 
           {/* Row 7: Create Campaign button */}
           <button
             onClick={() => setShowCreateModal(true)}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-mono font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 transition-all active:scale-98 cursor-pointer"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-mono font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 transition-transform duration-150 ease-out active:scale-95 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Create Campaign</span>
@@ -436,8 +460,8 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
         {/* Desktop Header (PC only: hidden md:flex) */}
         <div className="hidden md:flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-black text-white tracking-tight">Campaign Intelligence</h2>
-            <p className="text-sm text-gray-400 mt-0.5">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Campaign Intelligence</h2>
+            <p className="text-sm text-slate-600 dark:text-gray-400 mt-0.5">
               Correlated threat clusters — multi-vector attack tracking, case intelligence &amp; real-time indicator grouping
             </p>
           </div>
@@ -450,15 +474,15 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg shrink-0 whitespace-nowrap"
                 style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.25)' }}
               >
-                <Sparkles className="w-3 h-3 text-purple-400" />
-                <span className="text-[11px] font-semibold text-purple-300 font-mono">
+                <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                <span className="text-[11px] font-semibold text-purple-700 dark:text-purple-300 font-mono">
                   {activeCount} ACTIVE CLUSTER{activeCount !== 1 ? 'S' : ''}
                 </span>
               </div>
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1 rounded-lg text-xs font-bold text-white transition-all font-mono shadow-md shrink-0 whitespace-nowrap hover:scale-[1.01] sm:hover:scale-105 cursor-pointer"
+              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1 rounded-lg text-xs font-bold text-white transition-transform duration-150 ease-out active:scale-95 font-mono shadow-md shrink-0 whitespace-nowrap cursor-pointer"
               style={{
                 background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
                 boxShadow: '0 0 12px rgba(168,85,247,0.3)',
@@ -472,27 +496,24 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
       </SlideIn>
 
       {/* ── Stat Cards ── */}
-      <SlideIn delay={60} direction="up">
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <SlideIn delay={60} direction="up" className="w-full">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 w-full">
           {STAT_CARDS.map((stat) => {
-            const Icon = stat.icon;
             const isFullWidthMobile = stat.label === 'Emails Observed';
             return (
               <div
                 key={stat.label}
-                className={`rounded-2xl p-4 transition-all duration-200 hover:scale-[1.02] ${isFullWidthMobile ? 'col-span-2 lg:col-span-1' : 'col-span-1'
-                  }`}
-                style={{
-                  background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-                  border: '1px solid rgba(255,255,255,0.07)',
-                  boxShadow: `0 0 20px ${stat.glow}`,
-                }}
+                className={`p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#0c0e18] border border-slate-200 dark:border-white/[0.08] transition-all flex flex-col justify-between min-h-[82px] sm:min-h-[92px] ${
+                  isFullWidthMobile ? 'col-span-2 lg:col-span-1' : 'col-span-1'
+                }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] text-gray-500 font-mono uppercase tracking-wider">{stat.label}</span>
-                  <Icon className="w-3.5 h-3.5" style={{ color: stat.color }} />
+                  <span className="font-mono text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">
+                    {stat.label}
+                  </span>
+                  <span className={`w-2 h-2 rounded-full ${stat.dotColor}`} />
                 </div>
-                <div className="text-2xl font-black" style={{ color: stat.color }}>
+                <div className={`text-2xl sm:text-3xl font-bold font-mono tracking-tight ${stat.numColor}`}>
                   {stat.value.toLocaleString()}
                 </div>
               </div>
@@ -504,25 +525,19 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
       {/* ── Filters ── */}
       <SlideIn delay={120} direction="up">
         <div
-          className="rounded-2xl p-4"
-          style={{
-            background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-          }}
+          className="rounded-2xl p-4 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-transparent shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
         >
           <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
             <div
-              className="flex items-center gap-2 flex-1 rounded-xl px-3 py-2.5 min-w-0"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+              className="flex items-center gap-2 flex-1 rounded-xl px-3 py-2.5 min-w-0 bg-slate-100 dark:bg-white border border-slate-200 dark:border-slate-200 shadow-sm"
             >
-              <Search className="w-4 h-4 text-gray-500 shrink-0" />
+              <Search className="w-4 h-4 text-slate-400 dark:text-slate-400 shrink-0" />
               <input
                 type="text"
                 placeholder="Search by campaign ID, cluster name, case ID, or threat type..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="bg-transparent text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none w-full font-mono"
+                className="bg-transparent text-xs sm:text-sm text-slate-900 dark:text-slate-900 placeholder-slate-400 dark:placeholder-slate-400 focus:outline-none w-full font-mono"
               />
             </div>
 
@@ -533,18 +548,15 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
                 <select
                   value={severityFilter}
                   onChange={(e) => setSeverityFilter(e.target.value as any)}
-                  className="w-full sm:w-auto appearance-none px-3 sm:px-3.5 py-2.5 pr-7 sm:pr-8 rounded-xl text-xs font-mono font-bold text-gray-200 bg-white/5 border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.04)',
-                  }}
+                  className="w-full sm:w-auto appearance-none px-2.5 sm:px-3.5 py-1.5 sm:py-2.5 pr-6 sm:pr-8 rounded-xl text-[11px] sm:text-xs font-mono font-medium sm:font-semibold text-slate-800 dark:text-gray-200 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all"
                 >
-                  <option value="all" className="bg-[#0b0e17] text-gray-300">All Severity</option>
-                  <option value="critical" className="bg-[#0b0e17] text-red-400">Critical</option>
-                  <option value="high" className="bg-[#0b0e17] text-orange-400">High</option>
-                  <option value="medium" className="bg-[#0b0e17] text-amber-400">Medium</option>
-                  <option value="low" className="bg-[#0b0e17] text-green-400">Low</option>
+                  <option value="all" className="bg-white dark:bg-[#0b0e17] text-slate-800 dark:text-gray-300">All Severity</option>
+                  <option value="critical" className="bg-white dark:bg-[#0b0e17] text-red-500 dark:text-red-400">Critical</option>
+                  <option value="high" className="bg-white dark:bg-[#0b0e17] text-orange-500 dark:text-orange-400">High</option>
+                  <option value="medium" className="bg-white dark:bg-[#0b0e17] text-amber-500 dark:text-amber-400">Medium</option>
+                  <option value="low" className="bg-white dark:bg-[#0b0e17] text-green-500 dark:text-green-400">Low</option>
                 </select>
-                <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-500 dark:text-gray-400 absolute right-2 sm:right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
 
               {/* Status Dropdown */}
@@ -552,18 +564,15 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="w-full sm:w-auto appearance-none px-3 sm:px-3.5 py-2.5 pr-7 sm:pr-8 rounded-xl text-xs font-mono font-bold text-gray-200 bg-white/5 border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.04)',
-                  }}
+                  className="w-full sm:w-auto appearance-none px-2.5 sm:px-3.5 py-1.5 sm:py-2.5 pr-6 sm:pr-8 rounded-xl text-[11px] sm:text-xs font-mono font-medium sm:font-semibold text-slate-800 dark:text-gray-200 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer transition-all"
                 >
-                  <option value="all" className="bg-[#0b0e17] text-gray-300">All Status</option>
-                  <option value="active" className="bg-[#0b0e17] text-red-400">Active</option>
-                  <option value="dormant" className="bg-[#0b0e17] text-gray-400">Dormant</option>
-                  <option value="disrupted" className="bg-[#0b0e17] text-green-400">Disrupted</option>
-                  <option value="monitoring" className="bg-[#0b0e17] text-cyan-400">Monitoring</option>
+                  <option value="all" className="bg-white dark:bg-[#0b0e17] text-slate-800 dark:text-gray-300">All Status</option>
+                  <option value="active" className="bg-white dark:bg-[#0b0e17] text-red-500 dark:text-red-400">Active</option>
+                  <option value="dormant" className="bg-white dark:bg-[#0b0e17] text-slate-600 dark:text-gray-400">Dormant</option>
+                  <option value="disrupted" className="bg-white dark:bg-[#0b0e17] text-green-600 dark:text-green-400">Disrupted</option>
+                  <option value="monitoring" className="bg-white dark:bg-[#0b0e17] text-blue-600 dark:text-cyan-400">Monitoring</option>
                 </select>
-                <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-500 dark:text-gray-400 absolute right-2 sm:right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
           </div>
@@ -573,15 +582,10 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
       {/* ── Campaigns Table ── */}
       <SlideIn delay={180} direction="up">
         <div
-          className="rounded-2xl overflow-hidden"
-          style={{
-            background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-          }}
+          className="rounded-2xl overflow-hidden bg-white dark:bg-[#090b12] border border-slate-200 dark:border-transparent shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
         >
           {/* ── Mobile Campaign Cards View (< md) ── */}
-          <div className="md:hidden divide-y divide-white/5">
+          <div className="md:hidden divide-y divide-slate-100 dark:divide-white/5">
             {filtered.map((c) => {
               const primaryCaseId = c.relatedCases[0] ?? null;
               const casesForCampaign = allCases.filter((cs) => c.relatedCases.includes(cs.id));
@@ -593,12 +597,12 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
                 <div
                   key={c.id}
                   onClick={() => setSelected(c)}
-                  className="p-3.5 space-y-2 cursor-pointer transition-all duration-150 hover:bg-white/[0.03] active:bg-white/[0.05]"
+                  className="p-3.5 space-y-2 cursor-pointer transition-all duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.03] active:bg-slate-100 dark:active:bg-white/[0.05]"
                 >
                   {/* Row 1: Campaign ID + Live dot + Status pill */}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-xs font-mono font-bold text-purple-400 whitespace-nowrap">{c.id}</span>
+                      <span className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400 whitespace-nowrap">{c.id}</span>
                       {c.status === 'active' && (
                         <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
                       )}
@@ -615,29 +619,24 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
                   </div>
 
                   {/* Row 2: Full Cluster Name */}
-                  <div className="text-xs text-white font-semibold leading-snug break-words">
+                  <div className="text-xs text-slate-900 dark:text-white font-semibold leading-snug break-words">
                     {c.name}
                   </div>
 
                   {/* Row 3: Linked Case ID badge, Threat Type, Severity, Confidence, & Actions */}
-                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/[0.04] text-xs">
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-white/[0.04] text-xs">
                     <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                       {primaryCaseId ? (
                         <span
-                          className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded shrink-0"
-                          style={{
-                            background: 'rgba(6,182,212,0.12)',
-                            border: '1px solid rgba(6,182,212,0.3)',
-                            color: '#22d3ee',
-                          }}
+                          className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded shrink-0 bg-cyan-500/10 border border-cyan-500/25 text-cyan-700 dark:text-cyan-400"
                         >
                           <Lock className="w-2.5 h-2.5 opacity-75 shrink-0" />
                           <span className="whitespace-nowrap">{primaryCaseId}</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] text-gray-600 font-mono italic shrink-0">No Case</span>
+                        <span className="text-[10px] text-slate-400 dark:text-gray-600 font-mono italic shrink-0">No Case</span>
                       )}
-                      <span className="text-[10px] text-gray-400 font-mono px-2 py-0.5 rounded bg-white/[0.04] border border-white/5 shrink-0 whitespace-nowrap">
+                      <span className="text-[10px] text-slate-600 dark:text-gray-400 font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/5 shrink-0 whitespace-nowrap">
                         {c.threatType}
                       </span>
                       <div className="shrink-0">
@@ -646,13 +645,13 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[10px] font-mono text-gray-400 font-bold">{c.confidence}%</span>
+                      <span className="text-[10px] font-mono text-slate-600 dark:text-gray-400 font-bold">{c.confidence}%</span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setEditingCampaign(c);
                         }}
-                        className="p-1 rounded text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 transition-colors cursor-pointer"
+                        className="p-1 rounded text-slate-400 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 hover:bg-purple-500/10 transition-colors cursor-pointer"
                         title="Edit Campaign"
                       >
                         <Pencil className="w-3.5 h-3.5" />
@@ -664,12 +663,12 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
                             deleteCampaign(c.id);
                           }
                         }}
-                        className="p-1 rounded text-gray-400 hover:text-red-400 hover:bg-red-500/15 transition-colors cursor-pointer"
+                        className="p-1 rounded text-slate-400 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-500/15 transition-colors cursor-pointer"
                         title="Delete Campaign"
                       >
-                        <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                        <Trash2 className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
                       </button>
-                      <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-gray-600" />
                     </div>
                   </div>
                 </div>
@@ -682,8 +681,7 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
             <div className="min-w-[700px] md:min-w-0">
               {/* Table Header */}
               <div
-                className="grid grid-cols-12 gap-2 px-5 py-3 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider"
-                style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}
+                className="grid grid-cols-12 gap-2 px-5 py-3 text-[10px] font-mono font-bold text-slate-500 dark:text-gray-500 uppercase tracking-wider border-b border-slate-200 dark:border-transparent bg-slate-50/70 dark:bg-white/[0.02]"
               >
                 <div className="col-span-2">Campaign ID</div>
                 <div className="col-span-2">Case ID</div>
@@ -695,7 +693,7 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
               </div>
 
               {/* Table Rows */}
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-slate-100 dark:divide-white/5">
                 {filtered.map((c) => {
                   const primaryCaseId = c.relatedCases[0] ?? null;
                   const casesForCampaign = allCases.filter((cs) => c.relatedCases.includes(cs.id));
@@ -707,12 +705,12 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
                     <div
                       key={c.id}
                       onClick={() => setSelected(c)}
-                      className="grid grid-cols-12 gap-2 px-5 py-3.5 cursor-pointer transition-all duration-150 hover:bg-white/[0.03] group items-center"
+                      className="grid grid-cols-12 gap-2 px-5 py-3.5 cursor-pointer transition-all duration-150 hover:bg-slate-50 dark:hover:bg-white/[0.03] group items-center"
                     >
                       {/* Campaign ID */}
                       <div className="col-span-2 flex items-center gap-2">
-                        <Crosshair className="w-3 h-3 text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                        <span className="text-xs font-mono font-bold text-purple-400">{c.id}</span>
+                        <Crosshair className="w-3 h-3 text-purple-600 dark:text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                        <span className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400">{c.id}</span>
                         {c.status === 'active' && (
                           <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
                         )}
@@ -722,24 +720,19 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
                       <div className="col-span-2 flex items-center">
                         {primaryCaseId ? (
                           <span
-                            className="inline-flex items-center gap-1.5 text-[11px] font-mono font-bold px-2.5 py-1 rounded transition-colors"
-                            style={{
-                              background: 'rgba(6,182,212,0.12)',
-                              border: '1px solid rgba(6,182,212,0.3)',
-                              color: '#22d3ee',
-                            }}
+                            className="inline-flex items-center gap-1.5 text-[11px] font-mono font-bold px-2.5 py-1 rounded transition-colors bg-cyan-500/10 border border-cyan-500/25 text-cyan-700 dark:text-cyan-400"
                           >
                             <Lock className="w-3 h-3 opacity-75" />
                             {primaryCaseId}
                           </span>
                         ) : (
-                          <span className="text-[11px] text-gray-600 font-mono italic">None</span>
+                          <span className="text-[11px] text-slate-400 dark:text-gray-600 font-mono italic">None</span>
                         )}
                       </div>
 
                       {/* Cluster Name */}
                       <div className="col-span-3 flex items-center gap-1.5">
-                        <span className="text-xs text-white font-medium truncate block">{c.name}</span>
+                        <span className="text-xs text-slate-900 dark:text-white font-medium truncate block">{c.name}</span>
                         {hasLiveCase && (
                           <span
                             className="shrink-0 w-2 h-2 rounded-full bg-green-400 animate-pulse"
@@ -750,7 +743,7 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
 
                       {/* Threat Type */}
                       <div className="col-span-1 hidden md:flex items-center">
-                        <span className="text-xs text-gray-300 font-mono truncate">{c.threatType}</span>
+                        <span className="text-xs text-slate-700 dark:text-gray-300 font-mono truncate">{c.threatType}</span>
                       </div>
 
                       {/* Severity */}
@@ -765,7 +758,7 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
 
                       {/* Confidence & Actions */}
                       <div className="col-span-1 hidden xl:flex items-center justify-end gap-2">
-                        <div className="w-10 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                        <div className="w-10 h-1.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
                           <div
                             className="h-full rounded-full"
                             style={{
@@ -776,13 +769,13 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
                             }}
                           />
                         </div>
-                        <span className="text-xs font-mono text-white font-bold">{c.confidence}%</span>
+                        <span className="text-xs font-mono text-slate-900 dark:text-white font-bold">{c.confidence}%</span>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingCampaign(c);
                           }}
-                          className="p-1 rounded-lg text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 transition-colors cursor-pointer"
+                          className="p-1 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-slate-100 dark:text-gray-400 dark:hover:text-purple-400 dark:hover:bg-purple-500/10 transition-colors cursor-pointer"
                           title="Edit Campaign"
                         >
                           <Pencil className="w-3.5 h-3.5" />
@@ -794,12 +787,12 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
                               deleteCampaign(c.id);
                             }
                           }}
-                          className="p-1 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/15 transition-colors cursor-pointer"
+                          className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-slate-100 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-500/15 transition-colors cursor-pointer"
                           title="Delete Campaign"
                         >
-                          <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                          <Trash2 className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
                         </button>
-                        <ChevronRight className="w-3.5 h-3.5 text-gray-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-gray-600 group-hover:text-purple-600 dark:group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all shrink-0" />
                       </div>
                     </div>
                   );
@@ -812,12 +805,12 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
             <div className="text-center py-16 px-4">
               {allCampaigns.length === 0 ? (
                 <div className="max-w-md mx-auto space-y-4">
-                  <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                  <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400">
                     <Network className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-white font-mono">No Campaigns Recorded</h3>
-                    <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white font-mono">No Campaigns Recorded</h3>
+                    <p className="text-xs text-slate-600 dark:text-gray-400 mt-1 leading-relaxed">
                       No campaign threat clusters exist yet. Ingest and analyze emails in Email Analyzer or manually create a correlated campaign cluster.
                     </p>
                   </div>
@@ -832,9 +825,9 @@ export function CampaignsPage({ onNavigate }: { onNavigate?: (id: string) => voi
                     {onNavigate && (
                       <button
                         onClick={() => onNavigate('email-analyzer')}
-                        className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-300 bg-white/5 border border-white/10 hover:text-white transition-all font-mono flex items-center gap-1.5"
+                        className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:text-black dark:text-gray-300 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-white/5 border border-slate-200 dark:border-white/10 transition-all font-mono flex items-center gap-1.5"
                       >
-                        <Mail className="w-3.5 h-3.5 text-blue-400" />
+                        <Network className="w-3.5 h-3.5" />
                         Analyze Email
                       </button>
                     )}
@@ -904,6 +897,7 @@ function CampaignFormModal({
   onClose: () => void;
   onSaved: (camp: Campaign) => void;
 }) {
+  const { isDark } = useTheme();
   const { addCampaign, updateCampaign } = useCampaigns();
   const [name, setName] = useState(initialData?.name ?? '');
   const [threatType, setThreatType] = useState<ThreatType>(initialData?.threatType ?? 'BEC');
@@ -955,183 +949,223 @@ function CampaignFormModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    const prevMainOverflow = mainEl?.style.overflow || '';
+    const prevBodyOverflow = document.body.style.overflow || '';
+
+    if (mainEl) mainEl.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      if (mainEl) mainEl.style.overflow = prevMainOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+    };
+  }, []);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+      style={{
+        background: isDark ? 'rgba(0,0,0,0.82)' : 'rgba(15, 23, 42, 0.45)',
+        backdropFilter: 'blur(10px)',
+      }}
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-xl rounded-2xl p-6 relative space-y-5 max-h-[90vh] overflow-y-auto"
+        className="relative w-full max-w-2xl rounded-2xl sm:rounded-3xl overflow-hidden animate-slide-up flex flex-col my-auto max-h-[calc(100vh-3rem)]"
         style={{
-          background: 'linear-gradient(145deg, #0d111d 0%, #080a12 100%)',
-          border: '1px solid rgba(168,85,247,0.3)',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(168,85,247,0.15)',
+          background: isDark ? 'linear-gradient(145deg, #0d1118, #0a0c14)' : '#ffffff',
+          border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e2e8f0',
+          boxShadow: isDark ? '0 32px 80px rgba(0,0,0,0.85)' : '0 25px 60px -15px rgba(0,0,0,0.25)',
         }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between pb-3 border-b border-white/10">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400">
-              {mode === 'edit' ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+        <div
+          className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 shrink-0"
+          style={{ borderBottom: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0' }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{
+                background: 'rgba(168,85,247,0.15)',
+                border: '1px solid rgba(168,85,247,0.3)',
+              }}
+            >
+              {mode === 'edit' ? <Pencil className="w-5 h-5 text-purple-400" /> : <Plus className="w-5 h-5 text-purple-400" />}
             </div>
             <div>
-              <h3 className="text-base font-bold text-white font-mono">
+              <p className="text-sm font-black text-slate-900 dark:text-white font-mono">
                 {mode === 'edit' ? 'Edit Campaign Cluster' : 'Create Threat Campaign Cluster'}
-              </h3>
-              <p className="text-xs text-gray-400">
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-gray-500 mt-0.5">
                 {mode === 'edit' ? 'Update campaign intelligence dossier' : 'Add a correlated campaign intelligence dossier'}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-sm font-mono p-1">
-            ✕
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-gray-500 transition-transform duration-150 ease-out active:scale-95 shrink-0 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-xs font-mono font-semibold text-gray-300 block mb-1">
-              Campaign Cluster Name *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Executive Wire-Transfer Phishing Ring"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl text-sm text-white bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none font-mono placeholder:text-gray-600"
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col min-h-0">
+          <div className="overflow-y-auto overflow-x-hidden scrollbar-thin flex-1 px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5 touch-scroll">
             <div>
-              <label className="text-xs font-mono font-semibold text-gray-300 block mb-1">Threat Type</label>
-              <select
-                value={threatType}
-                onChange={(e) => setThreatType(e.target.value as ThreatType)}
-                className="w-full px-3 py-2 rounded-xl text-xs text-white bg-[#0f1422] border border-white/10 focus:outline-none font-mono"
-              >
-                <option value="BEC">BEC</option>
-                <option value="Phishing">Phishing</option>
-                <option value="Malware">Malware</option>
-                <option value="Spoofing">Spoofing</option>
-                <option value="Credential Harvesting">Credential Harvesting</option>
-                <option value="Ransomware">Ransomware</option>
-                <option value="C2">C2</option>
-                <option value="Spam">Spam</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-mono font-semibold text-gray-300 block mb-1">Severity</label>
-              <select
-                value={severity}
-                onChange={(e) => setSeverity(e.target.value as Severity)}
-                className="w-full px-3 py-2 rounded-xl text-xs text-white bg-[#0f1422] border border-white/10 focus:outline-none font-mono"
-              >
-                <option value="critical">Critical</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-mono font-semibold text-gray-300 block mb-1">Status</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as CampaignStatus)}
-                className="w-full px-3 py-2 rounded-xl text-xs text-white bg-[#0f1422] border border-white/10 focus:outline-none font-mono"
-              >
-                <option value="active">Active</option>
-                <option value="monitoring">Monitoring</option>
-                <option value="dormant">Dormant</option>
-                <option value="disrupted">Disrupted</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-mono font-semibold text-gray-300 block mb-1">
-              Confidence Score: <span className="text-purple-400">{confidence}%</span>
-            </label>
-            <input
-              type="range"
-              min={10}
-              max={100}
-              value={confidence}
-              onChange={(e) => setConfidence(Number(e.target.value))}
-              className="w-full accent-purple-500"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-mono font-semibold text-gray-300 block mb-1">
-              Description &amp; Threat Context
-            </label>
-            <textarea
-              rows={2}
-              placeholder="Describe attack methodology, targeted roles, impersonated brands..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl text-xs text-white bg-white/5 border border-white/10 focus:border-purple-500 focus:outline-none font-mono placeholder:text-gray-600"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-mono font-semibold text-gray-300 block mb-1">
-                Related Domains <span className="text-gray-600">(comma-separated)</span>
+              <label className="text-xs font-mono font-semibold text-slate-700 dark:text-gray-300 block mb-1">
+                Campaign Cluster Name *
               </label>
               <input
                 type="text"
-                placeholder="malicious-domain.com, spoof-bank.net"
-                value={domains}
-                onChange={(e) => setDomains(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-xs text-white bg-white/5 border border-white/10 focus:outline-none font-mono placeholder:text-gray-600"
+                required
+                placeholder="e.g. Executive Wire-Transfer Phishing Ring"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl text-sm text-slate-900 dark:text-white bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 focus:border-purple-500 focus:outline-none font-mono placeholder:text-slate-400 dark:placeholder:text-gray-600 transition-colors"
               />
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs font-mono font-semibold text-slate-700 dark:text-gray-300 block mb-1">Threat Type</label>
+                <select
+                  value={threatType}
+                  onChange={(e) => setThreatType(e.target.value as ThreatType)}
+                  className="w-full px-3 py-2 rounded-xl text-xs text-slate-900 dark:text-white bg-slate-50 dark:bg-[#0f1422] border border-slate-200 dark:border-white/10 focus:border-purple-500 focus:outline-none font-mono transition-colors"
+                >
+                  <option value="BEC" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">BEC</option>
+                  <option value="Phishing" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">Phishing</option>
+                  <option value="Malware" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">Malware</option>
+                  <option value="Spoofing" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">Spoofing</option>
+                  <option value="Credential Harvesting" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">Credential Harvesting</option>
+                  <option value="Ransomware" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">Ransomware</option>
+                  <option value="C2" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">C2</option>
+                  <option value="Spam" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">Spam</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-mono font-semibold text-slate-700 dark:text-gray-300 block mb-1">Severity</label>
+                <select
+                  value={severity}
+                  onChange={(e) => setSeverity(e.target.value as Severity)}
+                  className="w-full px-3 py-2 rounded-xl text-xs text-slate-900 dark:text-white bg-slate-50 dark:bg-[#0f1422] border border-slate-200 dark:border-white/10 focus:border-purple-500 focus:outline-none font-mono transition-colors"
+                >
+                  <option value="critical" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">Critical</option>
+                  <option value="high" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">High</option>
+                  <option value="medium" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">Medium</option>
+                  <option value="low" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">Low</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-mono font-semibold text-slate-700 dark:text-gray-300 block mb-1">Status</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as CampaignStatus)}
+                  className="w-full px-3 py-2 rounded-xl text-xs text-slate-900 dark:text-white bg-slate-50 dark:bg-[#0f1422] border border-slate-200 dark:border-white/10 focus:border-purple-500 focus:outline-none font-mono transition-colors"
+                >
+                  <option value="active" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">Active</option>
+                  <option value="monitoring" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">Monitoring</option>
+                  <option value="dormant" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">Dormant</option>
+                  <option value="disrupted" className="bg-white dark:bg-[#0f1422] text-slate-900 dark:text-white">Disrupted</option>
+                </select>
+              </div>
+            </div>
+
             <div>
-              <label className="text-xs font-mono font-semibold text-gray-300 block mb-1">
-                Related IPs <span className="text-gray-600">(comma-separated)</span>
+              <label className="text-xs font-mono font-semibold text-slate-700 dark:text-gray-300 block mb-1">
+                Confidence Score: <span className="text-purple-600 dark:text-purple-400 font-bold">{confidence}%</span>
+              </label>
+              <input
+                type="range"
+                min={10}
+                max={100}
+                value={confidence}
+                onChange={(e) => setConfidence(Number(e.target.value))}
+                className="w-full accent-purple-600 dark:accent-purple-500 cursor-pointer"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-mono font-semibold text-slate-700 dark:text-gray-300 block mb-1">
+                Description &amp; Threat Context
+              </label>
+              <textarea
+                rows={2}
+                placeholder="Describe attack methodology, targeted roles, impersonated brands..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl text-xs text-slate-900 dark:text-white bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 focus:border-purple-500 focus:outline-none font-mono placeholder:text-slate-400 dark:placeholder:text-gray-600 transition-colors"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-mono font-semibold text-slate-700 dark:text-gray-300 block mb-1">
+                  Related Domains <span className="text-slate-400 dark:text-gray-500 font-normal">(comma-separated)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="malicious-domain.com, spoof-bank.net"
+                  value={domains}
+                  onChange={(e) => setDomains(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-xs text-slate-900 dark:text-white bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 focus:border-purple-500 focus:outline-none font-mono placeholder:text-slate-400 dark:placeholder:text-gray-600 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-mono font-semibold text-slate-700 dark:text-gray-300 block mb-1">
+                  Related IPs <span className="text-slate-400 dark:text-gray-500 font-normal">(comma-separated)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="185.220.101.47, 91.240.118.52"
+                  value={ips}
+                  onChange={(e) => setIps(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-xs text-slate-900 dark:text-white bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 focus:border-purple-500 focus:outline-none font-mono placeholder:text-slate-400 dark:placeholder:text-gray-600 transition-colors"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-mono font-semibold text-slate-700 dark:text-gray-300 block mb-1">
+                Suspicious URLs <span className="text-slate-400 dark:text-gray-500 font-normal">(comma-separated)</span>
               </label>
               <input
                 type="text"
-                placeholder="185.220.101.47, 91.240.118.52"
-                value={ips}
-                onChange={(e) => setIps(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-xs text-white bg-white/5 border border-white/10 focus:outline-none font-mono placeholder:text-gray-600"
+                placeholder="https://phish-site.example/verify, https://cred-capture.example/login"
+                value={urls}
+                onChange={(e) => setUrls(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-xs text-slate-900 dark:text-white bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 focus:border-purple-500 focus:outline-none font-mono placeholder:text-slate-400 dark:placeholder:text-gray-600 transition-colors"
               />
             </div>
           </div>
 
-          <div>
-            <label className="text-xs font-mono font-semibold text-gray-300 block mb-1">
-              Suspicious URLs <span className="text-gray-600">(comma-separated)</span>
-            </label>
-            <input
-              type="text"
-              placeholder="https://phish-site.example/verify, https://cred-capture.example/login"
-              value={urls}
-              onChange={(e) => setUrls(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl text-xs text-white bg-white/5 border border-white/10 focus:outline-none font-mono placeholder:text-gray-600"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+          <div
+            className="px-6 py-4 flex items-center justify-end gap-3 shrink-0"
+            style={{ borderTop: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0' }}
+          >
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-white bg-white/5 border border-white/10 font-mono"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 font-mono transition-transform duration-150 ease-out active:scale-95 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 transition-all font-mono shadow-md"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 transition-transform duration-150 ease-out active:scale-95 font-mono shadow-md cursor-pointer"
             >
               {mode === 'edit' ? 'Save Changes' : 'Save Campaign'}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1171,22 +1205,22 @@ function CampaignDetail({
     <div className="space-y-6" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
       {/* Back button + Meta */}
       <SlideIn delay={0} direction="down">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 p-3 sm:p-0 rounded-2xl bg-gradient-to-b from-white/[0.04] to-white/[0.01] sm:bg-none border border-white/[0.08] sm:border-none shadow-md sm:shadow-none backdrop-blur-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 p-3 sm:p-0 rounded-2xl bg-white sm:bg-transparent dark:bg-gradient-to-b dark:from-white/[0.04] dark:to-white/[0.01] border border-slate-200 sm:border-none dark:border-white/[0.08] shadow-sm sm:shadow-none backdrop-blur-sm">
           <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
             <button
               onClick={onBack}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-200 hover:text-white transition-all cursor-pointer shrink-0 bg-white/5 hover:bg-white/10 active:bg-white/15 active:scale-[0.98] border border-white/10 hover:border-white/20 shadow-sm"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-gray-200 dark:hover:text-white transition-all cursor-pointer shrink-0 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 active:scale-[0.98] border border-slate-200 dark:border-white/10 shadow-sm"
             >
-              <ArrowLeft className="w-3.5 h-3.5 text-gray-400" />
+              <ArrowLeft className="w-3.5 h-3.5 text-slate-500 dark:text-gray-400" />
               <span className="hidden min-[380px]:inline">Back to Campaigns</span>
               <span className="min-[380px]:hidden">Back</span>
             </button>
             <div className="flex items-center gap-2 sm:hidden shrink-0">
               <button
                 onClick={onEdit}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-purple-300 hover:text-purple-200 transition-all cursor-pointer bg-purple-500/15 hover:bg-purple-500/25 active:scale-[0.98] border border-purple-500/30 shadow-sm"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-purple-700 hover:text-purple-900 dark:text-purple-300 dark:hover:text-purple-200 transition-all cursor-pointer bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/15 dark:hover:bg-purple-500/25 active:scale-[0.98] border border-purple-200 dark:border-purple-500/30 shadow-sm"
               >
-                <Pencil className="w-3.5 h-3.5 text-purple-400" />
+                <Pencil className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                 <span>Edit</span>
               </button>
               <button
@@ -1196,22 +1230,21 @@ function CampaignDetail({
                     onBack();
                   }
                 }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-red-400 hover:text-red-300 transition-all bg-red-500/15 hover:bg-red-500/25 active:scale-[0.98] border border-red-500/30 shadow-sm cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-rose-700 hover:text-rose-900 dark:text-red-400 dark:hover:text-red-300 transition-all bg-rose-50 hover:bg-rose-100 dark:bg-red-500/15 dark:hover:bg-red-500/25 active:scale-[0.98] border border-rose-200 dark:border-red-500/30 shadow-sm cursor-pointer"
                 title="Delete Campaign"
               >
-                <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-red-400" />
                 <span>Delete</span>
               </button>
             </div>
           </div>
 
-          <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto pt-2.5 sm:pt-0 border-t border-white/[0.06] sm:border-t-0 flex-wrap">
+          <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto pt-2.5 sm:pt-0 border-t border-slate-200 dark:border-white/[0.06] sm:border-t-0 flex-wrap">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap shrink-0">
               <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider font-mono"
-                style={{ background: 'rgba(168,85,247,0.12)', border: '1px solid rgba(168,85,247,0.3)', color: '#d8b4fe' }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider font-mono bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-500/15 dark:border-purple-500/30 dark:text-purple-300"
               >
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#c084fc' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 dark:bg-purple-400" />
                 {campaign.id}
               </span>
               <SeverityPill severity={campaign.severity} />
@@ -1222,10 +1255,9 @@ function CampaignDetail({
             <div className="hidden sm:flex items-center gap-2 shrink-0">
               <button
                 onClick={onEdit}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-300 hover:text-white transition-all cursor-pointer hover:bg-purple-500/20"
-                style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.25)' }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-purple-700 dark:text-gray-300 hover:text-purple-900 dark:hover:text-white transition-all cursor-pointer bg-purple-50 dark:bg-purple-500/10 hover:bg-purple-100 dark:hover:bg-purple-500/20 border border-purple-200 dark:border-purple-500/25"
               >
-                <Pencil className="w-3.5 h-3.5 text-purple-400" />
+                <Pencil className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                 Edit Campaign
               </button>
               <button
@@ -1235,11 +1267,10 @@ function CampaignDetail({
                     onBack();
                   }
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-red-400 hover:text-white transition-all hover:bg-red-500/25 border border-red-500/30 cursor-pointer"
-                style={{ background: 'rgba(239,68,68,0.12)' }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-700 dark:text-red-400 hover:text-rose-900 dark:hover:text-white transition-all bg-rose-50 dark:bg-red-500/10 hover:bg-rose-100 dark:hover:bg-red-500/25 border border-rose-200 dark:border-red-500/30 cursor-pointer"
                 title="Delete Campaign"
               >
-                <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-red-400" />
                 Delete Campaign
               </button>
             </div>
@@ -1250,15 +1281,10 @@ function CampaignDetail({
       {/* Cluster summary card */}
       <SlideIn delay={60} direction="up">
         <div
-          className="rounded-2xl p-5"
-          style={{
-            background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-            border: `1px solid ${sev.border}`,
-            boxShadow: `0 0 30px ${sev.glow}`,
-          }}
+          className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-purple-500/30 shadow-sm dark:shadow-[0_0_30px_rgba(168,85,247,0.15)]"
         >
-          <h2 className="text-xl font-black text-white mb-2">{campaign.name}</h2>
-          <p className="text-sm text-gray-400 leading-relaxed mb-4">{campaign.description}</p>
+          <h2 className="text-xl font-black text-slate-900 dark:text-white mb-2">{campaign.name}</h2>
+          <p className="text-sm text-slate-600 dark:text-gray-400 leading-relaxed mb-4">{campaign.description}</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { label: 'Threat Type', val: campaign.threatType, icon: Zap, color: '#c084fc' },
@@ -1275,14 +1301,13 @@ function CampaignDetail({
               return (
                 <div
                   key={box.label}
-                  className="rounded-xl p-3.5"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                  className="rounded-xl p-3.5 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]"
                 >
-                  <span className="flex items-center gap-1.5 text-[10px] text-gray-500 font-mono uppercase tracking-wider mb-1">
+                  <span className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-gray-500 font-mono uppercase tracking-wider mb-1">
                     <Icon className="w-3 h-3" style={{ color: box.color }} />
                     {box.label}
                   </span>
-                  <p className="text-xs font-bold text-white font-mono">{box.val}</p>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white font-mono">{box.val}</p>
                 </div>
               );
             })}
@@ -1293,40 +1318,30 @@ function CampaignDetail({
       {/* ── Linked Investigation Cases (Merged from Investigations Page) ── */}
       <SlideIn delay={120} direction="up">
         <div
-          className="rounded-2xl p-5"
-          style={{
-            background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-          }}
+          className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/[0.08] shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-4 mb-4">
             <div className="flex items-center gap-2 flex-wrap">
-              <FolderSearch className="w-4 h-4 text-purple-400 shrink-0" />
-              <h3 className="text-sm font-bold text-white whitespace-nowrap">
+              <FolderSearch className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
                 Linked Investigation Cases
               </h3>
               <span
-                className="text-[10px] font-mono font-bold px-2 py-0.5 rounded shrink-0"
-                style={{
-                  background: 'rgba(139,92,246,0.15)',
-                  border: '1px solid rgba(139,92,246,0.3)',
-                  color: '#c084fc',
-                }}
+                className="text-[10px] font-mono font-bold px-2 py-0.5 rounded shrink-0 bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-500/15 dark:border-purple-500/30 dark:text-purple-300"
               >
                 {casesForCampaign.length}
               </span>
             </div>
-            <span className="text-[11px] text-gray-400 sm:text-gray-500 font-mono">
+            <span className="text-[11px] text-slate-500 dark:text-gray-400 font-mono">
               Click any case to inspect timeline &amp; analyst notes
             </span>
           </div>
 
           {casesForCampaign.length === 0 ? (
             <div className="text-center py-8">
-              <ShieldAlert className="w-8 h-8 text-gray-700 mx-auto mb-2" />
-              <p className="text-xs text-gray-600 font-mono">No cases linked to this campaign yet</p>
-              <p className="text-[11px] text-gray-700 mt-1">
+              <ShieldAlert className="w-8 h-8 text-slate-400 dark:text-gray-700 mx-auto mb-2" />
+              <p className="text-xs text-slate-600 dark:text-gray-400 font-mono">No cases linked to this campaign yet</p>
+              <p className="text-[11px] text-slate-400 dark:text-gray-600 mt-1">
                 Analyze an email that references this campaign cluster to automatically attach it here.
               </p>
             </div>
@@ -1340,21 +1355,15 @@ function CampaignDetail({
                     <div
                       key={c.id}
                       onClick={() => setSelectedCase(c)}
-                      className="p-3.5 rounded-xl cursor-pointer transition-all duration-150 active:bg-white/[0.05] space-y-2"
-                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                      className="p-3.5 rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.99] space-y-2 bg-slate-50 hover:bg-slate-100 dark:bg-white/[0.03] dark:hover:bg-white/[0.06] border border-slate-200 dark:border-white/[0.06]"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <Crosshair className="w-3 h-3 text-cyan-500 shrink-0" />
-                          <span className="text-xs font-mono font-bold text-cyan-400 whitespace-nowrap">{c.id}</span>
+                          <Crosshair className="w-3 h-3 text-cyan-600 dark:text-cyan-500 shrink-0" />
+                          <span className="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400 whitespace-nowrap">{c.id}</span>
                           {!isStaticCase && (
                             <span
-                              className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold shrink-0"
-                              style={{
-                                background: 'rgba(34,197,94,0.15)',
-                                border: '1px solid rgba(34,197,94,0.3)',
-                                color: '#4ade80',
-                              }}
+                              className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold shrink-0 bg-emerald-100 dark:bg-green-500/15 text-emerald-700 dark:text-green-400 border border-emerald-300 dark:border-green-500/30"
                             >
                               LIVE
                             </span>
@@ -1368,18 +1377,18 @@ function CampaignDetail({
                         </div>
                       </div>
 
-                      <div className="text-xs text-white font-medium leading-snug break-words">
+                      <div className="text-xs text-slate-900 dark:text-white font-medium leading-snug break-words">
                         {c.title}
                       </div>
 
-                      <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-white/[0.04] text-xs">
+                      <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-200 dark:border-white/[0.04] text-xs">
                         <div className="flex items-center gap-2 shrink-0">
                           <SeverityPill severity={c.severity} />
-                          <span className="text-[10px] text-gray-400 font-mono px-2 py-0.5 rounded bg-white/[0.04] border border-white/5 whitespace-nowrap">
+                          <span className="text-[10px] text-slate-600 dark:text-gray-400 font-mono px-2 py-0.5 rounded bg-slate-200/60 dark:bg-white/[0.04] border border-slate-300/60 dark:border-white/5 whitespace-nowrap">
                             {c.threatType}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1 text-[11px] text-cyan-400 font-mono">
+                        <div className="flex items-center gap-1 text-[11px] text-cyan-600 dark:text-cyan-400 font-mono">
                           <span>Inspect</span>
                           <ChevronRight className="w-3.5 h-3.5 shrink-0" />
                         </div>
@@ -1393,8 +1402,7 @@ function CampaignDetail({
               <div className="hidden md:block">
                 {/* Table header */}
                 <div
-                  className="grid grid-cols-12 gap-2 px-4 py-2.5 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider mb-1"
-                  style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}
+                  className="grid grid-cols-12 gap-2 px-4 py-2.5 text-[10px] font-mono font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-1 bg-slate-100 dark:bg-white/[0.02] border border-slate-200/60 dark:border-transparent rounded-xl"
                 >
                   <div className="col-span-3">Case ID</div>
                   <div className="col-span-4">Title / Subject</div>
@@ -1411,27 +1419,21 @@ function CampaignDetail({
                       <div
                         key={c.id}
                         onClick={() => setSelectedCase(c)}
-                        className="grid grid-cols-12 gap-2 px-4 py-3 rounded-xl cursor-pointer transition-all duration-150 hover:scale-[1.005] group items-center"
-                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                        className="grid grid-cols-12 gap-2 px-4 py-3 rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.99] group items-center bg-slate-50 hover:bg-slate-100 dark:bg-white/[0.03] dark:hover:bg-white/[0.06] border border-slate-200 dark:border-white/[0.06]"
                       >
                         <div className="col-span-3 flex items-center gap-1.5">
-                          <Crosshair className="w-3 h-3 text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                          <span className="text-xs font-mono font-bold text-cyan-400">{c.id}</span>
+                          <Crosshair className="w-3 h-3 text-cyan-600 dark:text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                          <span className="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400">{c.id}</span>
                           {!isStaticCase && (
                             <span
-                              className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold"
-                              style={{
-                                background: 'rgba(34,197,94,0.15)',
-                                border: '1px solid rgba(34,197,94,0.3)',
-                                color: '#4ade80',
-                              }}
+                              className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold bg-emerald-100 dark:bg-green-500/15 text-emerald-700 dark:text-green-400 border border-emerald-300 dark:border-green-500/30"
                             >
                               LIVE
                             </span>
                           )}
                         </div>
                         <div className="col-span-4">
-                          <span className="text-xs text-white font-medium truncate block">{c.title}</span>
+                          <span className="text-xs text-slate-900 dark:text-white font-medium truncate block">{c.title}</span>
                         </div>
                         <div className="col-span-2">
                           <SeverityPill severity={c.severity} />
@@ -1443,8 +1445,8 @@ function CampaignDetail({
                           />
                         </div>
                         <div className="col-span-1 flex items-center justify-between">
-                          <span className="text-[10px] text-gray-400 font-mono truncate">{c.threatType}</span>
-                          <ChevronRight className="w-3.5 h-3.5 text-gray-600 group-hover:text-cyan-400 transition-all shrink-0" />
+                          <span className="text-[10px] text-slate-600 dark:text-gray-400 font-mono truncate">{c.threatType}</span>
+                          <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-600 dark:text-gray-600 dark:group-hover:text-cyan-400 transition-all shrink-0" />
                         </div>
                       </div>
                     );
@@ -1460,38 +1462,27 @@ function CampaignDetail({
         {/* Campaign Timeline */}
         <SlideIn delay={180} direction="left">
           <div
-            className="rounded-2xl p-5 h-full"
-            style={{
-              background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            }}
+            className="rounded-2xl p-5 h-full bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/[0.08] shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
           >
-            <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-4">
-              <Activity className="w-4 h-4 text-purple-400" />
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+              <Activity className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               Campaign Timeline
             </h3>
             <div className="relative pl-0 sm:pl-1">
-              <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-white/15 -translate-x-1/2" />
+              <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-slate-200 dark:bg-white/15 -translate-x-1/2" />
               <div className="space-y-3.5 sm:space-y-4">
                 {campaign.timeline.map((t, i) => (
                   <div key={i} className="relative flex gap-3 sm:gap-4 items-start min-w-0">
                     <div
-                      className="relative z-10 w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-md"
-                      style={{
-                        background: 'rgba(168,85,247,0.2)',
-                        borderColor: 'rgba(168,85,247,0.4)',
-                        color: '#c084fc',
-                      }}
+                      className="relative z-10 w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-sm bg-purple-50 dark:bg-purple-500/20 border-purple-200 dark:border-purple-500/40 text-purple-700 dark:text-purple-300"
                     >
                       <span className="text-xs font-bold font-mono">{i + 1}</span>
                     </div>
                     <div
-                      className="flex-1 min-w-0 rounded-xl p-3"
-                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+                      className="flex-1 min-w-0 rounded-xl p-3 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.05]"
                     >
-                      <span className="text-xs text-white font-medium leading-relaxed block break-words">{t.event}</span>
-                      <div className="text-[10px] text-gray-500 font-mono mt-1">{t.time}</div>
+                      <span className="text-xs text-slate-900 dark:text-white font-medium leading-relaxed block break-words">{t.event}</span>
+                      <div className="text-[10px] text-slate-500 dark:text-gray-500 font-mono mt-1">{t.time}</div>
                     </div>
                   </div>
                 ))}
@@ -1503,36 +1494,30 @@ function CampaignDetail({
         {/* Campaign Relationships */}
         <SlideIn delay={200} direction="right">
           <div
-            className="rounded-2xl p-5 h-full"
-            style={{
-              background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-            }}
+            className="rounded-2xl p-5 h-full bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/[0.08] shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
           >
-            <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-4">
-              <Network className="w-4 h-4 text-cyan-400" />
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+              <Network className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
               Campaign Relationships
             </h3>
             <div className="flex flex-col items-center gap-1">
               <FlowNode label="Emails" values={campaign.relatedEmails} icon={Mail} />
-              <ArrowDown className="w-4 h-4 text-gray-600 my-0.5" />
+              <ArrowDown className="w-4 h-4 text-slate-400 dark:text-gray-600 my-0.5" />
               <FlowNode label="Domains" values={campaign.relatedDomains} icon={Globe} />
-              <ArrowDown className="w-4 h-4 text-gray-600 my-0.5" />
+              <ArrowDown className="w-4 h-4 text-slate-400 dark:text-gray-600 my-0.5" />
               <FlowNode label="IPs" values={campaign.relatedIPs} icon={Server} />
-              <ArrowDown className="w-4 h-4 text-gray-600 my-0.5" />
+              <ArrowDown className="w-4 h-4 text-slate-400 dark:text-gray-600 my-0.5" />
               <FlowNode label="URLs" values={campaign.relatedURLs} icon={Link2} />
-              <ArrowDown className="w-4 h-4 text-gray-600 my-0.5" />
+              <ArrowDown className="w-4 h-4 text-slate-400 dark:text-gray-600 my-0.5" />
               <div
-                className="w-full rounded-xl p-3 text-center"
-                style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)' }}
+                className="w-full rounded-xl p-3 text-center bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/30"
               >
-                <span className="text-[10px] text-purple-300 font-mono uppercase tracking-wider font-bold">
+                <span className="text-[10px] text-purple-700 dark:text-purple-300 font-mono uppercase tracking-wider font-bold">
                   Campaign Cluster
                 </span>
-                <p className="text-sm text-white font-mono font-bold">{campaign.id}</p>
+                <p className="text-sm text-slate-900 dark:text-white font-mono font-bold">{campaign.id}</p>
               </div>
-              <ArrowDown className="w-4 h-4 text-gray-600 my-0.5" />
+              <ArrowDown className="w-4 h-4 text-slate-400 dark:text-gray-600 my-0.5" />
               <FlowNode label="Cases" values={campaign.relatedCases} icon={FolderSearch} />
             </div>
           </div>
@@ -1542,10 +1527,10 @@ function CampaignDetail({
       {/* Indicator grids */}
       <SlideIn delay={260} direction="up">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <IndicatorPanel label="Related Emails" items={campaign.relatedEmails} icon={Mail} color="text-red-400" />
-          <IndicatorPanel label="Related Domains" items={campaign.relatedDomains} icon={Globe} color="text-teal-400" />
-          <IndicatorPanel label="Related IPs" items={campaign.relatedIPs} icon={Server} color="text-orange-400" />
-          <IndicatorPanel label="Related URLs" items={campaign.relatedURLs} icon={Link2} color="text-amber-400" />
+          <IndicatorPanel label="Related Emails" items={campaign.relatedEmails} icon={Mail} color="text-red-500 dark:text-red-400" />
+          <IndicatorPanel label="Related Domains" items={campaign.relatedDomains} icon={Globe} color="text-teal-600 dark:text-teal-400" />
+          <IndicatorPanel label="Related IPs" items={campaign.relatedIPs} icon={Server} color="text-orange-600 dark:text-orange-400" />
+          <IndicatorPanel label="Related URLs" items={campaign.relatedURLs} icon={Link2} color="text-amber-600 dark:text-amber-400" />
         </div>
       </SlideIn>
     </div>
@@ -1600,20 +1585,18 @@ function CaseDetail({
         <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={onBack}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-400 hover:text-white transition-all"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white transition-all bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/[0.08]"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             {onBackLabel}
           </button>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-mono text-cyan-400 font-bold">{caseData.id}</span>
+            <span className="text-xs font-mono text-cyan-600 dark:text-cyan-400 font-bold">{caseData.id}</span>
             <SeverityPill severity={caseData.severity} />
             <CaseStatusPill status={caseStatus} animate={caseStatus === 'open' || caseStatus === 'investigating'} />
             {/* Persist indicator */}
             <span
-              className="text-[10px] font-mono px-2 py-0.5 rounded"
-              style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', color: '#4ade80' }}
+              className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20"
             >
               ✓ Saved
             </span>
@@ -1624,24 +1607,18 @@ function CaseDetail({
       {/* Case Title Card */}
       <SlideIn delay={60} direction="up">
         <div
-          className="rounded-2xl p-5"
-          style={{
-            background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-            border: `1px solid ${sev.border}`,
-            boxShadow: `0 0 30px ${sev.glow}`,
-          }}
+          className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-purple-500/30 shadow-sm dark:shadow-[0_0_30px_rgba(168,85,247,0.15)]"
         >
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
             <div className="flex-1">
-              <h2 className="text-xl font-black text-white mb-2">{caseData.title}</h2>
-              <p className="text-sm text-gray-400 leading-relaxed">{caseData.summary}</p>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white mb-2">{caseData.title}</h2>
+              <p className="text-sm text-slate-600 dark:text-gray-400 leading-relaxed">{caseData.summary}</p>
             </div>
             {/* Status Control */}
             <div
-              className="rounded-xl p-4 shrink-0 min-w-[160px]"
-              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+              className="rounded-xl p-4 shrink-0 min-w-[160px] bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]"
             >
-              <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider mb-3">Status Control</p>
+              <p className="text-[10px] text-slate-500 dark:text-gray-500 font-mono uppercase tracking-wider mb-3">Status Control</p>
               <div className="flex flex-col gap-1.5">
                 {STATUS_ORDER.map((s) => {
                   const cfg = CASE_STATUS_CONFIG[s];
@@ -1650,20 +1627,20 @@ function CaseDetail({
                     <button
                       key={s}
                       onClick={() => handleSetStatus(s)}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all font-mono"
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all font-mono ${
+                        active
+                          ? ''
+                          : 'bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.02] dark:hover:bg-white/[0.05] border border-slate-200 dark:border-white/[0.04] text-slate-600 dark:text-gray-400'
+                      }`}
                       style={
                         active
                           ? { background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color }
-                          : {
-                            background: 'rgba(255,255,255,0.02)',
-                            border: '1px solid rgba(255,255,255,0.04)',
-                            color: '#4b5563',
-                          }
+                          : undefined
                       }
                     >
                       <span
                         className="w-1.5 h-1.5 rounded-full"
-                        style={{ background: active ? cfg.pulse ?? '#4b5563' : '#374151' }}
+                        style={{ background: active ? cfg.pulse ?? '#4b5563' : '#94a3b8' }}
                       />
                       {cfg.label}
                     </button>
@@ -1681,15 +1658,10 @@ function CaseDetail({
           {/* Case Metadata */}
           <SlideIn delay={140} direction="left">
             <div
-              className="rounded-2xl p-5"
-              style={{
-                background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-              }}
+              className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/[0.08] shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
             >
-              <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-4">
-                <ShieldAlert className="w-4 h-4 text-cyan-400" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+                <ShieldAlert className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                 Case Metadata
               </h3>
               <div className="space-y-0">
@@ -1709,15 +1681,10 @@ function CaseDetail({
           {/* Activity History */}
           <SlideIn delay={200} direction="left">
             <div
-              className="rounded-2xl p-5"
-              style={{
-                background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-              }}
+              className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/[0.08] shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
             >
-              <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-4">
-                <Activity className="w-4 h-4 text-purple-400" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+                <Activity className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                 Activity History
               </h3>
               <div className="space-y-3">
@@ -1730,9 +1697,9 @@ function CaseDetail({
                       />
                     </div>
                     <div>
-                      <span className="text-xs text-white font-medium">{a.action}</span>
-                      <span className="text-xs text-gray-500"> — {a.actor}</span>
-                      <div className="text-[10px] text-gray-600 font-mono mt-0.5">{a.time}</div>
+                      <span className="text-xs text-slate-900 dark:text-white font-medium">{a.action}</span>
+                      <span className="text-xs text-slate-500 dark:text-gray-500"> — {a.actor}</span>
+                      <div className="text-[10px] text-slate-400 dark:text-gray-600 font-mono mt-0.5">{a.time}</div>
                     </div>
                   </div>
                 ))}
@@ -1746,19 +1713,14 @@ function CaseDetail({
           {/* Investigation Timeline */}
           <SlideIn delay={160} direction="right">
             <div
-              className="rounded-2xl p-5"
-              style={{
-                background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-              }}
+              className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/[0.08] shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
             >
-              <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-4">
-                <Clock className="w-4 h-4 text-cyan-400" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+                <Clock className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                 Investigation Timeline
               </h3>
               <div className="relative pl-2">
-                <div className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-white/10" />
+                <div className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-slate-200 dark:bg-white/10" />
                 <div className="space-y-4">
                   {caseData.timeline.map((t, i) => (
                     <div key={i} className="relative flex gap-4 items-start">
@@ -1769,36 +1731,35 @@ function CaseDetail({
                             ? {
                               background: 'rgba(239,68,68,0.2)',
                               borderColor: '#ef4444',
-                              color: '#f87171',
-                              boxShadow: '0 0 12px rgba(239,68,68,0.4)',
+                              color: '#ef4444',
+                              boxShadow: '0 0 12px rgba(239,68,68,0.3)',
                             }
                             : i === caseData.timeline.length - 1
                               ? {
                                 background: 'rgba(34,197,94,0.2)',
                                 borderColor: '#22c55e',
-                                color: '#4ade80',
-                                boxShadow: '0 0 12px rgba(34,197,94,0.4)',
+                                color: '#16a34a',
+                                boxShadow: '0 0 12px rgba(34,197,94,0.3)',
                               }
                               : {
-                                background: 'rgba(255,255,255,0.05)',
-                                borderColor: 'rgba(255,255,255,0.12)',
-                                color: '#6b7280',
+                                background: 'rgba(148,163,184,0.15)',
+                                borderColor: 'rgba(148,163,184,0.3)',
+                                color: '#64748b',
                               }
                         }
                       >
                         <span className="text-xs font-bold font-mono">{i + 1}</span>
                       </div>
                       <div
-                        className="flex-1 rounded-xl p-3.5 transition-all hover:scale-[1.005]"
-                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                        className="flex-1 rounded-xl p-3.5 transition-all hover:scale-[1.005] bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]"
                       >
-                        <span className="text-xs text-white font-medium">{t.event}</span>
-                        <div className="text-[10px] text-gray-500 font-mono mt-1">
+                        <span className="text-xs text-slate-900 dark:text-white font-medium">{t.event}</span>
+                        <div className="text-[10px] text-slate-500 dark:text-gray-500 font-mono mt-1">
                           {t.time}
                           {'actor' in t && (t as any).actor ? (
                             <>
                               {' '}
-                              — <span className="text-gray-400">{(t as any).actor}</span>
+                              — <span className="text-slate-600 dark:text-gray-400">{(t as any).actor}</span>
                             </>
                           ) : null}
                         </div>
@@ -1813,34 +1774,28 @@ function CaseDetail({
           {/* Analyst Notes */}
           <SlideIn delay={240} direction="right">
             <div
-              className="rounded-2xl p-5"
-              style={{
-                background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-              }}
+              className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/[0.08] shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
             >
-              <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-4">
-                <StickyNote className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+                <StickyNote className="w-4 h-4 text-amber-500 dark:text-amber-400" />
                 Analyst Notes
               </h3>
               <div className="space-y-3 mb-4">
                 {notes.length === 0 && (
-                  <p className="text-xs text-gray-600 font-mono text-center py-4">
+                  <p className="text-xs text-slate-500 dark:text-gray-600 font-mono text-center py-4">
                     No analyst notes yet. Add one below.
                   </p>
                 )}
                 {notes.map((n, i) => (
                   <div
                     key={i}
-                    className="rounded-xl p-3.5 transition-all hover:scale-[1.005]"
-                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                    className="rounded-xl p-3.5 transition-all hover:scale-[1.005] bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]"
                   >
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs text-white font-bold">{n.author}</span>
-                      <span className="text-[10px] text-gray-600 font-mono">{n.timestamp}</span>
+                      <span className="text-xs text-slate-900 dark:text-white font-bold">{n.author}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-gray-500 font-mono">{n.timestamp}</span>
                     </div>
-                    <p className="text-xs text-gray-400 leading-relaxed">{n.note}</p>
+                    <p className="text-xs text-slate-600 dark:text-gray-400 leading-relaxed">{n.note}</p>
                   </div>
                 ))}
               </div>
@@ -1851,16 +1806,11 @@ function CaseDetail({
                   onChange={(e) => setNewNote(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addNote()}
                   placeholder="Add a note…"
-                  className="flex-1 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none font-mono"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                  className="flex-1 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-600 focus:outline-none font-mono bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08]"
                 />
                 <button
                   onClick={addNote}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 font-mono flex items-center gap-1.5"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(59,130,246,0.3), rgba(99,102,241,0.3))',
-                    border: '1px solid rgba(99,102,241,0.4)',
-                  }}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all active:scale-95 font-mono flex items-center gap-1.5 cursor-pointer bg-purple-600 hover:bg-purple-500 shadow-md"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Add
@@ -1888,14 +1838,13 @@ function MetaRow({
 }) {
   return (
     <div
-      className="flex items-center justify-between gap-3 py-2.5"
-      style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+      className="flex items-center justify-between gap-3 py-2.5 border-b border-slate-200 dark:border-white/[0.05]"
     >
-      <span className="flex items-center gap-1.5 text-xs text-gray-500 shrink-0">
-        <Icon className="w-3.5 h-3.5 text-purple-400" />
+      <span className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-gray-500 shrink-0">
+        <Icon className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
         {label}
       </span>
-      <span className={`text-xs text-white text-right break-all ${mono ? 'font-mono' : 'font-medium'}`}>{value}</span>
+      <span className={`text-xs text-slate-900 dark:text-white text-right break-all ${mono ? 'font-mono' : 'font-medium'}`}>{value}</span>
     </div>
   );
 }
@@ -1913,29 +1862,23 @@ function IndicatorPanel({
 }) {
   return (
     <div
-      className="rounded-2xl p-5"
-      style={{
-        background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-      }}
+      className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-white/[0.08] shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
     >
-      <h3 className={`text-sm font-bold text-white flex items-center gap-2 mb-3`}>
+      <h3 className={`text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-3`}>
         <Icon className={`w-4 h-4 ${color}`} />
         {label}
       </h3>
       <div className="space-y-2">
         {items.length === 0 ? (
-          <p className="text-xs text-gray-600 font-mono py-2 text-center">None observed</p>
+          <p className="text-xs text-slate-400 dark:text-gray-600 font-mono py-2 text-center">None observed</p>
         ) : (
           items.map((item) => (
             <div
               key={item}
-              className="flex items-center gap-2 rounded-xl p-3 transition-colors"
-              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+              className="flex items-center gap-2 rounded-xl p-3 transition-colors bg-slate-50 hover:bg-slate-100 dark:bg-white/[0.03] dark:hover:bg-white/[0.05] border border-slate-200 dark:border-white/[0.05]"
             >
-              <Icon className="w-3.5 h-3.5 text-gray-500 shrink-0" />
-              <span className="text-xs text-white font-mono break-all flex-1">{item}</span>
+              <Icon className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500 shrink-0" />
+              <span className="text-xs text-slate-800 dark:text-white font-mono break-all flex-1">{item}</span>
               <CopyButton value={item} />
             </div>
           ))
@@ -1948,25 +1891,25 @@ function IndicatorPanel({
 function FlowNode({ label, values, icon: Icon }: { label: string; values: string[]; icon: LucideIcon }) {
   return (
     <div
-      className="w-full rounded-xl p-3"
-      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+      className="w-full rounded-xl p-3 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.05]"
     >
       <div className="flex items-center gap-1.5 mb-2">
-        <Icon className="w-3.5 h-3.5 text-gray-500" />
-        <span className="text-[10px] text-gray-500 uppercase tracking-wider font-mono font-bold">{label}</span>
+        <Icon className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500" />
+        <span className="text-[10px] text-slate-500 dark:text-gray-500 uppercase tracking-wider font-mono font-bold">{label}</span>
       </div>
       {values.length > 0 ? (
         <div className="space-y-1">
           {values.map((v) => (
             <div key={v} className="flex items-center gap-1">
-              <span className="text-xs text-white font-mono break-all flex-1 font-semibold">{v}</span>
+              <span className="text-xs text-slate-800 dark:text-white font-mono break-all flex-1 font-semibold">{v}</span>
               <CopyButton value={v} />
             </div>
           ))}
         </div>
       ) : (
-        <span className="text-xs text-gray-600 font-mono italic">None</span>
+        <span className="text-xs text-slate-400 dark:text-gray-600 font-mono italic">None</span>
       )}
     </div>
   );
 }
+

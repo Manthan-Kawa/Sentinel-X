@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ClipboardList, Clock, CheckCircle2, Download, X,
   FileText, MessageSquare, AlertCircle, Filter, Search,
@@ -8,6 +9,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useTickets, type Ticket, type TicketAttachment, type TicketStatus } from '@/contexts/TicketContext';
 import { SlideIn } from '@/components/SlideIn';
+import { useTheme } from '@/context/ThemeContext';
 
 interface CheckStatusPageProps {
   onNavigate: (id: string) => void;
@@ -94,6 +96,7 @@ function CaseDetailModal({
 }) {
   const { acknowledgeAndResolveTicket, addTicketMessage } = useTickets();
   const { currentUser } = useAuth();
+  const { isDark } = useTheme();
 
   const isAnalyzed = ticket.status === 'analyzed';
   const isResolved = ticket.status === 'resolved' || ticket.status === 'closed';
@@ -130,25 +133,28 @@ function CaseDetailModal({
     setIsSendingMessage(false);
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
-      style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(10px)' }}
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+      style={{
+        background: isDark ? 'rgba(0,0,0,0.82)' : 'rgba(15, 23, 42, 0.45)',
+        backdropFilter: 'blur(10px)',
+      }}
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-2xl rounded-2xl sm:rounded-3xl overflow-hidden animate-slide-up flex flex-col max-h-[92vh]"
+        className="relative w-full max-w-2xl rounded-2xl sm:rounded-3xl overflow-hidden animate-slide-up flex flex-col my-auto max-h-[calc(100vh-3rem)]"
         style={{
-          background: 'linear-gradient(145deg, #0d1118, #0a0c14)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          boxShadow: '0 32px 80px rgba(0,0,0,0.85)',
+          background: isDark ? 'linear-gradient(145deg, #0d1118, #0a0c14)' : '#ffffff',
+          border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e2e8f0',
+          boxShadow: isDark ? '0 32px 80px rgba(0,0,0,0.85)' : '0 25px 60px -15px rgba(0,0,0,0.25)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
         <div
           className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 shrink-0"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
+          style={{ borderBottom: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0' }}
         >
           <div className="flex items-center gap-3">
             <div
@@ -183,23 +189,23 @@ function CaseDetailModal({
                 <p className="text-sm font-black text-slate-900 dark:text-white font-mono">{ticket.id}</p>
                 <StatusBadge status={ticket.status} />
               </div>
-              <p className="text-[11px] text-slate-400 dark:text-gray-500 mt-0.5">Submitted {formatDate(ticket.submittedAt)}</p>
+              <p className="text-[11px] text-slate-500 dark:text-gray-500 mt-0.5">Submitted {formatDate(ticket.submittedAt)}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-gray-500 hover:text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-white/10 transition-all shrink-0"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-gray-500 transition-transform duration-150 ease-out active:scale-95 shrink-0 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="overflow-y-auto scrollbar-thin flex-1 px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5 touch-scroll">
+        <div className="overflow-y-auto overflow-x-hidden scrollbar-thin flex-1 px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5 touch-scroll">
           {/* Progress Stepper */}
           <div
             className="p-3 sm:p-3.5 rounded-2xl flex items-center justify-between overflow-x-auto scrollbar-none gap-2 touch-scroll"
-            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ background: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0' }}
           >
             {[
               { label: '1. Submitted', active: true, done: true },
@@ -214,13 +220,13 @@ function CaseDetailModal({
                       ? 'bg-green-400'
                       : step.active
                       ? (isInReview && step.label.includes('Investigation') ? 'bg-cyan-400 animate-ping' : 'bg-amber-400 animate-ping')
-                      : 'bg-gray-700'
+                      : (isDark ? 'bg-gray-700' : 'bg-slate-300')
                   }`}
                 />
-                <span className={step.done ? 'text-green-300 font-mono' : step.active ? (isInReview && step.label.includes('Investigation') ? 'text-cyan-300 font-mono' : 'text-amber-300 font-mono') : 'text-gray-600 font-mono'}>
+                <span className={step.done ? (isDark ? 'text-green-300 font-mono' : 'text-emerald-700 font-mono') : step.active ? (isInReview && step.label.includes('Investigation') ? (isDark ? 'text-cyan-300 font-mono' : 'text-cyan-700 font-mono') : (isDark ? 'text-amber-300 font-mono' : 'text-amber-700 font-mono')) : (isDark ? 'text-gray-600 font-mono' : 'text-slate-400 font-mono')}>
                   {step.label}
                 </span>
-                {idx < 3 && <ArrowRight className="w-3 h-3 text-gray-700 mx-1 hidden sm:inline" />}
+                {idx < 3 && <ArrowRight className="w-3 h-3 text-slate-300 dark:text-gray-700 mx-1 hidden sm:inline" />}
               </div>
             ))}
           </div>
@@ -228,7 +234,7 @@ function CaseDetailModal({
           {/* Metadata Grid */}
           <div
             className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 p-3.5 sm:p-4 rounded-2xl"
-            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}
+            style={{ background: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0' }}
           >
             {[
               { icon: Hash, label: 'Case Number', value: ticket.id },
@@ -243,9 +249,9 @@ function CaseDetailModal({
               <div key={label} className="space-y-0.5">
                 <div className="flex items-center gap-1.5">
                   <Icon className="w-3 h-3 text-slate-400 dark:text-gray-500" />
-                  <p className="text-[10px] text-slate-400 dark:text-gray-500 uppercase tracking-wider">{label}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-gray-500 uppercase tracking-wider">{label}</p>
                 </div>
-                <p className="text-xs text-slate-700 dark:text-gray-200 truncate">{value}</p>
+                <p className="text-xs text-slate-800 dark:text-gray-200 truncate">{value}</p>
               </div>
             ))}
           </div>
@@ -253,12 +259,12 @@ function CaseDetailModal({
           {/* User's Original Notes */}
           {ticket.userComment && (
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+              <label className="text-[10px] font-bold text-slate-500 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                 <MessageSquare className="w-3 h-3" /> Your Original Submission Notes
               </label>
               <p
-                className="text-sm text-slate-600 dark:text-gray-300 leading-relaxed p-3.5 rounded-xl text-xs"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+                className="text-sm text-slate-800 dark:text-gray-300 leading-relaxed p-3.5 rounded-xl text-xs"
+                style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0' }}
               >
                 {ticket.userComment}
               </p>
@@ -269,10 +275,10 @@ function CaseDetailModal({
           {ticket.didInteract && (ticket.didInteract.clickedLink || ticket.didInteract.enteredCreds) && (
             <div
               className="flex items-center gap-2.5 p-3 rounded-xl"
-              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}
+              style={{ background: isDark ? 'rgba(239,68,68,0.08)' : 'rgba(239,68,68,0.08)', border: isDark ? '1px solid rgba(239,68,68,0.25)' : '1px solid rgba(239,68,68,0.25)' }}
             >
-              <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-              <p className="text-xs text-red-300">
+              <AlertTriangle className="w-4 h-4 text-red-500 dark:text-red-400 shrink-0" />
+              <p className="text-xs text-red-700 dark:text-red-300">
                 You reported interacting with this email ({ticket.didInteract.clickedLink ? 'Clicked Link' : ''} {ticket.didInteract.enteredCreds ? '• Entered Credentials' : ''}). Please review analyst actions below.
               </p>
             </div>
@@ -281,17 +287,17 @@ function CaseDetailModal({
           {/* Uploaded EML file download */}
           {ticket.emlFile && (
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+              <label className="text-[10px] font-bold text-slate-500 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                 <FileText className="w-3 h-3" /> Submitted Email File (.eml)
               </label>
               <button
                 onClick={() => downloadAttachment(ticket.emlFile!.data, ticket.emlFile!.name)}
-                className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm text-blue-300 font-semibold transition-all hover:text-blue-200 group"
-                style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}
+                className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm text-blue-600 dark:text-blue-300 font-semibold transition-transform duration-150 ease-out active:scale-95 cursor-pointer"
+                style={{ background: 'rgba(59,130,246,0.08)', border: isDark ? '1px solid rgba(59,130,246,0.2)' : '1px solid rgba(59,130,246,0.25)' }}
               >
-                <Download className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
+                <Download className="w-4 h-4 text-blue-500 dark:text-blue-400" />
                 <span className="truncate">{ticket.emlFile.name}</span>
-                <span className="text-[11px] text-slate-400 dark:text-gray-500 font-normal ml-auto shrink-0">
+                <span className="text-[11px] text-slate-500 dark:text-gray-500 font-normal ml-auto shrink-0">
                   {formatBytes(ticket.emlFile.size)}
                 </span>
               </button>
@@ -302,17 +308,17 @@ function CaseDetailModal({
           {(isAnalyzed || isResolved) ? (
             <div
               className="space-y-4 p-5 rounded-2xl"
-              style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.25)' }}
+              style={{ background: isDark ? 'rgba(34,197,94,0.06)' : 'rgba(34,197,94,0.08)', border: isDark ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(34,197,94,0.3)' }}
             >
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-400" />
-                  <p className="text-xs font-bold text-green-400 uppercase tracking-wider">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-green-400" />
+                  <p className="text-xs font-bold text-emerald-700 dark:text-green-400 uppercase tracking-wider">
                     Analyst Investigation Response
                   </p>
                 </div>
                 {ticket.respondedAt && (
-                  <span className="text-[10px] text-green-400/70 font-mono">
+                  <span className="text-[10px] text-emerald-700/80 dark:text-green-400/70 font-mono">
                     {formatDate(ticket.respondedAt)}
                   </span>
                 )}
@@ -326,16 +332,16 @@ function CaseDetailModal({
                       className="px-2.5 py-1 rounded-lg text-xs font-bold"
                       style={{
                         background: ticket.verdict.toLowerCase().includes('malicious') || ticket.verdict.toLowerCase().includes('phishing')
-                          ? 'rgba(239,68,68,0.15)'
+                          ? (isDark ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.1)')
                           : ticket.verdict.toLowerCase().includes('safe') || ticket.verdict.toLowerCase().includes('clean')
-                          ? 'rgba(34,197,94,0.15)'
-                          : 'rgba(245,158,11,0.15)',
+                          ? (isDark ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.1)')
+                          : (isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.1)'),
                         color: ticket.verdict.toLowerCase().includes('malicious') || ticket.verdict.toLowerCase().includes('phishing')
-                          ? '#f87171'
+                          ? (isDark ? '#f87171' : '#dc2626')
                           : ticket.verdict.toLowerCase().includes('safe') || ticket.verdict.toLowerCase().includes('clean')
-                          ? '#4ade80'
-                          : '#fbbf24',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                          ? (isDark ? '#4ade80' : '#16a34a')
+                          : (isDark ? '#fbbf24' : '#d97706'),
+                        border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
                       }}
                     >
                       Verdict: {ticket.verdict}
@@ -344,7 +350,11 @@ function CaseDetailModal({
                   {ticket.threatScore !== null && ticket.threatScore !== undefined && (
                     <span
                       className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold"
-                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#e5e7eb' }}
+                      style={{
+                        background: isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
+                        border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #cbd5e1',
+                        color: isDark ? '#e5e7eb' : '#0f172a',
+                      }}
                     >
                       Threat Score: {ticket.threatScore}/100
                     </span>
@@ -354,7 +364,7 @@ function CaseDetailModal({
 
               {/* Analyst Comment */}
               {ticket.analystComment ? (
-                <p className="text-sm text-gray-100 leading-relaxed bg-black/30 p-3.5 rounded-xl border border-green-500/20 whitespace-pre-wrap">
+                <p className="text-sm text-slate-800 dark:text-gray-100 leading-relaxed bg-white dark:bg-black/30 p-3.5 rounded-xl border border-emerald-500/20 whitespace-pre-wrap">
                   {ticket.analystComment}
                 </p>
               ) : (
@@ -365,12 +375,12 @@ function CaseDetailModal({
               {ticket.recommendedAction && (
                 <div
                   className="p-3.5 rounded-xl"
-                  style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)' }}
+                  style={{ background: 'rgba(59,130,246,0.08)', border: isDark ? '1px solid rgba(59,130,246,0.25)' : '1px solid rgba(59,130,246,0.3)' }}
                 >
-                  <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">
+                  <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">
                     Recommended Action For You:
                   </p>
-                  <p className="text-xs text-blue-100 leading-relaxed">
+                  <p className="text-xs text-blue-950 dark:text-blue-100 leading-relaxed">
                     {ticket.recommendedAction}
                   </p>
                 </div>
@@ -379,8 +389,8 @@ function CaseDetailModal({
               {/* Remediation Taken by SOC */}
               {ticket.remediationTaken && (
                 <div
-                  className="p-3 rounded-xl text-xs text-slate-600 dark:text-gray-300"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+                  className="p-3 rounded-xl text-xs text-slate-700 dark:text-gray-300"
+                  style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0' }}
                 >
                   <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider block mb-0.5">
                     Remediation Implemented by SOC:
@@ -394,7 +404,7 @@ function CaseDetailModal({
                 <div className="pt-1">
                   <button
                     onClick={() => downloadAttachment(ticket.analystReport!.data, ticket.analystReport!.name)}
-                    className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl text-slate-900 dark:text-white font-bold text-sm transition-all hover:opacity-95 shadow-lg"
+                    className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl text-white font-bold text-sm transition-transform duration-150 ease-out active:scale-95 shadow-lg cursor-pointer"
                     style={{
                       background: 'linear-gradient(135deg, #059669, #047857)',
                       boxShadow: '0 4px 20px rgba(5,150,105,0.3)',
@@ -409,14 +419,14 @@ function CaseDetailModal({
           ) : (
             <div
               className="flex items-start gap-3 p-4 rounded-2xl"
-              style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}
+              style={{ background: isDark ? 'rgba(245,158,11,0.06)' : 'rgba(245,158,11,0.1)', border: isDark ? '1px solid rgba(245,158,11,0.2)' : '1px solid rgba(245,158,11,0.3)' }}
             >
-              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                <p className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider">
                   {isInReview ? 'Active Investigation in Progress' : 'Queued for Analyst Review'}
                 </p>
-                <p className="text-xs text-amber-300/80 leading-relaxed mt-0.5">
+                <p className="text-xs text-amber-900/80 dark:text-amber-300/80 leading-relaxed mt-0.5">
                   {isInReview
                     ? 'A security analyst is currently inspecting headers, reputation, and domain links for this submission.'
                     : 'Your submitted report is queued in the SOC triage stream. You will receive an alert notification when the investigation concludes.'}
@@ -429,14 +439,14 @@ function CaseDetailModal({
           {isAnalyzed && !isResolved && (
             <div
               className="p-5 rounded-2xl space-y-3"
-              style={{ background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.25)' }}
+              style={{ background: isDark ? 'rgba(168,85,247,0.06)' : 'rgba(168,85,247,0.08)', border: isDark ? '1px solid rgba(168,85,247,0.25)' : '1px solid rgba(168,85,247,0.25)' }}
             >
               <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                <p className="text-xs font-bold text-purple-800 dark:text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                   Confirm Resolution & Rate Response
                 </p>
-                <span className="text-[10px] text-slate-400 dark:text-gray-500">Closes the ticket loop</span>
+                <span className="text-[10px] text-slate-500 dark:text-gray-500">Closes the ticket loop</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -449,7 +459,7 @@ function CaseDetailModal({
                     className="p-1 hover:scale-125 transition-transform"
                   >
                     <Star
-                      className={`w-4 h-4 ${star <= rating ? 'text-amber-400 fill-amber-400' : 'text-gray-600'}`}
+                      className={`w-4 h-4 ${star <= rating ? 'text-amber-400 fill-amber-400' : 'text-slate-300 dark:text-gray-600'}`}
                     />
                   </button>
                 ))}
@@ -460,14 +470,14 @@ function CaseDetailModal({
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
                 placeholder="Optional confirmation note (e.g. 'Password reset, thank you!')..."
-                className="w-full text-xs rounded-xl px-3 py-2 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}
+                className="w-full text-xs rounded-xl px-3 py-2 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#ffffff', border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #cbd5e1' }}
               />
 
               <button
                 onClick={handleResolve}
                 disabled={isSubmittingFeedback}
-                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-slate-900 dark:text-white transition-all hover:opacity-90 shadow"
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white transition-transform duration-150 ease-out active:scale-95 shadow cursor-pointer disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}
               >
                 Acknowledge & Mark Resolved
@@ -479,17 +489,17 @@ function CaseDetailModal({
           {isResolved && (
             <div
               className="p-4 rounded-2xl flex items-center justify-between"
-              style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)' }}
+              style={{ background: isDark ? 'rgba(168,85,247,0.08)' : 'rgba(168,85,247,0.08)', border: isDark ? '1px solid rgba(168,85,247,0.2)' : '1px solid rgba(168,85,247,0.25)' }}
             >
               <div>
-                <p className="text-xs font-bold text-purple-300">Case Resolved by You</p>
-                {ticket.userFeedback && <p className="text-xs text-slate-600 dark:text-gray-300 mt-0.5 italic">"{ticket.userFeedback}"</p>}
+                <p className="text-xs font-bold text-purple-800 dark:text-purple-300">Case Resolved by You</p>
+                {ticket.userFeedback && <p className="text-xs text-slate-700 dark:text-gray-300 mt-0.5 italic">"{ticket.userFeedback}"</p>}
               </div>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((s) => (
                   <Star
                     key={s}
-                    className={`w-3.5 h-3.5 ${s <= (ticket.userRating || 5) ? 'text-amber-400 fill-amber-400' : 'text-gray-700'}`}
+                    className={`w-3.5 h-3.5 ${s <= (ticket.userRating || 5) ? 'text-amber-400 fill-amber-400' : 'text-slate-300 dark:text-gray-700'}`}
                   />
                 ))}
               </div>
@@ -498,8 +508,8 @@ function CaseDetailModal({
 
           {/* Threaded Discussion Messages (Only shown prior to analysis/resolution) */}
           {!isAnalyzed && !isResolved && (
-            <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-white/5">
-              <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+            <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-white/5">
+              <p className="text-[10px] font-bold text-slate-500 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                 <MessageSquare className="w-3 h-3" /> Ticket Activity & Messages
               </p>
 
@@ -512,15 +522,17 @@ function CaseDetailModal({
                         key={msg.id}
                         className={`p-3 rounded-xl text-xs leading-relaxed max-w-[85%] sm:max-w-[70%] min-w-[180px] ${
                           isAnalyst
-                            ? 'mr-auto bg-purple-950/30 border border-purple-500/20 text-purple-100'
-                            : 'ml-auto bg-white/[0.06] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-200'
+                            ? 'mr-auto bg-blue-500/10 text-slate-900 border border-blue-500/25 dark:bg-blue-950/30 dark:border-blue-500/20 dark:text-blue-100'
+                            : 'ml-auto bg-purple-500/10 text-slate-900 border border-purple-500/25 dark:bg-purple-950/30 dark:border-purple-500/20 dark:text-purple-100'
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <span className="font-bold text-[10px] text-slate-500 dark:text-gray-400 font-mono truncate" title={isAnalyst ? '🛡️ SOC Analyst' : '👤 You'}>
+                        <div className={`flex items-center justify-between gap-2 mb-1 ${
+                          isAnalyst ? 'text-blue-600 dark:text-blue-400' : 'text-purple-600 dark:text-purple-400'
+                        }`}>
+                          <span className="font-bold text-[10px] font-mono truncate" title={isAnalyst ? '🛡️ SOC Analyst' : '👤 You'}>
                             {isAnalyst ? '🛡️ SOC Analyst' : '👤 You'}
                           </span>
-                          <span className="text-[10px] text-slate-400 dark:text-gray-500 font-mono shrink-0 text-[9px]">{formatDate(msg.timestamp)}</span>
+                          <span className="font-mono opacity-70 shrink-0 text-[9px]">{formatDate(msg.timestamp)}</span>
                         </div>
                         <p className="whitespace-pre-wrap break-words">{msg.message}</p>
                       </div>
@@ -528,7 +540,7 @@ function CaseDetailModal({
                   })}
                 </div>
               ) : (
-                <p className="text-xs text-slate-400 dark:text-gray-500 italic">No additional messages yet.</p>
+                <p className="text-xs text-slate-500 dark:text-gray-500 italic">No additional messages yet.</p>
               )}
 
               {/* Follow-up question input */}
@@ -539,13 +551,13 @@ function CaseDetailModal({
                   onChange={(e) => setReplyText(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                   placeholder="Ask follow-up question or reply to analyst..."
-                  className="flex-1 text-xs rounded-xl px-3.5 py-2.5 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  className="flex-1 text-xs rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                  style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #cbd5e1' }}
                 />
                 <button
                   onClick={handleSendMessage}
                   disabled={!replyText.trim() || isSendingMessage}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-900 dark:text-white transition-all disabled:opacity-40 hover:opacity-90 flex items-center gap-1.5"
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-transform duration-150 ease-out active:scale-95 disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
                   style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}
                 >
                   <Send className="w-3 h-3" />
@@ -559,17 +571,18 @@ function CaseDetailModal({
         {/* Modal Footer */}
         <div
           className="px-6 py-4 flex items-center justify-end shrink-0"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
+          style={{ borderTop: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0' }}
         >
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:text-white bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-all"
+            className="px-5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 dark:text-gray-300 dark:bg-white/5 transition-transform duration-150 ease-out active:scale-95 cursor-pointer"
           >
             Close
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -577,10 +590,36 @@ function CaseDetailModal({
 export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
   const { currentUser } = useAuth();
   const { getTicketsForUser, deleteTicket } = useTickets();
+  const { isDark } = useTheme();
 
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in_review' | 'analyzed' | 'resolved'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+
+  const filterRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [filterIndicatorStyle, setFilterIndicatorStyle] = useState({ left: 0, top: 0, width: 0, height: 0, opacity: 0 });
+
+  useLayoutEffect(() => {
+    const updateIndicator = () => {
+      const el = filterRefs.current[filterStatus];
+      if (el) {
+        setFilterIndicatorStyle({
+          left: el.offsetLeft,
+          top: el.offsetTop,
+          width: el.offsetWidth,
+          height: el.offsetHeight,
+          opacity: 1,
+        });
+      }
+    };
+    updateIndicator();
+    const rafId = requestAnimationFrame(updateIndicator);
+    window.addEventListener('resize', updateIndicator);
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', updateIndicator);
+    };
+  }, [filterStatus]);
 
   const tickets = currentUser ? getTicketsForUser(currentUser.email) : [];
 
@@ -639,15 +678,15 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                 className="w-9 h-9 rounded-xl flex items-center justify-center"
                 style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}
               >
-                <ClipboardList className="w-4.5 h-4.5 text-green-400" />
+                <ClipboardList className="w-4.5 h-4.5 text-green-500 dark:text-green-400" />
               </div>
               <h1 className="text-2xl font-black text-slate-900 dark:text-white">Check Status</h1>
               {pending > 0 && (
                 <>
                   {/* Mobile View: Yellow circle with number only */}
                   <span
-                    className="sm:hidden w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-amber-300 font-mono shrink-0 shadow-sm"
-                    style={{ background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.45)' }}
+                    className="sm:hidden w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-amber-600 dark:text-amber-300 font-mono shrink-0 shadow-sm"
+                    style={{ background: isDark ? 'rgba(245,158,11,0.2)' : 'rgba(245,158,11,0.15)', border: isDark ? '1px solid rgba(245,158,11,0.45)' : '1px solid rgba(245,158,11,0.3)' }}
                     title={`${pending} pending`}
                   >
                     {pending}
@@ -655,15 +694,15 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
 
                   {/* PC / Desktop View: Classic pill badge with 'pending' */}
                   <span
-                    className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-xs font-bold text-amber-300 font-mono shrink-0"
-                    style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}
+                    className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-xs font-bold text-amber-700 dark:text-amber-300 font-mono shrink-0"
+                    style={{ background: isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.12)', border: isDark ? '1px solid rgba(245,158,11,0.3)' : '1px solid rgba(245,158,11,0.25)' }}
                   >
                     {pending} pending
                   </span>
                 </>
               )}
             </div>
-            <p className="text-slate-500 dark:text-gray-400 text-sm">
+            <p className="text-slate-600 dark:text-gray-400 text-sm">
               Track submitted suspicious email reports, view SOC verdicts, and communicate with security analysts.
             </p>
           </div>
@@ -678,7 +717,7 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                     }
                   }
                 }}
-                className="px-3 py-2 rounded-xl text-xs font-mono font-bold text-slate-500 dark:text-gray-400 hover:text-rose-400 bg-slate-50 dark:bg-white/[0.03] hover:bg-rose-500/10 border border-slate-200 dark:border-white/10 hover:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3 py-2 rounded-xl text-xs font-mono font-bold text-slate-600 hover:text-rose-600 dark:text-gray-400 dark:hover:text-rose-400 bg-slate-100 hover:bg-rose-50 dark:bg-white/[0.03] dark:hover:bg-rose-500/10 border border-slate-200 dark:border-white/10 hover:border-rose-400/40 dark:hover:border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
                 title="Clear all your submitted reports"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -688,7 +727,7 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
 
             <button
               onClick={() => onNavigate('submit-report')}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-900 dark:text-white transition-all shadow-lg hover:opacity-90 flex items-center gap-2"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-lg hover:opacity-90 flex items-center gap-2"
               style={{
                 background: 'linear-gradient(135deg, #059669, #047857)',
                 boxShadow: '0 4px 16px rgba(5,150,105,0.25)',
@@ -707,60 +746,51 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
             {
               label: 'Total Submitted',
               value: tickets.length,
-              dotColor: 'bg-[#60a5fa] shadow-sm shadow-blue-400/50',
-              numColor: 'text-[#60a5fa]',
+              dotColor: 'bg-[#3b82f6] dark:bg-[#60a5fa] shadow-sm shadow-blue-400/50',
+              numColor: 'text-[#2563eb] dark:text-[#60a5fa]',
               filter: 'all' as const,
               glow: 'shadow-[0_0_20px_rgba(96,165,250,0.2)]',
             },
             {
               label: 'Pending Review',
               value: pending,
-              dotColor: 'bg-[#fbbf24] shadow-sm shadow-amber-400/50',
-              numColor: 'text-[#fbbf24]',
+              dotColor: 'bg-[#f59e0b] dark:bg-[#fbbf24] shadow-sm shadow-amber-400/50',
+              numColor: 'text-[#d97706] dark:text-[#fbbf24]',
               filter: 'pending' as const,
               glow: 'shadow-[0_0_20px_rgba(251,191,36,0.2)]',
             },
             {
               label: 'In Investigation',
               value: inReview,
-              dotColor: 'bg-[#22d3ee] shadow-sm shadow-cyan-400/50',
-              numColor: 'text-[#22d3ee]',
+              dotColor: 'bg-[#06b6d4] dark:bg-[#22d3ee] shadow-sm shadow-cyan-400/50',
+              numColor: 'text-[#0891b2] dark:text-[#22d3ee]',
               filter: 'in_review' as const,
               glow: 'shadow-[0_0_20px_rgba(34,211,238,0.2)]',
             },
             {
               label: 'Analyzed & Done',
               value: analyzed + resolved,
-              dotColor: 'bg-[#4ade80] shadow-sm shadow-emerald-400/50',
-              numColor: 'text-[#4ade80]',
+              dotColor: 'bg-[#10b981] dark:bg-[#4ade80] shadow-sm shadow-emerald-400/50',
+              numColor: 'text-[#059669] dark:text-[#4ade80]',
               filter: 'analyzed' as const,
               glow: 'shadow-[0_0_20px_rgba(74,222,128,0.2)]',
             },
-          ].map((stat) => {
-            const isActive = stat.filter === 'analyzed'
-              ? (filterStatus === 'analyzed' || filterStatus === 'resolved')
-              : filterStatus === stat.filter;
-
-            return (
-              <div
-                key={stat.label}
-                onClick={() => setFilterStatus(stat.filter)}
-                className={`p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#0c0e18] border border-slate-200 dark:border-white/[0.08] hover:border-slate-300 dark:hover:border-slate-300 dark:border-white/20 shadow-sm dark:shadow-none transition-all cursor-pointer flex flex-col justify-between min-h-[82px] sm:min-h-[92px] group ${
-                  isActive ? `${stat.glow} border-slate-300 dark:border-white/20` : ''
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-mono text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                    {stat.label}
-                  </span>
-                  <span className={`w-2 h-2 rounded-full ${stat.dotColor}`} />
-                </div>
-                <div className={`text-2xl sm:text-3xl font-bold font-mono tracking-tight ${stat.numColor}`}>
-                  {stat.value}
-                </div>
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#0c0e18] border border-slate-200 dark:border-white/[0.08] transition-all flex flex-col justify-between min-h-[82px] sm:min-h-[92px]"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-mono text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">
+                  {stat.label}
+                </span>
+                <span className={`w-2 h-2 rounded-full ${stat.dotColor}`} />
               </div>
-            );
-          })}
+              <div className={`text-2xl sm:text-3xl font-bold font-mono tracking-tight ${stat.numColor}`}>
+                {stat.value}
+              </div>
+            </div>
+          ))}
         </div>
       </SlideIn>
 
@@ -769,46 +799,66 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
         <div className="flex items-center gap-3 flex-wrap">
           {/* Status filter tabs */}
           <div
-            className="h-10 flex items-center gap-1 p-1 rounded-xl overflow-x-auto overflow-y-hidden scrollbar-none max-w-full touch-scroll touch-pan-x overscroll-x-contain"
+            className="relative isolate h-10 flex items-center gap-1 p-1 rounded-xl overflow-x-auto overflow-y-hidden scrollbar-none max-w-full touch-scroll touch-pan-x overscroll-x-contain"
             style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
+              border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0',
+              boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
               touchAction: 'pan-x',
               WebkitOverflowScrolling: 'touch',
               overscrollBehaviorY: 'none',
             }}
           >
-            <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500 ml-2 mr-1 shrink-0" />
-            {(['all', 'pending', 'in_review', 'analyzed', 'resolved'] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setFilterStatus(s)}
-                className="h-8 px-3.5 rounded-lg text-xs font-bold capitalize transition-all flex items-center justify-center shrink-0 whitespace-nowrap"
-                style={
-                  filterStatus === s
-                    ? { background: 'rgba(34,197,94,0.25)', color: '#86efac', border: '1px solid rgba(34,197,94,0.4)' }
-                    : { color: '#6b7280', border: '1px solid transparent' }
-                }
-              >
-                {s.replace('_', ' ')}
-              </button>
-            ))}
+            {/* Smooth sliding indicator pill */}
+            <div
+              className="absolute z-0 pointer-events-none rounded-lg bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/35 dark:border-emerald-500/40 shadow-sm"
+              style={{
+                transform: `translate3d(${filterIndicatorStyle.left}px, ${filterIndicatorStyle.top}px, 0)`,
+                width: filterIndicatorStyle.width,
+                height: filterIndicatorStyle.height,
+                opacity: filterIndicatorStyle.opacity,
+                transition: 'transform 300ms cubic-bezier(0.25, 1, 0.5, 1), width 300ms cubic-bezier(0.25, 1, 0.5, 1), height 300ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
+                left: 0,
+                top: 0,
+                zIndex: 0,
+              }}
+            />
+
+            <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-gray-500 ml-2 mr-1 shrink-0 relative z-10" />
+            {(['all', 'pending', 'in_review', 'analyzed', 'resolved'] as const).map((s) => {
+              const active = filterStatus === s;
+              return (
+                <button
+                  key={s}
+                  ref={(el) => { filterRefs.current[s] = el; }}
+                  onClick={() => setFilterStatus(s)}
+                  style={{ zIndex: 10 }}
+                  className={`relative z-10 h-8 px-3.5 rounded-lg text-xs font-bold capitalize transition-colors duration-200 flex items-center justify-center shrink-0 whitespace-nowrap cursor-pointer select-none ${
+                    active
+                      ? 'text-emerald-900 dark:text-white font-bold'
+                      : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  {s.replace('_', ' ')}
+                </button>
+              );
+            })}
           </div>
 
           {/* Search */}
           <div
-            className="h-10 flex-1 min-w-[200px] flex items-center gap-2.5 px-3.5 rounded-xl bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] shadow-sm dark:shadow-none"
+            className="h-10 flex-1 min-w-[200px] flex items-center gap-2.5 px-3.5 rounded-xl bg-slate-100 dark:bg-white border border-slate-200 dark:border-slate-200 shadow-sm"
           >
-            <Search className="w-4 h-4 text-slate-400 dark:text-gray-500 shrink-0" />
+            <Search className="w-4 h-4 text-slate-400 dark:text-slate-400 shrink-0" />
             <input
               type="text"
               placeholder="Search by case ID, filename, or comment..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs text-slate-900 dark:text-white bg-transparent placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none"
+              className="w-full text-xs text-slate-900 dark:text-slate-900 bg-transparent placeholder-slate-400 dark:placeholder-slate-400 focus:outline-none"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="text-slate-400 dark:text-gray-500 hover:text-slate-900 dark:text-white">
+              <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-slate-700 dark:text-slate-400 dark:hover:text-black">
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
@@ -820,11 +870,16 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
       <SlideIn delay={140} direction="up">
         {filtered.length === 0 ? (
           <div
-            className="rounded-2xl p-12 text-center bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] shadow-sm dark:shadow-none"
+            className="rounded-2xl p-12 text-center"
+            style={{
+              background: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
+              border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0',
+              boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
+            }}
           >
-            <ClipboardList className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-sm font-bold text-slate-500 dark:text-gray-400">No reports found</p>
-            <p className="text-xs text-gray-600 mt-1 max-w-sm mx-auto">
+            <ClipboardList className="w-12 h-12 text-slate-400 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-sm font-bold text-slate-800 dark:text-gray-400">No reports found</p>
+            <p className="text-xs text-slate-500 dark:text-gray-600 mt-1 max-w-sm mx-auto">
               {tickets.length === 0
                 ? 'You have not submitted any reports yet. Click "Submit New Report" to upload a suspicious email.'
                 : 'No tickets match the selected filters.'}
@@ -832,7 +887,7 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
             {tickets.length === 0 && (
               <button
                 onClick={() => onNavigate('submit-report')}
-                className="mt-4 px-4 py-2 rounded-xl text-xs font-bold text-slate-900 dark:text-white transition-all hover:opacity-90"
+                className="mt-4 px-4 py-2 rounded-xl text-xs font-bold text-white transition-transform duration-150 ease-out active:scale-95 cursor-pointer"
                 style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}
               >
                 Submit Your First Report
@@ -845,15 +900,12 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
               <div
                 key={ticket.id}
                 onClick={() => setSelectedTicket(ticket)}
-                className={`rounded-2xl p-4 transition-all duration-200 hover:scale-[1.007] cursor-pointer group bg-white dark:bg-[#0a0c14] shadow-sm dark:shadow-xl ${
-                  ticket.status === 'analyzed'
-                    ? 'border border-green-500/25'
-                    : ticket.status === 'resolved'
-                    ? 'border border-purple-500/25'
-                    : ticket.status === 'in_review'
-                    ? 'border border-cyan-500/25'
-                    : 'border border-slate-200 dark:border-white/10'
-                }`}
+                className="rounded-2xl p-4 transition-all duration-200 hover:scale-[1.007] cursor-pointer group bg-white dark:bg-[#0c0e18]"
+                style={{
+                  background: isDark ? 'linear-gradient(145deg, #0d1118, #0a0c14)' : '#ffffff',
+                  border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0',
+                  boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.05)',
+                }}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -892,17 +944,17 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                         <span className="text-xs font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">{ticket.id}</span>
                         <StatusBadge status={ticket.status} />
                         {ticket.verdict && (
-                          <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-white/5 text-slate-600 dark:text-gray-300">
+                          <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-gray-300">
                             {ticket.verdict}
                           </span>
                         )}
                       </div>
 
-                      <p className="text-xs text-slate-600 dark:text-gray-300 break-words leading-snug">
+                      <p className="text-xs text-slate-700 dark:text-gray-300 break-words leading-snug">
                         {ticket.userComment || (ticket.emlFile ? `File: ${ticket.emlFile.name}` : 'No description')}
                       </p>
 
-                      <div className="flex items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-slate-400 dark:text-gray-500 flex-wrap font-mono">
+                      <div className="flex items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-slate-500 dark:text-gray-500 flex-wrap font-mono">
                         <span className="whitespace-nowrap">Submitted: {formatDate(ticket.submittedAt)}</span>
                         {ticket.emlFile && <span className="truncate max-w-[200px]">• {ticket.emlFile.name}</span>}
                         {ticket.threadMessages && ticket.threadMessages.length > 0 && (
@@ -921,12 +973,12 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                           deleteTicket(ticket.id);
                         }
                       }}
-                      className="p-1.5 rounded-lg text-slate-400 dark:text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-slate-400 dark:text-gray-500 transition-transform duration-150 ease-out active:scale-95 cursor-pointer"
                       title="Delete report"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                    <span className="text-xs text-emerald-400 group-hover:text-emerald-300 transition-colors font-mono font-semibold flex items-center gap-1">
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-500 dark:group-hover:text-emerald-300 transition-colors font-mono font-semibold flex items-center gap-1">
                       View Details →
                     </span>
                   </div>
@@ -940,12 +992,12 @@ export function CheckStatusPage({ onNavigate }: CheckStatusPageProps) {
                           deleteTicket(ticket.id);
                         }
                       }}
-                      className="p-1.5 rounded-lg text-slate-400 dark:text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-slate-400 dark:text-gray-500 transition-transform duration-150 ease-out active:scale-95 cursor-pointer"
                       title="Delete report"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                    <span className="text-xs text-slate-500 dark:text-gray-400 group-hover:text-slate-900 dark:text-white transition-colors">
+                    <span className="text-xs text-slate-500 group-hover:text-slate-900 dark:text-gray-400 dark:group-hover:text-white transition-colors">
                       View Details →
                     </span>
                   </div>

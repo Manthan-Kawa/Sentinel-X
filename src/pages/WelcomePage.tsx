@@ -256,7 +256,7 @@ function AuthModal({ initialMode = 'login', onClose, onSuccess, onGoogleSignIn, 
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-[390px] mx-4 rounded-3xl p-6 sm:p-7 max-h-[92vh] overflow-y-auto scrollbar-thin animate-slide-up"
+        className="relative w-full max-w-[390px] mx-4 rounded-3xl p-6 sm:p-7 max-h-[92vh] overflow-y-auto overflow-x-hidden scrollbar-thin animate-slide-up"
         style={{
           background: 'rgba(18,18,26,0.97)',
           border: '1px solid rgba(255,255,255,0.08)',

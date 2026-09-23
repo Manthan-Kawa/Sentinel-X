@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Search,
   FileText,
@@ -926,10 +927,10 @@ function IngestEvidenceModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3.5 pt-[calc(4.75rem+env(safe-area-inset-top,0px))] pb-5 md:p-6 md:py-6 overflow-y-auto bg-black/80 backdrop-blur-sm">
       <div
-        className="w-full max-w-lg rounded-xl p-5 space-y-4"
+        className="w-full max-w-lg rounded-xl p-5 space-y-4 my-auto max-h-[calc(100vh-6rem-env(safe-area-inset-top,0px))] md:max-h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden"
         style={{
           background: 'linear-gradient(145deg, #090b12 0%, #0c0f1a 100%)',
           border: '1px solid rgba(34,211,238,0.3)',
@@ -1017,6 +1018,7 @@ function IngestEvidenceModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
