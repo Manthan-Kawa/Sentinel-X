@@ -1205,7 +1205,7 @@ function CampaignDetail({
     <div className="space-y-6" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
       {/* Back button + Meta */}
       <SlideIn delay={0} direction="down">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 p-3 sm:p-0 rounded-2xl bg-white sm:bg-transparent dark:bg-gradient-to-b dark:from-white/[0.04] dark:to-white/[0.01] border border-slate-200 sm:border-none dark:border-white/[0.08] shadow-sm sm:shadow-none backdrop-blur-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 p-3 sm:p-0 rounded-2xl bg-white sm:bg-transparent dark:bg-[#090b12] sm:dark:bg-transparent border border-slate-200 sm:border-none dark:border-white/10 sm:dark:border-none shadow-sm sm:shadow-none backdrop-blur-sm">
           <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
             <button
               onClick={onBack}
