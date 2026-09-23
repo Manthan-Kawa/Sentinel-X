@@ -286,23 +286,23 @@ export function EmailDetailDrawer({
   const getThreatBadge = () => {
     if (threatLevel === 'malicious') {
       return (
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 text-xs font-semibold uppercase tracking-wider whitespace-nowrap shrink-0">
-          <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 dark:bg-red-500/15 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 text-xs font-semibold uppercase tracking-wider whitespace-nowrap shrink-0">
+          <ShieldAlert className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
           Malicious Threat ({threatScore}/100)
         </div>
       );
     }
     if (threatLevel === 'suspicious') {
       return (
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-semibold uppercase tracking-wider whitespace-nowrap shrink-0">
-          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-500/15 border border-amber-300 dark:border-amber-500/30 text-amber-800 dark:text-amber-400 text-xs font-semibold uppercase tracking-wider whitespace-nowrap shrink-0">
+          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
           Suspicious ({threatScore}/100)
         </div>
       );
     }
     return (
-      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold uppercase tracking-wider whitespace-nowrap shrink-0">
-        <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-400 text-xs font-semibold uppercase tracking-wider whitespace-nowrap shrink-0">
+        <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
         Clean / Authentic ({threatScore}/100)
       </div>
     );
@@ -442,24 +442,24 @@ export function EmailDetailDrawer({
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Notification banner if escalated or reverted */}
           {isAnalyzedBySoc && (
-            <div className="p-4 rounded-xl bg-purple-950/30 border border-purple-500/35 text-purple-200 text-xs space-y-2 animate-fade-in">
+            <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-500/35 text-purple-950 dark:text-purple-200 text-xs space-y-2 animate-fade-in shadow-sm dark:shadow-none">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 font-bold text-purple-300">
-                  <CheckCircle2 className="w-4 h-4 text-purple-400 shrink-0" />
+                <div className="flex items-center gap-2 font-bold text-purple-900 dark:text-purple-300">
+                  <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
                   <span>SOC Analyst Investigation Completed</span>
                 </div>
                 {linkedTicket?.respondedAt && (
-                  <span className="text-[10px] text-gray-400 font-mono">
+                  <span className="text-[10px] text-slate-500 dark:text-gray-400 font-mono">
                     {new Date(linkedTicket.respondedAt).toLocaleDateString()}
                   </span>
                 )}
               </div>
               {linkedTicket?.analystComment ? (
-                <p className="text-xs text-gray-200 bg-black/40 p-3 rounded-lg border border-purple-500/20 leading-relaxed">
+                <p className="text-xs text-slate-800 dark:text-gray-200 bg-white dark:bg-black/40 p-3 rounded-lg border border-purple-200 dark:border-purple-500/20 leading-relaxed shadow-sm dark:shadow-none">
                   {linkedTicket.analystComment}
                 </p>
               ) : (
-                <p className="text-xs text-gray-300">
+                <p className="text-xs text-slate-700 dark:text-gray-300">
                   The SOC analyst has completed investigation and reverted back regarding this incident.
                 </p>
               )}
@@ -467,11 +467,11 @@ export function EmailDetailDrawer({
           )}
 
           {isEscalatedPending && (
-            <div className="p-4 rounded-xl bg-purple-950/40 border border-purple-500/40 text-purple-200 text-xs flex items-center gap-3 animate-fade-in">
-              <Clock className="w-5 h-5 text-purple-400 shrink-0 animate-pulse" />
+            <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-500/40 text-purple-950 dark:text-purple-200 text-xs flex items-center gap-3 animate-fade-in shadow-sm dark:shadow-none">
+              <Clock className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0 animate-pulse" />
               <div>
                 <strong>Incident Escalated to SOC!</strong> Case ID{' '}
-                <span className="font-bold text-white">{analysis?.soc_case_id || escalationSuccessCase || 'CASE-USER-PENDING'}</span> has been dispatched to security analysts for inspection.
+                <span className="font-bold text-purple-900 dark:text-white">{analysis?.soc_case_id || escalationSuccessCase || 'CASE-USER-PENDING'}</span> has been dispatched to security analysts for inspection.
               </div>
             </div>
           )}

@@ -423,11 +423,11 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
 
   if (!report) {
     return (
-      <div className="p-8 text-center text-white space-y-4 max-w-md mx-auto">
-        <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto" />
-        <h2 className="text-lg font-bold">Email Forensic Dossier Not Found</h2>
+      <div className="p-8 text-center text-slate-900 dark:text-white space-y-4 max-w-md mx-auto">
+        <AlertTriangle className="w-10 h-10 text-amber-500 dark:text-amber-400 mx-auto" />
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Email Forensic Dossier Not Found</h2>
         {loadError && (
-          <p className="text-xs text-rose-400/90 font-mono bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5">
+          <p className="text-xs text-rose-700 dark:text-rose-400/90 font-mono bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-lg p-2.5">
             {loadError}
           </p>
         )}

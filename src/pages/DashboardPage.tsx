@@ -64,16 +64,16 @@ const SEV_COLOR: Record<Severity, string> = {
 };
 
 const STATUS_CFG: Record<string, { bg: string; text: string; dot: string }> = {
-  open:          { bg: 'bg-red-500/20',    text: 'text-red-400',    dot: 'bg-red-500' },
-  investigating: { bg: 'bg-violet-500/20', text: 'text-violet-300', dot: 'bg-violet-500' },
-  contained:     { bg: 'bg-amber-500/20',  text: 'text-amber-400',  dot: 'bg-amber-500' },
-  resolved:      { bg: 'bg-green-500/20',  text: 'text-green-400',  dot: 'bg-green-500' },
+  open:          { bg: 'bg-red-50 dark:bg-red-500/20',    text: 'text-red-700 dark:text-red-400',    dot: 'bg-red-500' },
+  investigating: { bg: 'bg-violet-50 dark:bg-violet-500/20', text: 'text-violet-700 dark:text-violet-300', dot: 'bg-violet-500' },
+  contained:     { bg: 'bg-amber-50 dark:bg-amber-500/20',  text: 'text-amber-800 dark:text-amber-400',  dot: 'bg-amber-500' },
+  resolved:      { bg: 'bg-emerald-50 dark:bg-green-500/20',  text: 'text-emerald-700 dark:text-green-400',  dot: 'bg-emerald-500' },
 };
 
 const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
-  INVESTIGATING: { bg: 'bg-violet-500/25', text: 'text-violet-300' },
-  QUARANTINED:   { bg: 'bg-amber-500/25',  text: 'text-amber-300' },
-  ANALYZED:      { bg: 'bg-blue-500/25',   text: 'text-blue-300' },
+  INVESTIGATING: { bg: 'bg-violet-50 dark:bg-violet-500/25', text: 'text-violet-700 dark:text-violet-300' },
+  QUARANTINED:   { bg: 'bg-amber-50 dark:bg-amber-500/25',  text: 'text-amber-800 dark:text-amber-300' },
+  ANALYZED:      { bg: 'bg-blue-50 dark:bg-blue-500/25',   text: 'text-blue-700 dark:text-blue-300' },
 };
 
 const SEV_BADGE: Record<Severity, { bg: string; text: string }> = {

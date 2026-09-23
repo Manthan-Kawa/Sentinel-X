@@ -686,8 +686,8 @@ function TicketModal({ ticket, onClose, onRespond }: ModalProps) {
             )}
 
             {error && (
-              <div className="flex items-center gap-2 text-sm text-red-400">
-                <AlertTriangle className="w-3.5 h-3.5" />
+              <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 font-medium">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                 {error}
               </div>
             )}

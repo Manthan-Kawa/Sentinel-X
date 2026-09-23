@@ -214,23 +214,23 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
     const baseClasses = "w-[136px] h-7 inline-flex items-center justify-center gap-1.5 px-3 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-all";
     if (level === 'malicious') {
       return (
-        <span className={`${baseClasses} bg-red-500/15 text-red-400 border border-red-500/30`}>
-          <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+        <span className={`${baseClasses} bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/30`}>
+          <ShieldAlert className="w-3.5 h-3.5 shrink-0 text-red-600 dark:text-red-400" />
           <span>Malicious ({score ?? 90})</span>
         </span>
       );
     }
     if (level === 'suspicious') {
       return (
-        <span className={`${baseClasses} bg-amber-500/15 text-amber-400 border border-amber-500/30`}>
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+        <span className={`${baseClasses} bg-amber-50 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400 border border-amber-300 dark:border-amber-500/30`}>
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
           <span>Suspicious ({score ?? 50})</span>
         </span>
       );
     }
     return (
-      <span className={`${baseClasses} bg-emerald-500/15 text-emerald-400 border border-emerald-500/30`}>
-        <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+      <span className={`${baseClasses} bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30`}>
+        <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
         <span>Clean ({score ?? 0})</span>
       </span>
     );
@@ -494,16 +494,16 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
       {/* Google Session Expired Notification Banner */}
       {!isGoogleConnected && GoogleAuthService.isTokenExpired() && (
         <SlideIn delay={40} direction="down">
-          <div className="p-3.5 rounded-xl border bg-amber-500/10 border-amber-500/30 text-xs text-amber-200 flex items-center justify-between gap-3 animate-slide-down">
+          <div className="p-3.5 rounded-xl border bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/30 text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between gap-3 animate-slide-down shadow-sm dark:shadow-none">
             <div className="flex items-center gap-2.5">
-              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
               <span>
-                Your Gmail session has expired. Click <strong>Connect Gmail</strong> to re-authenticate and resume automated inbox threat monitoring.
+                Your Gmail session has expired. Click <strong className="font-bold text-amber-950 dark:text-amber-100">Connect Gmail</strong> to re-authenticate and resume automated inbox threat monitoring.
               </span>
             </div>
             <button
               onClick={handleConnectGoogle}
-              className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-xs font-semibold shrink-0 transition-all cursor-pointer"
+              className="px-3 py-1.5 rounded-lg bg-amber-200/80 hover:bg-amber-300/80 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 border border-amber-400 dark:border-amber-500/40 text-amber-950 dark:text-amber-200 text-xs font-bold shrink-0 transition-all cursor-pointer shadow-sm"
             >
               Re-authenticate
             </button>
@@ -515,28 +515,28 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
       {syncNotice && (
         <SlideIn delay={50} direction="down">
           <div
-            className={`p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 animate-slide-down ${
+            className={`p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 animate-slide-down shadow-sm dark:shadow-none ${
               syncNotice.toLowerCase().includes('mismatch') ||
               syncNotice.toLowerCase().includes('failed') ||
               syncNotice.toLowerCase().includes('error')
-                ? 'bg-rose-950/40 border-rose-500/40 text-rose-200'
-                : 'bg-cyan-950/30 border-cyan-500/40 text-cyan-200'
+                ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-500/40 text-rose-900 dark:text-rose-200'
+                : 'bg-cyan-50 dark:bg-cyan-950/30 border-cyan-300 dark:border-cyan-500/40 text-cyan-950 dark:text-cyan-200'
             }`}
           >
             <div className="flex items-center gap-2.5">
               {syncNotice.toLowerCase().includes('mismatch') ||
               syncNotice.toLowerCase().includes('failed') ||
               syncNotice.toLowerCase().includes('error') ? (
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
               ) : (
-                <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
+                <Sparkles className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
               )}
-              <span className="font-medium leading-relaxed">{syncNotice}</span>
+              <span className="font-semibold leading-relaxed">{syncNotice}</span>
             </div>
             <button
               type="button"
               onClick={() => setSyncNotice(null)}
-              className="text-gray-400 hover:text-white shrink-0 p-1 rounded-lg hover:bg-white/10 transition-colors"
+              className="text-slate-400 hover:text-slate-700 dark:text-gray-400 dark:hover:text-white shrink-0 p-1 rounded-lg hover:bg-slate-200/50 dark:hover:bg-white/10 transition-colors"
               title="Dismiss"
             >
               ✕
@@ -554,7 +554,7 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
               value: stats.total,
               subtitle: 'Inbox messages monitored',
               dotColor: 'bg-[#38bdf8]',
-              numColor: 'text-[#38bdf8]',
+              numColor: 'text-sky-700 dark:text-[#38bdf8]',
               filter: 'all' as const,
             },
             {
@@ -562,7 +562,7 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
               value: stats.clean,
               subtitle: 'Verified safe communications',
               dotColor: 'bg-[#4ade80]',
-              numColor: 'text-[#4ade80]',
+              numColor: 'text-emerald-700 dark:text-[#4ade80]',
               filter: 'clean' as const,
             },
             {
@@ -570,7 +570,7 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
               value: stats.suspicious,
               subtitle: 'Require user caution',
               dotColor: 'bg-[#fbbf24]',
-              numColor: 'text-[#fbbf24]',
+              numColor: 'text-amber-700 dark:text-[#fbbf24]',
               filter: 'suspicious' as const,
             },
             {
@@ -578,7 +578,7 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
               value: stats.malicious,
               subtitle: 'Phishing & fraud intercepted',
               dotColor: 'bg-[#f87171]',
-              numColor: 'text-[#f87171]',
+              numColor: 'text-red-700 dark:text-[#f87171]',
               filter: 'malicious' as const,
             },
           ].map((stat) => {
