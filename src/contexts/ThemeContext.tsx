@@ -116,6 +116,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       Math.max(y, window.innerHeight - y),
     );
 
+    document.documentElement.style.setProperty('--click-x', `${x}px`);
+    document.documentElement.style.setProperty('--click-y', `${y}px`);
+    document.documentElement.style.setProperty('--click-radius', `${endRadius}px`);
+
     // Fallback: no View Transitions support → instant swap
     // @ts-ignore
     if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -125,17 +129,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Mark transition active so React re-render useEffect won't prematurely fire applyStatusBarColor
+    // Mark transition active
     isTransitioningRef.current = true;
-
-    // Freeze element-level CSS transitions during the clip-path snapshot
     document.documentElement.setAttribute('data-theme-transitioning', 'true');
 
     // Calculate when the expanding circle reaches the top status bar (y = 0)
-    // using ease-in-out progress over 500ms
+    // using ease-in-out progress over 420ms
     const ratio = endRadius > 0 ? Math.min(1, Math.max(0, y / endRadius)) : 0;
     const easeProgress = ratio < 0.5 ? 2 * ratio * ratio : 1 - 2 * (1 - ratio) * (1 - ratio);
-    const delayMs = Math.max(10, Math.min(480, Math.round(500 * easeProgress)));
+    const delayMs = Math.max(10, Math.min(400, Math.round(420 * easeProgress)));
 
     // Schedule status bar color update to fire exactly when the expanding circle reaches the top
     statusBarTimerRef.current = window.setTimeout(() => {
@@ -147,45 +149,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const vt = document.startViewTransition(() => {
       flushSync(() => {
         commitState();
-        // Update DOM classes for the new theme snapshot, while keeping status bar timed with the circle
         applyThemeDom(newTheme, false);
       });
     });
 
-    vt.ready.then(() => {
-      document.documentElement.animate(
-        {
-          clipPath: [
-            `circle(0px at ${x}px ${y}px)`,
-            `circle(${endRadius}px at ${x}px ${y}px)`,
-          ],
-        },
-        {
-          duration: 500,
-          easing: 'ease-in-out',
-          pseudoElement: '::view-transition-new(root)',
-        },
-      );
-    }).catch(() => {
-      // If transition was cancelled or aborted, immediately finalize status bar
+    const cleanup = () => {
       if (statusBarTimerRef.current !== null) {
         clearTimeout(statusBarTimerRef.current);
         statusBarTimerRef.current = null;
       }
       isTransitioningRef.current = false;
-      applyStatusBarColor(newTheme);
-    });
-
-    vt.finished.finally(() => {
-      if (statusBarTimerRef.current !== null) {
-        clearTimeout(statusBarTimerRef.current);
-        statusBarTimerRef.current = null;
-      }
-      isTransitioningRef.current = false;
-      // Unconditionally confirm the final status bar color so it can never be stuck
       applyStatusBarColor(newTheme);
       document.documentElement.removeAttribute('data-theme-transitioning');
-    });
+    };
+
+    vt.finished.then(cleanup, cleanup);
   };
 
   const toggleTheme = (e?: React.MouseEvent | MouseEvent) => {

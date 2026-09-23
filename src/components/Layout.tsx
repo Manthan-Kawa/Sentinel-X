@@ -371,6 +371,7 @@ export interface SystemNotification {
 
 
 export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
+  const { isDark } = useTheme();
   const { currentUser } = useAuth();
   const { tickets } = useTickets();
   const role = currentUser?.role ?? 'analyst';

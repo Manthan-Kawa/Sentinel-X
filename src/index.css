@@ -884,20 +884,27 @@ body {
 
 /* ══════════════════════════════════════════════════════════════════
    CIRCULAR REVEAL — View Transition API
-   Freeze element transitions while the clip-path snapshot plays
+   Natively animated on the GPU across Safari (iOS 18+), Chrome, Edge
    ══════════════════════════════════════════════════════════════════ */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-
-::view-transition-new(root) {
-  z-index: 9999;
+@keyframes circle-reveal {
+  from {
+    clip-path: circle(0px at var(--click-x, 50%) var(--click-y, 50%));
+  }
+  to {
+    clip-path: circle(var(--click-radius, 150vmax) at var(--click-x, 50%) var(--click-y, 50%));
+  }
 }
 
 ::view-transition-old(root) {
+  animation: none;
+  mix-blend-mode: normal;
   z-index: 1;
+}
+
+::view-transition-new(root) {
+  animation: circle-reveal 420ms cubic-bezier(0.4, 0, 0.2, 1);
+  mix-blend-mode: normal;
+  z-index: 9999;
 }
 
 /* During the view-transition snapshot phase, suppress element-level
