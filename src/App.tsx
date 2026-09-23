@@ -177,7 +177,8 @@ function AppShell() {
       />
       <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full overflow-hidden relative z-0">
         <TopBar
-          onMenuClick={() => setMobileOpen(true)}
+          onMenuClick={() => setMobileOpen((prev) => !prev)}
+          mobileOpen={mobileOpen}
           activeLabel={route.includes('/forensics') ? 'Deep Forensics Report' : (activeNav?.label ?? 'Dashboard')}
           onNavigate={(id) => handleNavigate(id)}
         />

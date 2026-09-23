@@ -224,7 +224,7 @@ export function Sidebar({ activeId, onNavigate, onSignOut, mobileOpen, onMobileC
     <>
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9990] lg:hidden"
+          className="soc-mobile-backdrop fixed inset-0 bg-black/70 backdrop-blur-sm z-[9990] lg:hidden"
           onClick={onMobileClose}
         />
       )}
@@ -345,6 +345,7 @@ interface TopBarProps {
   onMenuClick: () => void;
   activeLabel: string;
   onNavigate: (id: string) => void;
+  mobileOpen?: boolean;
 }
 
 const ALERT_SEVERITY_STYLES: Record<string, { bg: string; border: string; text: string; dot: string; glow: string }> = {
@@ -370,7 +371,7 @@ export interface SystemNotification {
 
 
 
-export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
+export function TopBar({ onMenuClick, onNavigate, mobileOpen }: TopBarProps) {
   const { isDark } = useTheme();
   const { currentUser } = useAuth();
   const { tickets } = useTickets();
@@ -1171,9 +1172,9 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
         <button
           onClick={onMenuClick}
           className="lg:hidden text-slate-500 hover:text-slate-900 dark:text-gray-500 dark:hover:text-white transition-colors shrink-0 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 touch-auto cursor-pointer"
-          title="Open Menu"
+          title={mobileOpen ? "Close Menu" : "Open Menu"}
         >
-          <Menu className="w-5 h-5" />
+          {mobileOpen ? <X className="w-5 h-5 text-cyan-500" /> : <Menu className="w-5 h-5" />}
         </button>
 
         {/* Mobile Search Button */}
