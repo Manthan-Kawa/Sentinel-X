@@ -27,10 +27,20 @@
             document.documentElement.setAttribute('data-mode', 'light');
           }
           document.documentElement.style.colorScheme = scheme;
+          // Set background once to prevent white flash on load only — React/CSS will own this after mount
           document.documentElement.style.backgroundColor = color;
           document.querySelectorAll('meta[name="theme-color"]').forEach(function(m) {
             m.setAttribute('content', color);
           });
+          // Clear the inline backgroundColor once React is ready so CSS classes are authoritative
+          window.addEventListener('DOMContentLoaded', function() {
+            requestAnimationFrame(function() {
+              requestAnimationFrame(function() {
+                document.documentElement.style.removeProperty('background-color');
+                if (document.body) document.body.style.removeProperty('background-color');
+              });
+            });
+          }, { once: true });
         } catch(e) {}
       })();
     </script>

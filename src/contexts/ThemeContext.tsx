@@ -72,15 +72,15 @@ export const applyStatusBarColor = (theme: Theme) => {
   }
   appleMeta.setAttribute('content', 'black-translucent');
 
-  // 4. Ensure root and body background directly match the topbar color for mobile safe areas
-  root.style.backgroundColor = topbarColor;
-  if (document.body) {
-    document.body.style.backgroundColor = topbarColor;
-  }
 };
 
 const applyThemeDom = (newTheme: Theme, updateStatusBar = true) => {
   const root = document.documentElement;
+
+  // Remove any stale inline background-color so CSS classes are always authoritative
+  root.style.removeProperty('background-color');
+  if (document.body) document.body.style.removeProperty('background-color');
+
   if (newTheme === 'dark') {
     root.classList.add('dark');
     root.setAttribute('data-mode', 'dark');
@@ -237,6 +237,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         activeTransitionRef.current = null;
       }
       document.documentElement.removeAttribute('data-theme-transitioning');
+      // Clear any stale inline background-color so CSS classes retake control immediately
+      document.documentElement.style.removeProperty('background-color');
+      if (document.body) document.body.style.removeProperty('background-color');
       applyStatusBarColor(theme);
     };
     window.addEventListener('hashchange', handleNavChange);
