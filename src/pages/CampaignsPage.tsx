@@ -1281,7 +1281,7 @@ function CampaignDetail({
       {/* Cluster summary card */}
       <SlideIn delay={60} direction="up">
         <div
-          className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-purple-500/30 shadow-sm dark:shadow-[0_0_30px_rgba(168,85,247,0.15)]"
+          className="rounded-2xl p-5 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-purple-500/30 shadow-sm dark:shadow-none"
         >
           <h2 className="text-xl font-black text-slate-900 dark:text-white mb-2">{campaign.name}</h2>
           <p className="text-sm text-slate-600 dark:text-gray-400 leading-relaxed mb-4">{campaign.description}</p>
