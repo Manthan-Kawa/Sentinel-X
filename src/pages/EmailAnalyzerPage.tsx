@@ -154,34 +154,7 @@ export function EmailAnalyzerPage({ onNavigate }: { onNavigate?: (route: string)
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const [tabIndicatorStyle, setTabIndicatorStyle] = useState<{
-    left: number;
-    width: number;
-    opacity: number;
-  }>({ left: 0, width: 0, opacity: 0 });
 
-  useLayoutEffect(() => {
-    const updateIndicator = () => {
-      const currentTabEl = tabRefs.current[activeTab];
-      if (currentTabEl) {
-        setTabIndicatorStyle({
-          left: currentTabEl.offsetLeft,
-          width: currentTabEl.offsetWidth,
-          opacity: 1,
-        });
-      } else {
-        setTabIndicatorStyle((prev) => ({ ...prev, opacity: 0 }));
-      }
-    };
-    updateIndicator();
-    const rafId = requestAnimationFrame(updateIndicator);
-    window.addEventListener('resize', updateIndicator);
-    return () => {
-      cancelAnimationFrame(rafId);
-      window.removeEventListener('resize', updateIndicator);
-    };
-  }, [activeTab]);
 
   // Keep state synced with currentResult from AnalysisContext across navigation
   useEffect(() => {
@@ -602,6 +575,35 @@ function ResultsView({
   const gaugeColors = GAUGE_COLORS[result.alert_level];
   const gaugeLabel = GAUGE_LABEL[result.alert_level];
 
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [tabIndicatorStyle, setTabIndicatorStyle] = useState<{
+    left: number;
+    width: number;
+    opacity: number;
+  }>({ left: 0, width: 0, opacity: 0 });
+
+  useLayoutEffect(() => {
+    const updateIndicator = () => {
+      const currentTabEl = tabRefs.current[activeTab];
+      if (currentTabEl) {
+        setTabIndicatorStyle({
+          left: currentTabEl.offsetLeft,
+          width: currentTabEl.offsetWidth,
+          opacity: 1,
+        });
+      } else {
+        setTabIndicatorStyle((prev) => ({ ...prev, opacity: 0 }));
+      }
+    };
+    updateIndicator();
+    const rafId = requestAnimationFrame(updateIndicator);
+    window.addEventListener('resize', updateIndicator);
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', updateIndicator);
+    };
+  }, [activeTab]);
+
   return (
     <div className="space-y-6">
 
@@ -913,7 +915,16 @@ function ResultsView({
               return (
                 <button
                   key={tab.id}
-                  ref={(el) => { tabRefs.current[tab.id] = el; }}
+                  ref={(el) => {
+                    tabRefs.current[tab.id] = el;
+                    if (tab.id === activeTab && el && tabIndicatorStyle.opacity === 0) {
+                      setTabIndicatorStyle({
+                        left: el.offsetLeft,
+                        width: el.offsetWidth,
+                        opacity: 1,
+                      });
+                    }
+                  }}
                   onClick={() => setActiveTab(tab.id as typeof activeTab)}
                   style={{ zIndex: 10 }}
                   className={`relative z-10 flex items-center gap-2 px-4 py-2.5 text-xs font-bold transition-colors duration-200 shrink-0 cursor-pointer ${
