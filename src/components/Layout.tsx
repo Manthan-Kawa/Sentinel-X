@@ -1165,6 +1165,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
       style={{
         height: 'calc(4rem + env(safe-area-inset-top, 0px))',
         paddingTop: 'env(safe-area-inset-top, 0px)',
+        backgroundColor: isDark ? '#0b0c11' : '#ffffff',
       }}
     >
       <div className="flex items-center gap-3 relative" ref={searchContainerRef}>

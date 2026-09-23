@@ -7,6 +7,9 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover" />
     <meta name="theme-color" content="#0b0c11" id="sentinel-theme-color" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <script>
       (function() {
         try {
@@ -23,7 +26,7 @@
           }
           document.documentElement.style.colorScheme = scheme;
           document.documentElement.style.backgroundColor = color;
-          var meta = document.querySelector('meta[name="theme-color"]');
+          var meta = document.getElementById('sentinel-theme-color') || document.querySelector('meta[name="theme-color"]');
           if (meta) meta.setAttribute('content', color);
         } catch(e) {}
       })();

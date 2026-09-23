@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 
 export type Theme = 'light' | 'dark';
@@ -19,38 +19,64 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 /**
  * Applies the status bar color and colorScheme to the DOM.
- * In iOS Safari / WebKit, modifying an existing <meta name="theme-color"> tag's content attribute
- * is frequently ignored or cached after a hashchange/page navigation.
- * Removing all existing meta tags and appending a fresh <meta name="theme-color"> tag forces
- * Safari to immediately re-evaluate and apply the theme color without locking.
+ * CRITICAL: NEVER remove the <meta name="theme-color"> element from the DOM!
+ * In iOS Safari / WebKit, removing the meta tag detaches WebKit's native ThemeColorObserver.
+ * Once detached, any newly appended meta tags are ignored, locking the status bar to
+ * the previous color after a route/page change. Updating the existing element in-place
+ * keeps WebKit's observer permanently attached and responsive.
  */
 export const applyStatusBarColor = (theme: Theme) => {
   const topbarColor = theme === 'dark' ? '#0b0c11' : '#ffffff';
   const root = document.documentElement;
 
-  // 1. Explicit colorScheme tells WebKit to adapt native status bar text and icons (white in dark, black in light)
+  // 1. Explicit colorScheme tells WebKit & Chrome to adapt native status bar text and icons (white in dark, black in light)
   root.style.colorScheme = theme;
   if (document.body) {
     document.body.style.colorScheme = theme;
   }
 
-  // 2. Remove all existing meta[name="theme-color"] tags and append a fresh element
-  const existingMetas = document.querySelectorAll('meta[name="theme-color"]');
-  existingMetas.forEach((m) => m.remove());
+  // 2. Update persistent meta[name="theme-color"] strictly in-place
+  let meta = document.getElementById('sentinel-theme-color') as HTMLMetaElement | null;
+  if (!meta) {
+    meta = document.querySelector('meta[name="theme-color"]');
+  }
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.id = 'sentinel-theme-color';
+    meta.setAttribute('name', 'theme-color');
+    document.head.appendChild(meta);
+  }
 
-  const newMeta = document.createElement('meta');
-  newMeta.setAttribute('name', 'theme-color');
-  newMeta.setAttribute('content', topbarColor);
-  document.head.appendChild(newMeta);
+  meta.removeAttribute('media');
+  meta.setAttribute('content', topbarColor);
+  meta.content = topbarColor;
 
-  // 3. Ensure root and body background directly match the topbar color for mobile safe areas
+  // 3. Keep apple-mobile-web-app-status-bar-style in sync for iOS PWA/standalone mode
+  let appleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]') as HTMLMetaElement | null;
+  if (!appleMeta) {
+    appleMeta = document.createElement('meta');
+    appleMeta.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
+    document.head.appendChild(appleMeta);
+  }
+  appleMeta.setAttribute('content', 'black-translucent');
+
+  // Also update any other theme-color tags in the document in-place
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+    if (m !== meta) {
+      m.removeAttribute('media');
+      m.setAttribute('content', topbarColor);
+      (m as HTMLMetaElement).content = topbarColor;
+    }
+  });
+
+  // 4. Ensure root and body background directly match the topbar color for mobile safe areas
   root.style.backgroundColor = topbarColor;
   if (document.body) {
     document.body.style.backgroundColor = topbarColor;
   }
 };
 
-const applyThemeDom = (newTheme: Theme, updateStatusBar = true) => {
+const applyThemeDom = (newTheme: Theme) => {
   const root = document.documentElement;
   if (newTheme === 'dark') {
     root.classList.add('dark');
@@ -60,9 +86,7 @@ const applyThemeDom = (newTheme: Theme, updateStatusBar = true) => {
     root.setAttribute('data-mode', 'light');
   }
 
-  if (updateStatusBar) {
-    applyStatusBarColor(newTheme);
-  }
+  applyStatusBarColor(newTheme);
 };
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -75,16 +99,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return 'dark';
   });
 
-  const statusBarTimerRef = useRef<number | null>(null);
-  const isTransitioningRef = useRef<boolean>(false);
-
   const setTheme = (newTheme: Theme, e?: React.MouseEvent | MouseEvent) => {
     if (newTheme === theme) return;
-
-    if (statusBarTimerRef.current !== null) {
-      clearTimeout(statusBarTimerRef.current);
-      statusBarTimerRef.current = null;
-    }
 
     const commitState = () => {
       setThemeState(newTheme);
@@ -94,7 +110,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       } catch { /* ignore */ }
     };
 
-    // Robust click/touch coordinate extraction
+    // Robust click/touch coordinate extraction for circular reveal origin
     let x = window.innerWidth / 2;
     let y = 0;
     if (e) {
@@ -123,65 +139,49 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Fallback: no View Transitions support → instant swap
     // @ts-ignore
     if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      isTransitioningRef.current = false;
       commitState();
-      applyThemeDom(newTheme, true);
+      applyThemeDom(newTheme);
       return;
     }
 
     // Mark transition active
-    isTransitioningRef.current = true;
     document.documentElement.setAttribute('data-theme-transitioning', 'true');
 
-    // Calculate when the expanding circle reaches the top status bar (y = 0)
-    // using ease-in-out progress over 420ms
-    const ratio = endRadius > 0 ? Math.min(1, Math.max(0, y / endRadius)) : 0;
-    const easeProgress = ratio < 0.5 ? 2 * ratio * ratio : 1 - 2 * (1 - ratio) * (1 - ratio);
-    const delayMs = Math.max(10, Math.min(400, Math.round(420 * easeProgress)));
-
-    // Schedule status bar color update to fire exactly when the expanding circle reaches the top
-    statusBarTimerRef.current = window.setTimeout(() => {
-      applyStatusBarColor(newTheme);
-      statusBarTimerRef.current = null;
-    }, delayMs);
-
-    // @ts-ignore
-    const vt = document.startViewTransition(() => {
-      flushSync(() => {
-        commitState();
-        applyThemeDom(newTheme, false);
+    try {
+      // @ts-ignore
+      const vt = document.startViewTransition(() => {
+        flushSync(() => {
+          commitState();
+          applyThemeDom(newTheme);
+        });
       });
-    });
 
-    const cleanup = () => {
-      if (statusBarTimerRef.current !== null) {
-        clearTimeout(statusBarTimerRef.current);
-        statusBarTimerRef.current = null;
-      }
-      isTransitioningRef.current = false;
-      applyStatusBarColor(newTheme);
+      const cleanup = () => {
+        document.documentElement.removeAttribute('data-theme-transitioning');
+      };
+
+      vt.finished.then(cleanup, cleanup);
+    } catch {
+      // If startViewTransition fails synchronously:
+      commitState();
+      applyThemeDom(newTheme);
       document.documentElement.removeAttribute('data-theme-transitioning');
-    };
-
-    vt.finished.then(cleanup, cleanup);
+    }
   };
 
   const toggleTheme = (e?: React.MouseEvent | MouseEvent) => {
     setTheme(theme === 'dark' ? 'light' : 'dark', e);
   };
 
-  // Synchronize on mount and theme state change (when not actively animating)
+  // Synchronize on mount and theme state change
   useEffect(() => {
-    if (isTransitioningRef.current) return;
-    applyThemeDom(theme, true);
+    applyThemeDom(theme);
   }, [theme]);
 
   // Re-assert correct status bar color on page navigation / hash changes so it never locks
   useEffect(() => {
     const handleNavChange = () => {
-      if (!isTransitioningRef.current) {
-        applyStatusBarColor(theme);
-      }
+      applyStatusBarColor(theme);
     };
     window.addEventListener('hashchange', handleNavChange);
     window.addEventListener('popstate', handleNavChange);
