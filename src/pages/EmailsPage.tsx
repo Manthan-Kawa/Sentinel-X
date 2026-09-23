@@ -626,22 +626,22 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
           </div>
 
           {/* Filter pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none touch-scroll pb-1 md:pb-0">
-            <span className="text-xs text-slate-500 dark:text-gray-400 mr-1 flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto overflow-y-hidden scrollbar-none touch-scroll touch-pan-x overscroll-x-contain pb-1 md:pb-0">
+            <span className="text-xs text-slate-500 dark:text-gray-400 mr-1 flex items-center gap-1 shrink-0 font-medium">
               <Filter className="w-3.5 h-3.5" />
               Filter:
             </span>
-            <div className="relative isolate flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5">
+            <div className="relative isolate flex items-center gap-1 p-1 rounded-xl bg-slate-100/80 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/5 select-none">
               {/* Smooth sliding indicator pill */}
               <div
-                className={`absolute z-0 pointer-events-none rounded-lg border transition-all duration-300 ease-out shadow-sm dark:shadow-none ${
+                className={`absolute pointer-events-none rounded-xl border transition-all duration-300 ease-out shadow-sm ${
                   filterState.threatLevel === 'malicious'
-                    ? 'bg-white dark:bg-red-500/20 border-red-400 dark:border-red-500/40'
+                    ? 'bg-red-500/15 dark:bg-red-500/20 border-red-400/60 dark:border-red-500/40 shadow-red-900/10'
                     : filterState.threatLevel === 'suspicious'
-                      ? 'bg-white dark:bg-amber-500/20 border-amber-400 dark:border-amber-500/40'
+                      ? 'bg-amber-500/15 dark:bg-amber-500/20 border-amber-400/60 dark:border-amber-500/40 shadow-amber-900/10'
                       : filterState.threatLevel === 'clean'
-                        ? 'bg-white dark:bg-emerald-500/20 border-emerald-400 dark:border-emerald-500/40'
-                        : 'bg-white dark:bg-cyan-500/20 border-cyan-400 dark:border-cyan-500/40'
+                        ? 'bg-emerald-500/15 dark:bg-emerald-500/20 border-emerald-400/60 dark:border-emerald-500/40 shadow-emerald-900/10'
+                        : 'bg-cyan-500/15 dark:bg-cyan-500/20 border-cyan-400/60 dark:border-cyan-500/40 shadow-cyan-900/10'
                 }`}
                 style={{
                   top: 0,
@@ -650,31 +650,64 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
                   width: filterIndicatorStyle.width,
                   height: filterIndicatorStyle.height,
                   opacity: filterIndicatorStyle.opacity,
+                  transition: 'transform 300ms cubic-bezier(0.25, 1, 0.5, 1), width 300ms cubic-bezier(0.25, 1, 0.5, 1), height 300ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
+                  zIndex: 0,
                 }}
               />
-              {(['all', 'malicious', 'suspicious', 'clean'] as const).map((lvl) => {
-                const isActive = filterState.threatLevel === lvl;
+              {[
+                { id: 'all' as const, label: 'All Emails', icon: Inbox },
+                { id: 'malicious' as const, label: 'Malicious', icon: ShieldAlert },
+                { id: 'suspicious' as const, label: 'Suspicious', icon: AlertTriangle },
+                { id: 'clean' as const, label: 'Clean', icon: ShieldCheck },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const isActive = filterState.threatLevel === tab.id;
                 return (
                   <button
-                    key={lvl}
-                    ref={(el) => { filterRefs.current[lvl] = el; }}
+                    key={tab.id}
+                    ref={(el) => {
+                      filterRefs.current[tab.id] = el;
+                      if (tab.id === filterState.threatLevel && el && filterIndicatorStyle.opacity === 0) {
+                        setFilterIndicatorStyle({
+                          left: el.offsetLeft,
+                          top: el.offsetTop,
+                          width: el.offsetWidth,
+                          height: el.offsetHeight,
+                          opacity: 1,
+                        });
+                      }
+                    }}
                     onClick={() => {
-                      setFilterState((prev) => ({ ...prev, threatLevel: lvl }));
+                      setFilterState((prev) => ({ ...prev, threatLevel: tab.id }));
                       setCurrentPage(1);
                     }}
-                    className={`relative z-10 px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-colors duration-150 shrink-0 cursor-pointer ${
+                    style={{ zIndex: 10 }}
+                    className={`relative z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer shrink-0 ${
                       isActive
-                        ? lvl === 'malicious'
-                          ? 'text-red-600 dark:text-red-300'
-                          : lvl === 'suspicious'
-                            ? 'text-amber-600 dark:text-amber-300'
-                            : lvl === 'clean'
-                              ? 'text-emerald-600 dark:text-emerald-300'
-                              : 'text-cyan-600 dark:text-cyan-300'
-                        : 'text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white'
+                        ? tab.id === 'malicious'
+                          ? 'text-red-950 dark:text-red-200 font-bold'
+                          : tab.id === 'suspicious'
+                            ? 'text-amber-950 dark:text-amber-200 font-bold'
+                            : tab.id === 'clean'
+                              ? 'text-emerald-950 dark:text-emerald-200 font-bold'
+                              : 'text-cyan-950 dark:text-cyan-200 font-bold'
+                        : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
-                    {lvl === 'all' ? 'All Emails' : lvl.charAt(0).toUpperCase() + lvl.slice(1)}
+                    <Icon
+                      className={`w-3.5 h-3.5 shrink-0 ${
+                        isActive
+                          ? tab.id === 'malicious'
+                            ? 'text-red-700 dark:text-red-300'
+                            : tab.id === 'suspicious'
+                              ? 'text-amber-700 dark:text-amber-300'
+                              : tab.id === 'clean'
+                                ? 'text-emerald-700 dark:text-emerald-300'
+                                : 'text-cyan-700 dark:text-cyan-300'
+                          : 'text-slate-500 dark:text-gray-400'
+                      }`}
+                    />
+                    <span>{tab.label}</span>
                   </button>
                 );
               })}
