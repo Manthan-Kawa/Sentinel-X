@@ -514,34 +514,69 @@ export function EmailsPage({ onNavigate }: EmailsPageProps) {
       {/* Sync Notification Banner */}
       {syncNotice && (
         <SlideIn delay={50} direction="down">
-          <div
-            className={`p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 animate-slide-down shadow-sm dark:shadow-none ${
+          {(() => {
+            const isError =
               syncNotice.toLowerCase().includes('mismatch') ||
               syncNotice.toLowerCase().includes('failed') ||
-              syncNotice.toLowerCase().includes('error')
-                ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-500/40 text-rose-900 dark:text-rose-200'
-                : 'bg-cyan-50 dark:bg-cyan-950/30 border-cyan-300 dark:border-cyan-500/40 text-cyan-950 dark:text-cyan-200'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              {syncNotice.toLowerCase().includes('mismatch') ||
-              syncNotice.toLowerCase().includes('failed') ||
-              syncNotice.toLowerCase().includes('error') ? (
-                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-              ) : (
-                <Sparkles className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
-              )}
-              <span className="font-semibold leading-relaxed">{syncNotice}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSyncNotice(null)}
-              className="text-slate-400 hover:text-slate-700 dark:text-gray-400 dark:hover:text-white shrink-0 p-1 rounded-lg hover:bg-slate-200/50 dark:hover:bg-white/10 transition-colors"
-              title="Dismiss"
-            >
-              ✕
-            </button>
-          </div>
+              syncNotice.toLowerCase().includes('error');
+            const isCancelled =
+              syncNotice.toLowerCase().includes('closed') ||
+              syncNotice.toLowerCase().includes('cancel');
+            const isSuccess =
+              syncNotice.toLowerCase().includes('success') ||
+              syncNotice.toLowerCase().includes('ingested');
+
+            const containerClasses = isError
+              ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-500/40 text-rose-950 dark:text-rose-200'
+              : isCancelled
+              ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-500/40 text-amber-950 dark:text-amber-200'
+              : isSuccess
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-500/40 text-emerald-950 dark:text-emerald-200'
+              : 'bg-cyan-50 dark:bg-cyan-950/40 border-cyan-300 dark:border-cyan-500/40 text-slate-900 dark:text-cyan-100';
+
+            const iconClasses = isError
+              ? 'text-rose-600 dark:text-rose-400'
+              : isCancelled
+              ? 'text-amber-600 dark:text-amber-400'
+              : isSuccess
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : 'text-cyan-600 dark:text-cyan-400';
+
+            const textClasses = isError
+              ? 'text-rose-950 dark:text-rose-100'
+              : isCancelled
+              ? 'text-amber-950 dark:text-amber-100'
+              : isSuccess
+              ? 'text-emerald-950 dark:text-emerald-100'
+              : 'text-slate-900 dark:text-cyan-100';
+
+            return (
+              <div
+                className={`p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 animate-slide-down shadow-sm dark:shadow-none ${containerClasses}`}
+              >
+                <div className="flex items-center gap-2.5">
+                  {isError || isCancelled ? (
+                    <AlertTriangle className={`w-4 h-4 shrink-0 ${iconClasses}`} />
+                  ) : isSuccess ? (
+                    <ShieldCheck className={`w-4 h-4 shrink-0 ${iconClasses}`} />
+                  ) : (
+                    <Sparkles className={`w-4 h-4 shrink-0 ${iconClasses}`} />
+                  )}
+                  <span className={`font-bold leading-relaxed ${textClasses}`}>
+                    {syncNotice}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSyncNotice(null)}
+                  className="text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white shrink-0 p-1.5 rounded-lg hover:bg-slate-200/60 dark:hover:bg-white/10 transition-colors font-bold cursor-pointer text-sm"
+                  title="Dismiss"
+                >
+                  ✕
+                </button>
+              </div>
+            );
+          })()}
         </SlideIn>
       )}
 
