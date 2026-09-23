@@ -104,21 +104,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return 'dark';
   });
 
-  const statusBarTimerRef = useRef<number | null>(null);
   const activeTransitionRef = useRef<any>(null);
 
   const setTheme = (newTheme: Theme, e?: React.MouseEvent | MouseEvent) => {
     if (newTheme === theme) return;
 
-    // Clear any pending timer and skip any previous view transition to prevent stuck overlays
-    if (statusBarTimerRef.current !== null) {
-      clearTimeout(statusBarTimerRef.current);
-      statusBarTimerRef.current = null;
-    }
+    // Skip any previous view transition to prevent stuck overlays
     if (activeTransitionRef.current && typeof activeTransitionRef.current.skipTransition === 'function') {
-      try {
-        activeTransitionRef.current.skipTransition();
-      } catch { /* ignore */ }
+      try { activeTransitionRef.current.skipTransition(); } catch { /* ignore */ }
       activeTransitionRef.current = null;
     }
 
@@ -167,46 +160,28 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Mark transition active
     document.documentElement.setAttribute('data-theme-transitioning', 'true');
 
-    // Calculate when the expanding circle wave reaches the top status bar (y = 0)
-    // using ease progress over 420ms
-    const ratio = endRadius > 0 ? Math.min(1, Math.max(0, y / endRadius)) : 0;
-    const easeProgress = ratio < 0.5 ? 2 * ratio * ratio : 1 - 2 * (1 - ratio) * (1 - ratio);
-    const delayMs = Math.max(10, Math.min(400, Math.round(420 * easeProgress)));
-
-    // Schedule status bar color update to fire in sync with the circle wave reaching the top
-    statusBarTimerRef.current = window.setTimeout(() => {
-      applyStatusBarColor(newTheme);
-      statusBarTimerRef.current = null;
-    }, delayMs);
-
     try {
       // @ts-ignore
       const vt = document.startViewTransition(() => {
         flushSync(() => {
           commitState();
-          applyThemeDom(newTheme, false);
+          // Always apply full DOM update (class + meta) atomically inside the transition.
+          // Never use a separate timer — timers get cancelled on navigation and cause the stuck-bar bug.
+          applyThemeDom(newTheme, true);
         });
       });
 
       activeTransitionRef.current = vt;
 
       const cleanup = () => {
-        if (statusBarTimerRef.current !== null) {
-          clearTimeout(statusBarTimerRef.current);
-          statusBarTimerRef.current = null;
-        }
         activeTransitionRef.current = null;
+        // Re-assert to ensure meta tags are in sync after transition finishes
         applyStatusBarColor(newTheme);
         document.documentElement.removeAttribute('data-theme-transitioning');
       };
 
       vt.finished.then(cleanup, cleanup);
     } catch {
-      // If startViewTransition fails synchronously:
-      if (statusBarTimerRef.current !== null) {
-        clearTimeout(statusBarTimerRef.current);
-        statusBarTimerRef.current = null;
-      }
       activeTransitionRef.current = null;
       commitState();
       applyThemeDom(newTheme, true);
@@ -223,24 +198,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyThemeDom(theme, true);
   }, [theme]);
 
-  // Re-assert correct status bar color on page navigation / hash changes so it never locks
+  // Re-assert full theme on every page navigation so the topbar never gets stuck
   useEffect(() => {
     const handleNavChange = () => {
-      if (statusBarTimerRef.current !== null) {
-        clearTimeout(statusBarTimerRef.current);
-        statusBarTimerRef.current = null;
-      }
+      // Cancel any orphaned transition
       if (activeTransitionRef.current && typeof activeTransitionRef.current.skipTransition === 'function') {
-        try {
-          activeTransitionRef.current.skipTransition();
-        } catch { /* ignore */ }
+        try { activeTransitionRef.current.skipTransition(); } catch { /* ignore */ }
         activeTransitionRef.current = null;
       }
       document.documentElement.removeAttribute('data-theme-transitioning');
-      // Clear any stale inline background-color so CSS classes retake control immediately
-      document.documentElement.style.removeProperty('background-color');
-      if (document.body) document.body.style.removeProperty('background-color');
-      applyStatusBarColor(theme);
+      // Full re-assert: dark class + inline style clear + meta tags
+      applyThemeDom(theme, true);
     };
     window.addEventListener('hashchange', handleNavChange);
     window.addEventListener('popstate', handleNavChange);
