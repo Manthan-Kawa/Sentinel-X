@@ -233,16 +233,17 @@ export function Sidebar({ activeId, onNavigate, onSignOut, mobileOpen, onMobileC
           }`}
       >
         <div
-          className="relative h-[88px] flex items-center justify-start pl-4 pr-2 shrink-0 border-b border-slate-200 dark:border-white/[0.06]"
+          className="soc-sidebar-header relative h-[88px] flex items-center justify-between pl-4 pr-3 shrink-0 border-b border-slate-200 dark:border-white/[0.06]"
         >
           <TransparentLogo
             src={isDark ? "/Logo-SentinelX.PNG" : "/Logo-SentinelX-black.png"}
             alt="SENTINEL-X"
-            className="h-[60px] max-w-[232px] w-auto object-contain drop-shadow-[0_0_12px_rgba(6,182,212,0.25)] transition-transform hover:scale-105"
+            className="h-[42px] lg:h-[60px] max-w-[190px] lg:max-w-[232px] w-auto object-contain drop-shadow-[0_0_12px_rgba(6,182,212,0.25)] transition-transform hover:scale-105"
           />
           <button
             onClick={onMobileClose}
-            className="absolute right-4 lg:hidden text-slate-400 hover:text-slate-900 dark:text-base-400 dark:hover:text-white"
+            className="p-1.5 rounded-lg lg:hidden text-slate-400 hover:text-slate-900 dark:text-base-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+            title="Close menu"
           >
             <X className="w-5 h-5" />
           </button>
