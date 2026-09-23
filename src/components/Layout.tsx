@@ -1160,7 +1160,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
 
   return (
     <header
-      className="flex items-center justify-between gap-3 px-4 lg:px-5 shrink-0 bg-white dark:bg-[#0b0c11] border-b border-slate-200 dark:border-white/[0.06] shadow-sm transition-colors select-none touch-none lg:touch-auto overflow-x-hidden overscroll-none z-20"
+      className="flex items-center justify-between gap-3 px-4 lg:px-5 shrink-0 bg-white dark:bg-[#0b0c11] border-b border-slate-200 dark:border-white/[0.06] shadow-sm transition-colors select-none touch-none lg:touch-auto z-20"
       style={{
         height: 'calc(4rem + env(safe-area-inset-top, 0px))',
         paddingTop: 'env(safe-area-inset-top, 0px)',
@@ -1376,7 +1376,7 @@ export function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
           {notifOpen && (
             <div
               ref={notifDropdownRef}
-              className="fixed sm:absolute top-14 sm:top-full left-3 sm:left-auto right-3 sm:right-0 sm:mt-2 w-auto sm:w-96 max-w-none sm:max-w-sm rounded-2xl z-50 overflow-hidden animate-fade-in bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-zinc-100 shadow-[0_20px_50px_rgba(0,0,0,0.12)] touch-auto"
+              className="fixed top-14 sm:top-[4.25rem] left-3 sm:left-auto right-3 sm:right-4 lg:right-6 w-auto sm:w-96 max-w-none sm:max-w-sm rounded-2xl z-50 overflow-hidden animate-fade-in bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-zinc-100 shadow-[0_20px_50px_rgba(0,0,0,0.18)] touch-auto"
             >
               {/* Notification Header */}
               <div className="px-4 py-3 bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between">
