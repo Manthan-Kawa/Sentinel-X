@@ -382,11 +382,11 @@ export function EmailDetailDrawer({
           </div>
 
           {/* Tab Navigation */}
-          <div className="w-full max-w-full overflow-x-auto overflow-y-hidden scrollbar-none touch-pan-x overscroll-x-contain pb-2 -mb-2">
-            <div className="relative isolate inline-flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 shrink-0 min-w-max">
+          <div className="flex items-center gap-2 pb-1 overflow-hidden">
+            <div className="relative isolate flex items-center gap-2 overflow-x-auto overflow-y-hidden scrollbar-none touch-scroll touch-pan-x overscroll-x-contain py-1 max-w-full select-none">
               {/* Smooth sliding indicator pill */}
               <div
-                className="absolute z-0 pointer-events-none rounded-xl bg-cyan-500/15 dark:bg-cyan-500/20 border border-cyan-400/70 dark:border-cyan-500/40 shadow-sm transition-all duration-300 ease-out"
+                className="absolute z-0 pointer-events-none rounded-xl bg-cyan-500/15 dark:bg-cyan-500/20 border border-cyan-400/50 dark:border-cyan-500/40 shadow-sm shadow-cyan-900/10"
                 style={{
                   top: 0,
                   left: 0,
@@ -394,54 +394,38 @@ export function EmailDetailDrawer({
                   width: indicatorStyle.width,
                   height: indicatorStyle.height,
                   opacity: indicatorStyle.opacity,
+                  transition: 'transform 300ms cubic-bezier(0.25, 1, 0.5, 1), width 300ms cubic-bezier(0.25, 1, 0.5, 1), height 300ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
+                  zIndex: 0,
                 }}
               />
 
-              <button
-                ref={(el) => { tabRefs.current['assessment'] = el; }}
-                onClick={() => {
-                  setActiveTab('assessment');
-                  tabRefs.current['assessment']?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-                }}
-                className={`relative z-10 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors duration-150 shrink-0 whitespace-nowrap cursor-pointer ${
-                  activeTab === 'assessment'
-                    ? 'text-cyan-950 dark:text-cyan-200'
-                    : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <Sparkles className={`w-3.5 h-3.5 ${activeTab === 'assessment' ? 'text-cyan-700 dark:text-cyan-300' : 'text-slate-500 dark:text-gray-400'}`} />
-                AI Threat Assessment
-              </button>
-              <button
-                ref={(el) => { tabRefs.current['content'] = el; }}
-                onClick={() => {
-                  setActiveTab('content');
-                  tabRefs.current['content']?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-                }}
-                className={`relative z-10 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors duration-150 shrink-0 whitespace-nowrap cursor-pointer ${
-                  activeTab === 'content'
-                    ? 'text-cyan-950 dark:text-cyan-200'
-                    : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <Mail className={`w-3.5 h-3.5 ${activeTab === 'content' ? 'text-cyan-700 dark:text-cyan-300' : 'text-slate-500 dark:text-gray-400'}`} />
-                Email Body &amp; Links ({email.extracted_urls.length})
-              </button>
-              <button
-                ref={(el) => { tabRefs.current['headers'] = el; }}
-                onClick={() => {
-                  setActiveTab('headers');
-                  tabRefs.current['headers']?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-                }}
-                className={`relative z-10 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors duration-150 shrink-0 whitespace-nowrap cursor-pointer ${
-                  activeTab === 'headers'
-                    ? 'text-cyan-950 dark:text-cyan-200'
-                    : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <FileCode className={`w-3.5 h-3.5 ${activeTab === 'headers' ? 'text-cyan-700 dark:text-cyan-300' : 'text-slate-500 dark:text-gray-400'}`} />
-                RFC Headers
-              </button>
+              {[
+                { id: 'assessment' as const, label: 'AI Threat Assessment', icon: Sparkles },
+                { id: 'content' as const, label: `Email Body & Links (${email.extracted_urls.length})`, icon: Mail },
+                { id: 'headers' as const, label: 'RFC Headers', icon: FileCode },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    ref={(el) => { tabRefs.current[tab.id] = el; }}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      tabRefs.current[tab.id]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                    }}
+                    style={{ zIndex: 10 }}
+                    className={`relative z-10 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors duration-200 cursor-pointer shrink-0 ${
+                      active
+                        ? 'text-cyan-950 dark:text-cyan-200 font-bold'
+                        : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${active ? 'text-cyan-700 dark:text-cyan-300' : 'text-slate-500 dark:text-gray-400'}`} />
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

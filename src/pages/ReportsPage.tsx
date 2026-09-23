@@ -887,7 +887,7 @@ function FullReportPreview({
   return (
     <div className="rounded-2xl p-6 space-y-6 bg-white dark:bg-[#090b12] border border-slate-200 dark:border-cyan-500/20 shadow-sm dark:shadow-2xl">
       {/* ── Quick Navigation Tabs (Deep Forensics format) ─────────────────── */}
-      <div className="relative isolate flex items-center gap-2 overflow-x-auto overflow-y-hidden touch-pan-x overscroll-x-contain pb-4 mb-3 scrollbar-none border-b border-slate-200 dark:border-white/10">
+      <div className="relative isolate flex items-center gap-2 overflow-x-auto overflow-y-hidden pb-4 mb-3 scrollbar-none border-b border-slate-200 dark:border-white/10 touch-scroll touch-pan-x overscroll-x-contain">
         {/* Smooth sliding indicator pill */}
         <div
           className="absolute z-0 pointer-events-none rounded-xl bg-cyan-500/15 dark:bg-cyan-500/20 border border-cyan-400/50 dark:border-cyan-500/40 shadow-sm shadow-cyan-900/10"

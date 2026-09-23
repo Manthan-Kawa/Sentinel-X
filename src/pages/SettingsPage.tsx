@@ -491,7 +491,7 @@ export function SettingsPage({ userRole }: { onResetCache?: () => void; userRole
           {/* ── Left Sidebar Navigation ── */}
           <div className="lg:col-span-1">
             <div
-              className="relative isolate rounded-2xl p-2 lg:p-3 flex lg:flex-col overflow-x-auto lg:overflow-visible scrollbar-none gap-1.5 touch-scroll bg-white dark:bg-[#0c0f1a] border border-slate-200 dark:border-white/[0.08] shadow-sm"
+              className="relative isolate rounded-2xl p-2 lg:p-3 flex lg:flex-col overflow-x-auto overflow-y-hidden lg:overflow-visible scrollbar-none gap-1.5 touch-scroll touch-pan-x overscroll-x-contain bg-white dark:bg-[#0c0f1a] border border-slate-200 dark:border-white/[0.08] shadow-sm"
             >
               {/* Smooth sliding indicator pill */}
               <div

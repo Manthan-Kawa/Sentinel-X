@@ -653,7 +653,7 @@ export function UserDeepForensicsPage({ emailId, onNavigate }: UserDeepForensics
 
       {/* ── Quick Navigation Tabs ─────────────────────────────────────────── */}
       <SlideIn delay={60} direction="up">
-        <div className="relative isolate flex items-center gap-2 overflow-x-auto overflow-y-hidden touch-pan-x overscroll-x-contain pb-4 mb-3 scrollbar-none border-b border-slate-200 dark:border-white/10">
+        <div className="relative isolate flex items-center gap-2 overflow-x-auto overflow-y-hidden pb-4 mb-3 scrollbar-none border-b border-slate-200 dark:border-white/10 touch-scroll touch-pan-x overscroll-x-contain">
           {/* Smooth sliding indicator pill */}
           <div
             className="absolute z-0 pointer-events-none rounded-xl bg-cyan-500/15 dark:bg-cyan-500/20 border border-cyan-400/50 dark:border-cyan-500/40 shadow-sm shadow-cyan-900/10"
