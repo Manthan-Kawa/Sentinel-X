@@ -382,11 +382,11 @@ export function EmailDetailDrawer({
           </div>
 
           {/* Tab Navigation */}
-          <div className="flex items-center gap-2 pb-3">
-            <div className="relative isolate flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5">
+          <div className="w-full max-w-full overflow-x-auto overflow-y-hidden scrollbar-none touch-pan-x overscroll-x-contain pb-2 -mb-2">
+            <div className="relative isolate inline-flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 shrink-0 min-w-max">
               {/* Smooth sliding indicator pill */}
               <div
-                className="absolute z-0 pointer-events-none rounded-lg bg-white dark:bg-cyan-500/20 border border-cyan-400 dark:border-cyan-500/40 shadow-sm dark:shadow-none transition-all duration-300 ease-out"
+                className="absolute z-0 pointer-events-none rounded-xl bg-cyan-500/15 dark:bg-cyan-500/20 border border-cyan-400/70 dark:border-cyan-500/40 shadow-sm transition-all duration-300 ease-out"
                 style={{
                   top: 0,
                   left: 0,
@@ -399,38 +399,47 @@ export function EmailDetailDrawer({
 
               <button
                 ref={(el) => { tabRefs.current['assessment'] = el; }}
-                onClick={() => setActiveTab('assessment')}
-                className={`relative z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors duration-150 shrink-0 whitespace-nowrap cursor-pointer ${
+                onClick={() => {
+                  setActiveTab('assessment');
+                  tabRefs.current['assessment']?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                }}
+                className={`relative z-10 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors duration-150 shrink-0 whitespace-nowrap cursor-pointer ${
                   activeTab === 'assessment'
-                    ? 'text-cyan-600 dark:text-cyan-300'
-                    : 'text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-white'
+                    ? 'text-cyan-950 dark:text-cyan-200'
+                    : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <Sparkles className={`w-3.5 h-3.5 ${activeTab === 'assessment' ? 'text-cyan-700 dark:text-cyan-300' : 'text-slate-500 dark:text-gray-400'}`} />
                 AI Threat Assessment
               </button>
               <button
                 ref={(el) => { tabRefs.current['content'] = el; }}
-                onClick={() => setActiveTab('content')}
-                className={`relative z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors duration-150 shrink-0 whitespace-nowrap cursor-pointer ${
+                onClick={() => {
+                  setActiveTab('content');
+                  tabRefs.current['content']?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                }}
+                className={`relative z-10 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors duration-150 shrink-0 whitespace-nowrap cursor-pointer ${
                   activeTab === 'content'
-                    ? 'text-cyan-600 dark:text-cyan-300'
-                    : 'text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-white'
+                    ? 'text-cyan-950 dark:text-cyan-200'
+                    : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <Mail className="w-3.5 h-3.5" />
+                <Mail className={`w-3.5 h-3.5 ${activeTab === 'content' ? 'text-cyan-700 dark:text-cyan-300' : 'text-slate-500 dark:text-gray-400'}`} />
                 Email Body &amp; Links ({email.extracted_urls.length})
               </button>
               <button
                 ref={(el) => { tabRefs.current['headers'] = el; }}
-                onClick={() => setActiveTab('headers')}
-                className={`relative z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors duration-150 shrink-0 whitespace-nowrap cursor-pointer ${
+                onClick={() => {
+                  setActiveTab('headers');
+                  tabRefs.current['headers']?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                }}
+                className={`relative z-10 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors duration-150 shrink-0 whitespace-nowrap cursor-pointer ${
                   activeTab === 'headers'
-                    ? 'text-cyan-600 dark:text-cyan-300'
-                    : 'text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-white'
+                    ? 'text-cyan-950 dark:text-cyan-200'
+                    : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <FileCode className="w-3.5 h-3.5" />
+                <FileCode className={`w-3.5 h-3.5 ${activeTab === 'headers' ? 'text-cyan-700 dark:text-cyan-300' : 'text-slate-500 dark:text-gray-400'}`} />
                 RFC Headers
               </button>
             </div>
