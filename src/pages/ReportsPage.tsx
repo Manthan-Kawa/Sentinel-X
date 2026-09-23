@@ -328,7 +328,11 @@ export function ReportsPage({ onNavigate }: { onNavigate?: (route: string) => vo
                           setSearchFocused(false);
                         }
                       }}
-                      className="w-full rounded-xl pl-8 pr-8 py-1.5 text-xs font-mono text-black dark:text-black font-semibold bg-slate-100 dark:bg-white border border-slate-200 dark:border-slate-200 placeholder-black dark:placeholder-black placeholder:text-black dark:placeholder:text-black placeholder:opacity-100 dark:placeholder:opacity-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/40 transition-all truncate cursor-text shadow-sm"
+                      className={`w-full rounded-xl pl-8 pr-8 py-1.5 text-xs font-mono text-black dark:text-black font-semibold bg-slate-100 dark:bg-white border border-slate-200 dark:border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/40 transition-all truncate cursor-text shadow-sm ${
+                        currentResult && !searchFocused
+                          ? 'placeholder:text-black dark:placeholder:text-black placeholder:font-bold placeholder:opacity-100 dark:placeholder:opacity-100'
+                          : 'placeholder:text-slate-500 dark:placeholder:text-slate-500 placeholder:font-medium placeholder:opacity-90 dark:placeholder:opacity-90'
+                      }`}
                     />
                     {caseSearch ? (
                       <button
