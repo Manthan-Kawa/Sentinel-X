@@ -388,14 +388,17 @@ export class SupabaseDataService {
   /**
    * Fetches all user tickets from Supabase or local storage.
    */
-  static async fetchTickets(): Promise<DbTicket[]> {
+  static async fetchTickets(limit = 50): Promise<DbTicket[]> {
     const client = getSupabaseClient();
     if (isSupabaseConfigured() && client) {
       try {
         const { data, error } = await client
           .from('user_tickets')
-          .select('*')
-          .order('submitted_at', { ascending: false });
+          .select(
+            'id, user_email, submitted_at, status, priority, threat_category, did_interact, user_comment, eml_file, assigned_analyst, verdict, threat_score, analyst_comment, recommended_action, remediation_taken, analyst_report, responded_at, email_id, user_acknowledged, user_feedback, user_rating, closed_at, thread_messages'
+          )
+          .order('submitted_at', { ascending: false })
+          .limit(limit);
 
         if (!error && data) {
           const tickets: DbTicket[] = data.map((d: any) => ({

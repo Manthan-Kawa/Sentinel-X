@@ -215,16 +215,73 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     ticketsRef.current = tickets;
   }, [tickets]);
 
-  // Sync tickets from Supabase on mount
+  // Sync tickets from Supabase on mount and subscribe to Realtime updates (event-driven, no polling)
   useEffect(() => {
     let isMounted = true;
-    SupabaseDataService.fetchTickets().then((dbTickets) => {
-      if (isMounted && dbTickets) {
-        setTickets(dbTickets as unknown as Ticket[]);
-        ticketsRef.current = dbTickets as unknown as Ticket[];
+
+    // Initial fetch on mount
+    SupabaseDataService.fetchTickets()
+      .then((dbTickets) => {
+        if (isMounted && dbTickets) {
+          setTickets(dbTickets as unknown as Ticket[]);
+          ticketsRef.current = dbTickets as unknown as Ticket[];
+        }
+      })
+      .catch((e) => console.warn('Supabase fetchTickets failed:', e));
+
+    // Supabase Realtime subscription for instant cross-device updates without polling
+    let channel: any = null;
+    try {
+      const client = getSupabaseClient();
+      if (client) {
+        channel = client
+          .channel('public:user_tickets_realtime')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'user_tickets' }, () => {
+            // Avoid echoing local optimistic updates
+            if (Date.now() - lastMutationRef.current < 2000) return;
+
+            SupabaseDataService.fetchTickets()
+              .then((dbTickets) => {
+                if (isMounted && dbTickets) {
+                  setTickets((prev) => {
+                    const remoteTickets = dbTickets as unknown as Ticket[];
+                    // Signature check to prevent redundant re-renders
+                    const prevSig = prev
+                      .map(
+                        (t) =>
+                          `${t.id}:${t.status}:${t.userEmail}:${t.submittedAt}:${t.respondedAt}:${t.userAcknowledged}:${t.threadMessages?.length || 0}`
+                      )
+                      .join('|');
+                    const remoteSig = remoteTickets
+                      .map(
+                        (t) =>
+                          `${t.id}:${t.status}:${t.userEmail}:${t.submittedAt}:${t.respondedAt}:${t.userAcknowledged}:${t.threadMessages?.length || 0}`
+                      )
+                      .join('|');
+
+                    if (prevSig !== remoteSig) {
+                      ticketsRef.current = remoteTickets;
+                      return remoteTickets;
+                    }
+                    return prev;
+                  });
+                }
+              })
+              .catch(() => {});
+          })
+          .subscribe();
       }
-    }).catch((e) => console.warn('Supabase fetchTickets failed:', e));
-    return () => { isMounted = false; };
+    } catch { /* ignore */ }
+
+    return () => {
+      isMounted = false;
+      if (channel) {
+        try {
+          const client = getSupabaseClient();
+          if (client) client.removeChannel(channel);
+        } catch { /* ignore */ }
+      }
+    };
   }, []);
 
   // Listen for cross-tab storage updates (instant multi-tab sync)
@@ -242,65 +299,6 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
-  }, []);
-
-  // Background sync with Supabase (every 2.5s) and Supabase Realtime channel for instant cross-device updates
-  useEffect(() => {
-    let isMounted = true;
-
-    const syncRemote = async () => {
-      // Suppress polling only briefly (2.5s) after a local action to avoid clobbering in-flight user actions
-      if (Date.now() - lastMutationRef.current < 2500) return;
-
-      try {
-        const remote = await SupabaseDataService.fetchTickets();
-        if (isMounted && remote) {
-          setTickets((prev) => {
-            const remoteTickets = remote as unknown as Ticket[];
-            // Comprehensive change signature comparing ID, status, timestamps, and message count
-            const prevSig = prev.map((t) => `${t.id}:${t.status}:${t.userEmail}:${t.submittedAt}:${t.respondedAt}:${t.userAcknowledged}:${t.threadMessages?.length || 0}`).join('|');
-            const remoteSig = remoteTickets.map((t) => `${t.id}:${t.status}:${t.userEmail}:${t.submittedAt}:${t.respondedAt}:${t.userAcknowledged}:${t.threadMessages?.length || 0}`).join('|');
-            if (prevSig !== remoteSig) {
-              ticketsRef.current = remoteTickets;
-              return remoteTickets;
-            }
-            return prev;
-          });
-        }
-      } catch { /* ignore network errors */ }
-    };
-
-    const interval = setInterval(syncRemote, 2500);
-
-    // Supabase Realtime subscription for sub-second synchronization when tickets are submitted/updated
-    let channel: any = null;
-    try {
-      const client = getSupabaseClient();
-      if (client) {
-        channel = client
-          .channel('public:user_tickets_realtime')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'user_tickets' }, () => {
-            SupabaseDataService.fetchTickets().then((dbTickets) => {
-              if (isMounted && dbTickets) {
-                setTickets(dbTickets as unknown as Ticket[]);
-                ticketsRef.current = dbTickets as unknown as Ticket[];
-              }
-            }).catch(() => {});
-          })
-          .subscribe();
-      }
-    } catch { /* ignore */ }
-
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-      if (channel) {
-        try {
-          const client = getSupabaseClient();
-          if (client) client.removeChannel(channel);
-        } catch { /* ignore */ }
-      }
-    };
   }, []);
 
   useEffect(() => {
